@@ -1,0 +1,38 @@
+{
+  "name": "financial_ingestion",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "ingest:sec": "tsx src/ingestion/sec-ingestion.ts",
+    "extract:sections": "tsx src/extraction/extract-sections.ts",
+    "extract:boundaries": "tsx src/extraction/extract-boundaries.ts",
+    "dedupe:sections": "tsx src/processing/deduplicate-sections.ts",
+    "dedupe:overlap": "tsx src/processing/deduplicate-overlap.ts",
+    "normalize:sections": "tsx src/processing/normalize-sections.ts",
+    "chunk:sections": "tsx src/processing/chunk-sections.ts",
+    "generate:intelligence": "tsx src/ai/generate-intelligence.ts",
+    "generate:themes": "tsx src/ai/generate-themes.ts",
+    "freshness:company": "tsx src/reporting/check-artifact-freshness.ts",
+    "report:company": "tsx src/reporting/generate-company-report.ts",
+    "pipeline": "tsx src/pipeline/run-company.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts tests/contracts/*.test.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "cheerio": "^1.2.0",
+    "tsx": "^4.22.3",
+    "typescript": "^6.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1"
+  }
+}

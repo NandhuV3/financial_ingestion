@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+build/
+
+# Environment
+.env
+.env.local
+.env.*
+
+# Logs
+*.log
+
+# Mac
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Coverage
+coverage/
+
+# TypeScript
+*.tsbuildinfo
+
+# Generated Data
+raw/
+normalized/
+chunks/
+intelligence/
+reports/
+processed/
+
+# Temporary
+tmp/
+.temp/
+
+# Cache
+.cache/
