@@ -27,12 +27,7 @@ coverage/
 *.tsbuildinfo
 
 # Generated Data
-raw/
-normalized/
-chunks/
-intelligence/
-reports/
-processed/
+/data/
 
 # Temporary
 tmp/

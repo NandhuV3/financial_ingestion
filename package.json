@@ -9,6 +9,7 @@
   },
   "scripts": {
     "ingest:sec": "tsx src/ingestion/sec-ingestion.ts",
+    "ingest:history": "tsx src/ingestion/historical-sec-ingestion.ts",
     "extract:sections": "tsx src/extraction/extract-sections.ts",
     "extract:boundaries": "tsx src/extraction/extract-boundaries.ts",
     "dedupe:sections": "tsx src/processing/deduplicate-sections.ts",
@@ -20,6 +21,7 @@
     "freshness:company": "tsx src/reporting/check-artifact-freshness.ts",
     "report:company": "tsx src/reporting/generate-company-report.ts",
     "pipeline": "tsx src/pipeline/run-company.ts",
+    "pipeline:filing": "tsx src/pipeline/pipeline-filing.ts",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts tests/contracts/*.test.ts"
   },

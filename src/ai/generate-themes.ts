@@ -1,7 +1,9 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { getCompanyConfig, getCompanyDataDir } from "../config/companies.js";
+import { getCompanyConfig } from "../config/companies.js";
+import { getFilingDirectory } from "../storage/filing-paths.js";
+import { resolveFilingDate } from "../storage/resolve-filing.js";
 import type { Chunk } from "../types/chunk.types.js";
 import type { CompanyConfig } from "../types/company.types.js";
 import type { OpenAIResponse } from "../types/pipeline.types.js";
@@ -21,10 +23,11 @@ Do not make unsupported claims.
 Do not include markdown.
 Return JSON only.`;
 
-export async function generateThemes(company: CompanyConfig): Promise<void> {
-  const companyDataDir = join(process.cwd(), "data", getCompanyDataDir(company));
-  const chunksDir = join(companyDataDir, "chunks");
-  const intelligenceDir = join(companyDataDir, "intelligence");
+export async function generateThemes(company: CompanyConfig, filingDate?: string): Promise<void> {
+  const resolvedFilingDate = await resolveFilingDate(company.ticker, filingDate);
+  const filingDir = getFilingDirectory(company.ticker, resolvedFilingDate);
+  const chunksDir = join(filingDir, "chunks");
+  const intelligenceDir = join(filingDir, "intelligence");
   const outputPath = join(intelligenceDir, "themes.json");
   const chunks = await loadChunks(chunksDir);
   const chunkIds = chunks.map((chunk) => chunk.chunk_id);
@@ -279,14 +282,15 @@ function loadDotEnv(): void {
 
 if (require.main === module) {
   const ticker = process.argv[2];
+  const filingDate = process.argv[3];
 
   if (!ticker) {
-    console.error("Usage: npm run generate:themes -- <ticker>");
+    console.error("Usage: npm run generate:themes -- <ticker> [filing-date]");
     process.exitCode = 1;
   } else {
     const company = getCompanyConfig(ticker);
 
-    generateThemes(company).catch((error) => {
+    generateThemes(company, filingDate).catch((error) => {
       console.error(error);
       process.exitCode = 1;
     });

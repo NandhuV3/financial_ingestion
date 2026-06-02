@@ -1,7 +1,9 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { load } from "cheerio";
-import { getCompanyConfig, getCompanyDataDir } from "../config/companies.js";
+import { getCompanyConfig } from "../config/companies.js";
+import { getFilingDirectory } from "../storage/filing-paths.js";
+import { resolveFilingDate } from "../storage/resolve-filing.js";
 import type { CompanyConfig } from "../types/company.types.js";
 
 type TextBlock = {
@@ -36,10 +38,11 @@ type ExtractionDiagnostic = {
   candidates: HeadingCandidate[];
 };
 
-export async function extractBoundaries(company: CompanyConfig): Promise<void> {
-  const companyDataDir = join(process.cwd(), "data", getCompanyDataDir(company));
-  const rawFilingPath = join(companyDataDir, "raw", "latest-10q.html");
-  const processedDir = join(companyDataDir, "processed");
+export async function extractBoundaries(company: CompanyConfig, filingDate?: string): Promise<void> {
+  const resolvedFilingDate = await resolveFilingDate(company.ticker, filingDate);
+  const filingDir = getFilingDirectory(company.ticker, resolvedFilingDate);
+  const rawFilingPath = join(filingDir, "raw", "latest-10q.html");
+  const processedDir = join(filingDir, "processed");
   const managementOutputPath = join(processedDir, "management-discussion.txt");
   const riskOutputPath = join(processedDir, "risk-factors.txt");
   const diagnosticsOutputPath = join(processedDir, "extraction-diagnostics.json");
@@ -413,14 +416,15 @@ function describeCandidate(blocks: TextBlock[], index: number): string {
 
 if (require.main === module) {
   const ticker = process.argv[2];
+  const filingDate = process.argv[3];
 
   if (!ticker) {
-    console.error("Usage: npm run extract:boundaries -- <ticker>");
+    console.error("Usage: npm run extract:boundaries -- <ticker> [filing-date]");
     process.exitCode = 1;
   } else {
     const company = getCompanyConfig(ticker);
 
-    extractBoundaries(company).catch((error) => {
+    extractBoundaries(company, filingDate).catch((error) => {
       console.error(error);
       process.exitCode = 1;
     });

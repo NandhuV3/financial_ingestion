@@ -1,8 +1,10 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { getCompanyConfig, getCompanyDataDir } from "../config/companies.js";
+import { getCompanyConfig } from "../config/companies.js";
 import { readTextFile } from "../shared/filesystem/file-reader.js";
 import { ensureDirectory, writeJsonFile, writeTextFile } from "../shared/filesystem/file-writer.js";
+import { getFilingDirectory } from "../storage/filing-paths.js";
+import { resolveFilingDate } from "../storage/resolve-filing.js";
 import type { CompanyConfig } from "../types/company.types.js";
 import type { OverlapDeduplicationReport, SectionOverlapDeduplicationReport } from "../types/pipeline.types.js";
 
@@ -18,8 +20,9 @@ const nearbyParagraphWindow = 10;
 const highOverlapThreshold = 0.85;
 const minimumComparableWords = 20;
 
-export async function deduplicateOverlap(company: CompanyConfig): Promise<OverlapDeduplicationReport> {
-  const processedDir = join(process.cwd(), "data", getCompanyDataDir(company), "processed");
+export async function deduplicateOverlap(company: CompanyConfig, filingDate?: string): Promise<OverlapDeduplicationReport> {
+  const resolvedFilingDate = await resolveFilingDate(company.ticker, filingDate);
+  const processedDir = join(getFilingDirectory(company.ticker, resolvedFilingDate), "processed");
   const processedFileNames = await readdir(processedDir);
   const processedFileNameSet = new Set(processedFileNames);
   const fileNames = processedFileNames
@@ -244,14 +247,15 @@ function sum(values: number[]): number {
 
 if (require.main === module) {
   const ticker = process.argv[2];
+  const filingDate = process.argv[3];
 
   if (!ticker) {
-    console.error("Usage: npm run dedupe:overlap -- <ticker>");
+    console.error("Usage: npm run dedupe:overlap -- <ticker> [filing-date]");
     process.exitCode = 1;
   } else {
     const company = getCompanyConfig(ticker);
 
-    deduplicateOverlap(company).catch((error) => {
+    deduplicateOverlap(company, filingDate).catch((error) => {
       console.error(error);
       process.exitCode = 1;
     });

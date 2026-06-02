@@ -1,6 +1,8 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { getCompanyConfig, getCompanyDataDir } from "../config/companies.js";
+import { getCompanyConfig } from "../config/companies.js";
+import { getFilingDirectory } from "../storage/filing-paths.js";
+import { resolveFilingDate } from "../storage/resolve-filing.js";
 import type { CompanyConfig } from "../types/company.types.js";
 import type { OpenAIResponse } from "../types/pipeline.types.js";
 
@@ -36,10 +38,11 @@ const intelligenceSchema = {
   ],
 };
 
-export async function generateIntelligence(company: CompanyConfig): Promise<void> {
-  const companyDataDir = join(process.cwd(), "data", getCompanyDataDir(company));
-  const normalizedDir = join(companyDataDir, "normalized");
-  const intelligenceDir = join(companyDataDir, "intelligence");
+export async function generateIntelligence(company: CompanyConfig, filingDate?: string): Promise<void> {
+  const resolvedFilingDate = await resolveFilingDate(company.ticker, filingDate);
+  const filingDir = getFilingDirectory(company.ticker, resolvedFilingDate);
+  const normalizedDir = join(filingDir, "normalized");
+  const intelligenceDir = join(filingDir, "intelligence");
   const outputPath = join(intelligenceDir, "intelligence.json");
   const managementDiscussion = await readFile(join(normalizedDir, "management-discussion.cleaned.txt"), "utf8");
   const riskFactors = await readFile(join(normalizedDir, "risk-factors.cleaned.txt"), "utf8");
@@ -168,6 +171,7 @@ type IntelligenceOutput = {
 
 if (require.main === module) {
   const ticker = process.argv[2];
+  const filingDate = process.argv[3];
 
   if (!ticker) {
     console.error("Usage: npm run generate:intelligence -- <ticker>");
@@ -175,7 +179,7 @@ if (require.main === module) {
   } else {
     const company = getCompanyConfig(ticker);
 
-    generateIntelligence(company).catch((error) => {
+    generateIntelligence(company, filingDate).catch((error) => {
       console.error(error);
       process.exitCode = 1;
     });

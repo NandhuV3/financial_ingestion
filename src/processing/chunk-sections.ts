@@ -1,7 +1,9 @@
 import { join } from "node:path";
-import { getCompanyConfig, getCompanyDataDir } from "../config/companies.js";
+import { getCompanyConfig } from "../config/companies.js";
 import { readTextFile } from "../shared/filesystem/file-reader.js";
 import { ensureDirectory, writeJsonFile } from "../shared/filesystem/file-writer.js";
+import { getFilingDirectory } from "../storage/filing-paths.js";
+import { resolveFilingDate } from "../storage/resolve-filing.js";
 import type { Chunk } from "../types/chunk.types.js";
 import type { CompanyConfig } from "../types/company.types.js";
 
@@ -25,10 +27,11 @@ const sections = [
   },
 ];
 
-export async function chunkSections(company: CompanyConfig, filingDate: string): Promise<void> {
-  const companyDataDir = join(process.cwd(), "data", getCompanyDataDir(company));
-  const normalizedDir = join(companyDataDir, "normalized");
-  const chunksDir = join(companyDataDir, "chunks");
+export async function chunkSections(company: CompanyConfig, filingDate?: string): Promise<void> {
+  const resolvedFilingDate = await resolveFilingDate(company.ticker, filingDate);
+  const filingDir = getFilingDirectory(company.ticker, resolvedFilingDate);
+  const normalizedDir = join(filingDir, "normalized");
+  const chunksDir = join(filingDir, "chunks");
   await ensureDirectory(chunksDir);
 
   for (const section of sections) {
@@ -42,7 +45,7 @@ export async function chunkSections(company: CompanyConfig, filingDate: string):
       company: company.company,
       ticker: company.ticker,
       form_type: FORM_TYPE,
-      filing_date: filingDate,
+      filing_date: resolvedFilingDate,
       section: section.section,
       text: chunkText,
     }));
@@ -165,8 +168,8 @@ if (require.main === module) {
   const ticker = process.argv[2];
   const filingDate = process.argv[3];
 
-  if (!ticker || !filingDate) {
-    console.error("Usage: npm run chunk:sections -- <ticker> <filing-date>");
+  if (!ticker) {
+    console.error("Usage: npm run chunk:sections -- <ticker> [filing-date]");
     process.exitCode = 1;
   } else {
     const company = getCompanyConfig(ticker);

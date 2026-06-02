@@ -12,6 +12,8 @@ export async function readFileMetrics(companyDataDir: string): Promise<Record<st
     "processed/extraction-diagnostics.json",
     "processed/deduplication-report.json",
     "processed/overlap-deduplication-report.json",
+    "metadata/filing.json",
+    "metadata/pipeline.json",
     "intelligence/themes.json",
     ...reportSections.flatMap((section) => [
       `processed/${section.processed}`,

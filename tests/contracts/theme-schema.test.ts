@@ -8,26 +8,35 @@ import type { Theme, ThemeOutput } from "../../src/types/theme.types.js";
 type ContractChunk = Partial<Record<keyof Pick<Chunk, "chunk_id">, unknown>>;
 type ContractTheme = Partial<Record<keyof Theme, unknown>>;
 type ContractThemeFile = Partial<Record<keyof Pick<ThemeOutput, "themes">, unknown>>;
+type ThemeFileContext = {
+  ticker: string;
+  filingDate: string;
+  filingDir: string;
+  filePath: string;
+};
 
 const requiredThemeFields = ["theme", "category", "importance", "summary", "evidence"] as const;
 
 describe("theme schema contract", () => {
-  it("validates data/{ticker}/intelligence/themes.json files and evidence references", async () => {
-    const companyDataDirs = await findCompanyDataDirs();
+  it("validates all data/{ticker}/filings/{filingDate}/intelligence/themes.json files and evidence references", async () => {
+    const themeFiles = await findThemeFiles();
 
-    assert.ok(companyDataDirs.length > 0, "Expected at least one company data directory with chunks");
+    assert.ok(
+      themeFiles.length > 0,
+      "Expected at least one themes JSON file in data/{ticker}/filings/{filingDate}/intelligence",
+    );
 
-    for (const companyDataDir of companyDataDirs) {
-      const validChunkIds = await loadChunkIds(companyDataDir);
-      const themeFilePath = join(companyDataDir, "intelligence", "themes.json");
+    for (const { ticker, filingDate, filingDir, filePath: themeFilePath } of themeFiles) {
+      const context = `ticker=${ticker} filingDate=${filingDate} file=${themeFilePath}`;
+      const validChunkIds = await loadChunkIds({ ticker, filingDate, filingDir });
       const themeFile = JSON.parse(await readFile(themeFilePath, "utf8")) as ContractThemeFile;
 
-      assert.ok(Array.isArray(themeFile.themes), `${themeFilePath}: themes must be an array`);
-      assert.ok(themeFile.themes.length > 0, `${themeFilePath}: expected at least one theme`);
+      assert.ok(Array.isArray(themeFile.themes), `${context}: themes must be an array`);
+      assert.ok(themeFile.themes.length > 0, `${context}: expected at least one theme`);
 
       (themeFile.themes as ContractTheme[]).forEach((theme, index) => {
         const themeName = typeof theme.theme === "string" && theme.theme.trim() ? theme.theme : `theme[${index}]`;
-        const location = `${themeFilePath}: themes[${index}] "${themeName}"`;
+        const location = `${context} themes[${index}] "${themeName}"`;
 
         for (const field of requiredThemeFields) {
           assert.ok(field in theme, `${location}: missing required field "${field}"`);
@@ -60,44 +69,83 @@ describe("theme schema contract", () => {
   });
 });
 
-async function findCompanyDataDirs(): Promise<string[]> {
+async function findThemeFiles(): Promise<ThemeFileContext[]> {
   const dataDir = join(process.cwd(), "data");
   const entries = await readdir(dataDir, { withFileTypes: true });
-  const companyDataDirs: string[] = [];
+  const themeFiles: ThemeFileContext[] = [];
 
   for (const entry of entries) {
     if (!entry.isDirectory()) {
       continue;
     }
 
+    const ticker = entry.name;
+    const companyDir = join(dataDir, entry.name);
+
     try {
-      await readdir(join(dataDir, entry.name, "chunks"));
-      companyDataDirs.push(join(dataDir, entry.name));
+      const filings = await readdir(join(companyDir, "filings"), { withFileTypes: true });
+
+      for (const filing of filings) {
+        if (!filing.isDirectory()) {
+          continue;
+        }
+
+        const filingDate = filing.name;
+        const filingDir = join(companyDir, "filings", filing.name);
+        const intelligenceDir = join(filingDir, "intelligence");
+
+        try {
+          const files = await readdir(intelligenceDir);
+
+          themeFiles.push(
+            ...files
+              .filter((fileName) => fileName.endsWith(".json"))
+              .map((fileName) => ({
+                ticker,
+                filingDate,
+                filingDir,
+                filePath: join(intelligenceDir, fileName),
+              })),
+          );
+        } catch {
+          // Some filings may be ingested but not processed through theme generation yet.
+        }
+      }
     } catch {
-      // Non-company data directories do not have chunk outputs.
+      // Non-company data directories do not have filing outputs.
     }
   }
 
-  return companyDataDirs.sort();
+  return themeFiles.sort((left, right) => left.filePath.localeCompare(right.filePath));
 }
 
-async function loadChunkIds(companyDataDir: string): Promise<Set<string>> {
-  const chunksDir = join(companyDataDir, "chunks");
-  const chunkFiles = (await readdir(chunksDir))
-    .filter((fileName) => fileName.endsWith(".json"))
-    .sort();
+async function loadChunkIds(context: Pick<ThemeFileContext, "ticker" | "filingDate" | "filingDir">): Promise<Set<string>> {
+  const chunksDir = join(context.filingDir, "chunks");
   const chunkIds = new Set<string>();
+  const location = `ticker=${context.ticker} filingDate=${context.filingDate} chunksDir=${chunksDir}`;
+  let chunkFiles: string[];
 
-  assert.ok(chunkFiles.length > 0, `Expected at least one chunk JSON file in ${chunksDir}`);
+  try {
+    chunkFiles = (await readdir(chunksDir))
+      .filter((fileName) => fileName.endsWith(".json"))
+      .sort();
+  } catch {
+    assert.fail(`${location}: missing chunks directory required for theme evidence validation`);
+  }
+
+  assert.ok(chunkFiles.length > 0, `${location}: expected at least one chunk JSON file`);
 
   for (const fileName of chunkFiles) {
-    const chunks = JSON.parse(await readFile(join(chunksDir, fileName), "utf8")) as ContractChunk[];
+    const filePath = join(chunksDir, fileName);
+    const chunks = JSON.parse(await readFile(filePath, "utf8")) as ContractChunk[];
 
-    assert.ok(Array.isArray(chunks), `${fileName}: expected top-level JSON array`);
+    assert.ok(Array.isArray(chunks), `${location} file=${filePath}: expected top-level JSON array`);
 
     chunks.forEach((chunk, index) => {
-      assert.equal(typeof chunk.chunk_id, "string", `${fileName}[${index}]: chunk_id must be a string`);
-      assert.notEqual(chunk.chunk_id.trim(), "", `${fileName}[${index}]: chunk_id must be non-empty`);
+      const chunkLocation = `${location} file=${filePath} chunk[${index}]`;
+
+      assert.equal(typeof chunk.chunk_id, "string", `${chunkLocation}: chunk_id must be a string`);
+      assert.notEqual(chunk.chunk_id.trim(), "", `${chunkLocation}: chunk_id must be non-empty`);
       chunkIds.add(chunk.chunk_id);
     });
   }
