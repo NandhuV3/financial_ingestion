@@ -70,7 +70,7 @@ const stageDefinitions: StageDefinition[] = [
   {
     stage: "themes",
     sourceFiles: ["chunks/management-discussion.chunks.json", "chunks/risk-factors.chunks.json"],
-    artifactFiles: ["intelligence/themes.json"],
+    artifactFiles: ["intelligence/themes.json", "metadata/chunk-hash.json", "reports/theme-generation-report.json"],
   },
 ];
 

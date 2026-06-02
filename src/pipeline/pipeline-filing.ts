@@ -1,12 +1,7 @@
 import { getCompanyConfig } from "../config/companies.js";
-import { generateThemes } from "../ai/generate-themes.js";
-import { extractBoundaries } from "../extraction/extract-boundaries.js";
-import { deduplicateOverlap } from "../processing/deduplicate-overlap.js";
-import { deduplicateSections } from "../processing/deduplicate-sections.js";
-import { normalizeSections } from "../processing/normalize-sections.js";
-import { chunkSections } from "../processing/chunk-sections.js";
-import { generateCompanyReport } from "../reporting/generate-company-report.js";
 import { resolveFilingDate } from "../storage/resolve-filing.js";
+import { runPreAiPipeline } from "./pipeline-pre-ai.js";
+import { runThemePipeline } from "./pipeline-themes.js";
 
 async function runFilingPipeline(ticker: string, filingDate?: string): Promise<void> {
   const company = getCompanyConfig(ticker);
@@ -14,13 +9,8 @@ async function runFilingPipeline(ticker: string, filingDate?: string): Promise<v
 
   console.log(`Running filing pipeline for ${company.company} (${company.ticker}) ${resolvedFilingDate}`);
 
-  await extractBoundaries(company, resolvedFilingDate);
-  await deduplicateSections(company, resolvedFilingDate);
-  await deduplicateOverlap(company, resolvedFilingDate);
-  await normalizeSections(company, resolvedFilingDate);
-  await chunkSections(company, resolvedFilingDate);
-  await generateThemes(company, resolvedFilingDate);
-  await generateCompanyReport(company, resolvedFilingDate);
+  await runPreAiPipeline(company.ticker, resolvedFilingDate);
+  await runThemePipeline(company.ticker, resolvedFilingDate);
 
   console.log(`Filing pipeline complete for ${company.company} (${company.ticker}) ${resolvedFilingDate}`);
 }

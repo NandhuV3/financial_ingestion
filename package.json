@@ -22,6 +22,8 @@
     "report:company": "tsx src/reporting/generate-company-report.ts",
     "pipeline": "tsx src/pipeline/run-company.ts",
     "pipeline:filing": "tsx src/pipeline/pipeline-filing.ts",
+    "pipeline:pre-ai": "tsx src/pipeline/pipeline-pre-ai.ts",
+    "pipeline:themes": "tsx src/pipeline/pipeline-themes.ts",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts tests/contracts/*.test.ts"
   },
