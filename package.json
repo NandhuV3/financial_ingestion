@@ -29,6 +29,7 @@
     "topics:discover": "tsx src/topic-layer/generate-topic-report.ts",
     "topics:assign": "tsx src/topic-layer/assign-topics.ts",
     "token:estimate": "tsx src/reporting/estimate-tokens.ts",
+    "generate:insights": "tsx src/insights/generate-investor-insights.ts",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts tests/contracts/*.test.ts"
   },
