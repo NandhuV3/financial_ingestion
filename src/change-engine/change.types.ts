@@ -1,5 +1,6 @@
 import type { FilingMetadata } from "../types/pipeline.types.js";
 import type { ThemeImportance } from "../types/theme.types.js";
+import type { TopicChange, TopicChangeSummary } from "./topic-change.types.js";
 
 export type ChangeType =
   | "NEW_CATEGORY"
@@ -42,4 +43,6 @@ export type QuarterChangeReport = {
     evidence_decreases: number;
   };
   changes: QuarterChange[];
+  topic_changes: TopicChange[];
+  topic_summary: TopicChangeSummary;
 };

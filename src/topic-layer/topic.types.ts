@@ -3,8 +3,10 @@ import type { Theme } from "../types/theme.types.js";
 export type TopicDefinition = {
   topic_id: string;
   topic_name: string;
-  categories: string[];
-  theme_variants: string[];
+  description?: string;
+  supported_categories?: string[];
+  categories?: string[];
+  theme_variants?: string[];
 };
 
 export type TopicRegistry = {

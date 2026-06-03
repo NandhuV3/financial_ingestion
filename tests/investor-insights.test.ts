@@ -98,6 +98,13 @@ function report(): QuarterChangeReport {
         current_theme_names: ["Competitive Market Landscape"],
       },
     ],
+    topic_changes: [],
+    topic_summary: {
+      persisted_topics: 0,
+      evolved_topics: 0,
+      intensified_topics: 0,
+      weakened_topics: 0,
+    },
   };
 }
 

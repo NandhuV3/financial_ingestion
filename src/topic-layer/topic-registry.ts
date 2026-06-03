@@ -25,8 +25,8 @@ export function findTopicForTheme(params: {
 
   return (
     params.registry.topics.find((topic) => {
-      const categoryMatches = topic.categories.map(normalizeTopicText).includes(normalizedCategory);
-      const variantMatches = topic.theme_variants.map(normalizeTopicText).includes(normalizedTheme);
+      const categoryMatches = (topic.categories ?? []).map(normalizeTopicText).includes(normalizedCategory);
+      const variantMatches = (topic.theme_variants ?? []).map(normalizeTopicText).includes(normalizedTheme);
 
       return categoryMatches || variantMatches;
     }) ?? null

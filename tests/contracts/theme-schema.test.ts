@@ -99,7 +99,7 @@ async function findThemeFiles(): Promise<ThemeFileContext[]> {
 
           themeFiles.push(
             ...files
-              .filter((fileName) => fileName.endsWith(".json"))
+              .filter((fileName) => fileName === "themes.json" || fileName === "themes.with-topics.json")
               .map((fileName) => ({
                 ticker,
                 filingDate,

@@ -55,6 +55,13 @@ export function compareFilings(input: ComparisonInput): QuarterChangeReport {
     current_filing: input.currentFiling.metadata,
     summary: buildSummary(changes),
     changes,
+    topic_changes: [],
+    topic_summary: {
+      persisted_topics: 0,
+      evolved_topics: 0,
+      intensified_topics: 0,
+      weakened_topics: 0,
+    },
   };
 }
 

@@ -31,6 +31,8 @@
     "token:estimate": "tsx src/reporting/estimate-tokens.ts",
     "generate:insights": "tsx src/insights/generate-investor-insights.ts",
     "generate:narrative": "tsx src/narratives/generate-investor-narrative.ts",
+    "topics:embed": "tsx src/topic-intelligence/generate-topic-embeddings.ts",
+    "topics:match": "tsx src/topic-intelligence/match-topics.ts",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts tests/contracts/*.test.ts"
   },
