@@ -33,6 +33,8 @@
     "generate:narrative": "tsx src/narratives/generate-investor-narrative.ts",
     "topics:embed": "tsx src/topic-intelligence/generate-topic-embeddings.ts",
     "topics:match": "tsx src/topic-intelligence/match-topics.ts",
+    "topics:review-queue": "tsx src/topic-assignment-v2/build-review-queue.ts",
+    "topics:apply": "tsx src/topic-assignment-v2/generate-topic-assignments.ts",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts tests/contracts/*.test.ts"
   },
