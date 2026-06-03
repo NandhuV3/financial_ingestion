@@ -24,6 +24,8 @@
     "pipeline:filing": "tsx src/pipeline/pipeline-filing.ts",
     "pipeline:pre-ai": "tsx src/pipeline/pipeline-pre-ai.ts",
     "pipeline:themes": "tsx src/pipeline/pipeline-themes.ts",
+    "analyze:quarters": "tsx src/analysis/msft-quarter-review.ts",
+    "compare:changes": "tsx src/change-engine/generate-quarter-change-report.ts",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts tests/contracts/*.test.ts"
   },
