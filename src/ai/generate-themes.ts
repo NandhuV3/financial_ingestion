@@ -1,13 +1,17 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { getCompanyConfig } from "../config/companies.js";
 import { getFilingDirectory } from "../storage/filing-paths.js";
 import { resolveFilingDate } from "../storage/resolve-filing.js";
-import type { Chunk } from "../types/chunk.types.js";
 import type { CompanyConfig } from "../types/company.types.js";
 import type { OpenAIResponse } from "../types/pipeline.types.js";
 import type { ThemeOutput } from "../types/theme.types.js";
+import {
+  buildThemeInputEstimate,
+  loadThemeChunks,
+  THEME_SYSTEM_PROMPT,
+} from "./theme-input.js";
 
 const OPENAI_API_URL = "https://api.openai.com/v1/responses";
 
@@ -15,32 +19,22 @@ loadDotEnv();
 
 const MODEL = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
 
-const SYSTEM_PROMPT = `You are a senior financial intelligence analyst.
-
-Extract evidence-backed financial themes from SEC filing chunks.
-Every theme must cite supporting chunk IDs from the provided chunks.
-Do not make unsupported claims.
-Do not include markdown.
-Return JSON only.`;
-
 export async function generateThemes(company: CompanyConfig, filingDate?: string): Promise<void> {
   const resolvedFilingDate = await resolveFilingDate(company.ticker, filingDate);
   const filingDir = getFilingDirectory(company.ticker, resolvedFilingDate);
   const chunksDir = join(filingDir, "chunks");
   const intelligenceDir = join(filingDir, "intelligence");
   const outputPath = join(intelligenceDir, "themes.json");
-  const chunks = await loadChunks(chunksDir);
+  const chunks = await loadThemeChunks(chunksDir);
   const chunkIds = chunks.map((chunk) => chunk.chunk_id);
   const themeSchema = buildThemeSchema(chunkIds);
-  const prompt = buildPrompt(company, chunks);
-  const inputSize = prompt.length + SYSTEM_PROMPT.length;
-  const tokenEstimate = estimateTokens(`${SYSTEM_PROMPT}\n\n${prompt}`);
+  const estimate = buildThemeInputEstimate(company, chunks);
   const apiKey = process.env.OPENAI_API_KEY;
 
   console.log(`Model: ${MODEL}`);
   console.log(`Total chunks analyzed: ${chunks.length}`);
-  console.log(`Input size: ${inputSize} characters`);
-  console.log(`Token count estimate: ${tokenEstimate}`);
+  console.log(`Input size: ${estimate.inputCharacters} characters`);
+  console.log(`Token count estimate: ${estimate.estimatedTokens}`);
 
   if (!apiKey) {
     throw new Error("OPENAI_API_KEY is required to generate evidence-backed themes.");
@@ -57,11 +51,11 @@ export async function generateThemes(company: CompanyConfig, filingDate?: string
       input: [
         {
           role: "system",
-          content: SYSTEM_PROMPT,
+          content: THEME_SYSTEM_PROMPT,
         },
         {
           role: "user",
-          content: prompt,
+          content: estimate.prompt,
         },
       ],
       text: {
@@ -100,72 +94,6 @@ export async function generateThemes(company: CompanyConfig, filingDate?: string
   console.log(`Chunks not referenced: ${chunksNotReferenced.join(", ") || "none"}`);
   console.log(`Output size: ${formattedOutput.length} characters`);
   console.log(`Saved themes to: ${outputPath}`);
-}
-
-async function loadChunks(chunksDir: string): Promise<Chunk[]> {
-  const managementChunks = JSON.parse(
-    await readFile(join(chunksDir, "management-discussion.chunks.json"), "utf8"),
-  ) as Chunk[];
-  const riskChunks = JSON.parse(await readFile(join(chunksDir, "risk-factors.chunks.json"), "utf8")) as Chunk[];
-  return [...managementChunks, ...riskChunks];
-}
-
-function buildPrompt(company: CompanyConfig, chunks: Chunk[]): string {
-  const chunkPayload = chunks.map((chunk) => ({
-    chunk_id: chunk.chunk_id,
-    company: chunk.company,
-    ticker: chunk.ticker,
-    form_type: chunk.form_type,
-    filing_date: chunk.filing_date,
-    section: chunk.section,
-    text: chunk.text,
-  }));
-
-  return `Generate evidence-backed financial themes from these ${company.company} ${company.ticker} SEC filing chunks.
-
-Output schema:
-{
-  "company": "",
-  "ticker": "",
-  "filing_date": "",
-  "themes": [
-    {
-      "theme": "",
-      "category": "",
-      "importance": "high | medium | low",
-      "summary": "",
-      "evidence": []
-    }
-  ]
-}
-
-Allowed categories include:
-- growth
-- margins
-- liquidity
-- competition
-- supply_chain
-- regulation
-- antitrust
-- privacy
-- cybersecurity
-- artificial_intelligence
-- product_quality
-- macroeconomic
-- investments
-- taxation
-
-Rules:
-- Every theme must have at least one evidence chunk ID.
-- Evidence IDs must come from the provided chunks exactly.
-- Use multiple evidence chunks when a theme is supported across sections.
-- A chunk may support multiple themes.
-- Do not invent facts, metrics, trends, or risks not supported by the chunks.
-- Prefer specific, filing-grounded themes over generic summaries.
-- Keep summaries concise but concrete.
-
-Chunks:
-${JSON.stringify(chunkPayload, null, 2)}`;
 }
 
 function buildThemeSchema(chunkIds: string[]): object {
@@ -243,10 +171,6 @@ function extractOutputText(response: OpenAIResponse): string {
   }
 
   return outputText;
-}
-
-function estimateTokens(text: string): number {
-  return Math.ceil(text.length / 4);
 }
 
 function loadDotEnv(): void {

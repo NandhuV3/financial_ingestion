@@ -26,6 +26,9 @@
     "pipeline:themes": "tsx src/pipeline/pipeline-themes.ts",
     "analyze:quarters": "tsx src/analysis/msft-quarter-review.ts",
     "compare:changes": "tsx src/change-engine/generate-quarter-change-report.ts",
+    "topics:discover": "tsx src/topic-layer/generate-topic-report.ts",
+    "topics:assign": "tsx src/topic-layer/assign-topics.ts",
+    "token:estimate": "tsx src/reporting/estimate-tokens.ts",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts tests/contracts/*.test.ts"
   },
