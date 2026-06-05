@@ -39,6 +39,7 @@ export type TopicObservation = {
   importance_score: number;
   evidence_count: number;
   theme_count: number;
+  topic_strength: number;
   theme_names: string[];
 };
 
@@ -53,6 +54,7 @@ export type TopicEvolution = {
   quarters_present: number;
   quarters_absent: number;
   presence_ratio: number;
+  strength_history: number[];
   history: TopicObservation[];
 };
 

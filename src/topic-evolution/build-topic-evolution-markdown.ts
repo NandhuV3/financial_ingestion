@@ -75,9 +75,10 @@ function topicTimeline(topic: TopicEvolution): string[] {
     `Current status: ${topic.current_status}`,
     `First seen: ${topic.first_seen ?? "n/a"}`,
     `Last seen: ${topic.last_seen ?? "n/a"}`,
+    `Strength history: ${topic.strength_history.join(", ") || "n/a"}`,
     "",
-    "| Filing | Present | Importance | Evidence | Themes |",
-    "|---|---:|---|---:|---:|",
+    "| Filing | Present | Importance | Evidence | Themes | Strength |",
+    "|---|---:|---|---:|---:|---:|",
     ...topic.history.map((observation) =>
       [
         observation.filing_date,
@@ -85,6 +86,7 @@ function topicTimeline(topic: TopicEvolution): string[] {
         observation.importance ?? "n/a",
         String(observation.evidence_count),
         String(observation.theme_count),
+        String(observation.topic_strength),
       ].join(" | "),
     ).map((row) => `| ${row} |`),
     "",

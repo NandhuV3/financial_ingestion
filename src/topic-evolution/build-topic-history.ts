@@ -7,7 +7,9 @@ import type {
   TopicEvolutionFilingInput,
   TopicObservation,
 } from "./topic-evolution.types.js";
-import { classifyPresenceState, classifyTrendState, importanceScore } from "./classify-topic-evolution.js";
+import { importanceScore, classifyPresenceState } from "./classify-topic-evolution.js";
+import { buildStrengthHistory, calculateTopicStrength } from "./calculate-topic-strength.js";
+import { classifyTopicTrend } from "./classify-topic-trend.js";
 
 type TopicAggregate = {
   importance_score: number;
@@ -129,18 +131,21 @@ function buildTopicHistory(
   const latestObservation = history.at(-1);
   const quartersPresent = presentObservations.length;
   const quartersAbsent = history.length - quartersPresent;
+  const strengthHistory = buildStrengthHistory(history);
+  const trend = classifyTopicTrend(strengthHistory);
 
   return {
     topic_id: topicId,
     topic_name: topicName,
     presence_state: classifyPresenceState(history),
-    trend_state: classifyTrendState(history),
+    trend_state: trend.trend_state,
     current_status: latestObservation?.present ? "present" : "absent",
     first_seen: presentObservations[0]?.filing_date ?? null,
     last_seen: presentObservations.at(-1)?.filing_date ?? null,
     quarters_present: quartersPresent,
     quarters_absent: quartersAbsent,
     presence_ratio: history.length === 0 ? 0 : roundRatio(quartersPresent / history.length),
+    strength_history: strengthHistory,
     history,
   };
 }
@@ -156,9 +161,16 @@ function buildObservation(metadata: FilingMetadataForEvolution, aggregate: Topic
       importance_score: 0,
       evidence_count: 0,
       theme_count: 0,
+      topic_strength: 0,
       theme_names: [],
     };
   }
+
+  const topicStrength = calculateTopicStrength({
+    importance_score: aggregate.importance_score,
+    evidence_count: aggregate.evidence.size,
+    theme_count: aggregate.theme_count,
+  });
 
   return {
     filing_date: metadata.filing_date,
@@ -169,6 +181,7 @@ function buildObservation(metadata: FilingMetadataForEvolution, aggregate: Topic
     importance_score: aggregate.importance_score,
     evidence_count: aggregate.evidence.size,
     theme_count: aggregate.theme_count,
+    topic_strength: topicStrength,
     theme_names: [...aggregate.theme_names].sort(),
   };
 }

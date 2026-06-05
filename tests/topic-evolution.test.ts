@@ -1,7 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { buildTopicEvolutionReport } from "../src/topic-evolution/build-topic-evolution-report.js";
-import { classifyPresenceState, classifyTrendState } from "../src/topic-evolution/classify-topic-evolution.js";
+import { classifyPresenceState } from "../src/topic-evolution/classify-topic-evolution.js";
+import { calculateTopicStrength, buildStrengthHistory } from "../src/topic-evolution/calculate-topic-strength.js";
+import { classifyTopicTrend } from "../src/topic-evolution/classify-topic-trend.js";
 import { validateTopicEvolutionInputs } from "../src/topic-evolution/validate-topic-evolution.js";
 import type { TopicEvolutionFilingInput, TopicObservation } from "../src/topic-evolution/topic-evolution.types.js";
 import type { TopicRegistry } from "../src/topic-layer/topic.types.js";
@@ -47,6 +49,8 @@ describe("topic evolution", () => {
     assert.equal(cloud.history[0].importance_score, 3);
     assert.equal(cloud.history[0].evidence_count, 3);
     assert.equal(cloud.history[0].theme_count, 2);
+    assert.equal(cloud.history[0].topic_strength, 35);
+    assert.deepEqual(cloud.strength_history, [35, 32]);
     assert.deepEqual(cloud.history[0].theme_names, ["Azure Demand", "Cloud Revenue Growth"]);
   });
 
@@ -88,31 +92,26 @@ describe("topic evolution", () => {
     assert.equal(byTopic.get("supply_chain")?.presence_state, "disappeared");
   });
 
-  it("detects weakening, stable, mixed, unknown, and insufficient trend states", () => {
-    assert.equal(classifyTrendState([
-      observation("2026-01-29", true, 3, 6, 2),
-      observation("2026-04-29", true, 2, 3, 2),
-    ]), "weakening");
+  it("calculates topic strength and strength history", () => {
+    assert.equal(calculateTopicStrength({
+      importance_score: 3,
+      evidence_count: 4,
+      theme_count: 1,
+    }), 35);
 
-    assert.equal(classifyTrendState([
-      observation("2026-01-29", true, 2, 3, 1),
-      observation("2026-04-29", true, 2, 3, 1),
-    ]), "stable");
+    assert.deepEqual(buildStrengthHistory([
+      observation("2026-01-29", true, 3, 4, 1),
+      observation("2026-04-29", false, 0, 0, 0),
+      observation("2026-07-29", true, 2, 3, 1),
+    ]), [35, 24]);
+  });
 
-    assert.equal(classifyTrendState([
-      observation("2026-01-29", true, 2, 2, 1),
-      observation("2026-04-29", true, 3, 0, 1),
-    ]), "mixed");
-
-    assert.equal(classifyTrendState([
-      observation("2026-01-29", true, 2, 2, 1),
-      observation("2026-04-29", true, 2, 3, 1),
-    ]), "unknown");
-
-    assert.equal(classifyTrendState([
-      observation("2026-01-29", false, 0, 0, 0),
-      observation("2026-04-29", true, 2, 3, 1),
-    ]), "insufficient_history");
+  it("classifies strength trends deterministically", () => {
+    assert.equal(classifyTopicTrend([23, 24, 25, 28]).trend_state, "strengthening");
+    assert.equal(classifyTopicTrend([36, 34, 32, 30]).trend_state, "weakening");
+    assert.equal(classifyTopicTrend([34, 35, 35, 34]).trend_state, "stable");
+    assert.equal(classifyTopicTrend([20, 42, 18, 45]).trend_state, "mixed");
+    assert.equal(classifyTopicTrend([34]).trend_state, "insufficient_history");
   });
 
   it("handles missing files, single filing history, and chronological ordering", () => {
@@ -125,6 +124,7 @@ describe("topic evolution", () => {
     assert.equal(report.diagnostics.missing_themes_with_topics_files[0], "2026-01-29");
     assert.equal(report.diagnostics.filings_with_no_approved_topics[0], "2026-01-29");
     assert.equal(report.topics[0].presence_state, "new");
+    assert.deepEqual(report.topics[0].strength_history, [22]);
 
     assert.equal(classifyPresenceState([observation("2026-04-29", true, 2, 1, 1)]), "insufficient_history");
   });
@@ -260,6 +260,11 @@ function observation(
     importance_score: importanceScore,
     evidence_count: evidenceCount,
     theme_count: themeCount,
+    topic_strength: calculateTopicStrength({
+      importance_score: importanceScore,
+      evidence_count: evidenceCount,
+      theme_count: themeCount,
+    }),
     theme_names: present ? ["Theme"] : [],
   };
 }
