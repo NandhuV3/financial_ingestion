@@ -16,6 +16,8 @@ describe("topic assignment v2", () => {
     assert.equal(candidates[0].reviewed_topic_id, "cloud");
     assert.equal(candidates[0].review_status, "pending_review");
     assert.equal(candidates[0].decision, "pending_review");
+    assert.equal(candidates[0].recommendation_method, "semantic");
+    assert.equal(candidates[0].recommendation_reason, "semantic_similarity + category_alignment + variant_match");
   });
 
   it("applies approved assignments only", () => {
@@ -35,16 +37,22 @@ describe("topic assignment v2", () => {
 
     assert.equal(cloud?.topic_id, "cloud");
     assert.equal(cloud?.assignment_status, "approved");
-    assert.equal(cloud?.assignment_method, "variant_match");
+    assert.equal(cloud?.assignment_method, "manual");
+    assert.equal(cloud?.recommendation_method, "semantic");
+    assert.equal(cloud?.recommendation_reason, "semantic_similarity + category_alignment + variant_match");
     assert.equal(cloud?.confidence, 0.9046);
 
     assert.equal(competition?.topic_id, null);
     assert.equal(competition?.assignment_status, "rejected");
-    assert.equal(competition?.assignment_method, "variant_match");
+    assert.equal(competition?.assignment_method, null);
+    assert.equal(competition?.recommendation_method, "semantic");
+    assert.equal(competition?.recommendation_reason, "semantic_similarity + category_alignment + variant_match");
 
     assert.equal(ai?.topic_id, null);
     assert.equal(ai?.assignment_status, "pending_review");
-    assert.equal(ai?.assignment_method, "variant_match");
+    assert.equal(ai?.assignment_method, null);
+    assert.equal(ai?.recommendation_method, "semantic");
+    assert.equal(ai?.recommendation_reason, "semantic_similarity + category_alignment + variant_match");
   });
 
   it("summarizes assignment statuses", () => {

@@ -43,6 +43,8 @@ export function buildReviewCandidates(matchFile: SemanticTopicMatchFile): TopicR
     filing_date: matchFile.filing_date,
     reviewed_topic_id: match.selected_topic,
     review_status: "pending_review",
+    recommendation_method: "semantic",
+    recommendation_reason: match.match_reason,
     decision: "pending_review",
   }));
 }

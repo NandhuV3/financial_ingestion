@@ -10,7 +10,7 @@ import type {
   TopicApproval,
   TopicApprovalFile,
   TopicAssignedThemeV2,
-  TopicAssignmentMethod,
+  TopicRecommendationMethod,
   TopicAssignmentOutputV2,
   TopicAssignmentSummary,
 } from "./assignment.types.js";
@@ -66,14 +66,17 @@ export function applyTopicApprovals(params: {
       const normalizedTheme = normalizeTheme(theme.theme);
       const approval = approvalMap.get(normalizedTheme);
       const match = matchMap.get(normalizedTheme);
-      const assignmentMethod = match ? deriveAssignmentMethod(match) : null;
+      const recommendationMethod = match ? deriveRecommendationMethod(match) : null;
+      const recommendationReason = match?.match_reason ?? null;
 
       if (approval?.decision === "approved") {
         return {
           ...theme,
           topic_id: approval.topic_id,
           confidence: match?.confidence ?? null,
-          assignment_method: assignmentMethod ?? "manual",
+          assignment_method: "manual",
+          recommendation_method: recommendationMethod,
+          recommendation_reason: recommendationReason,
           assignment_status: "approved",
         };
       }
@@ -83,7 +86,9 @@ export function applyTopicApprovals(params: {
           ...theme,
           topic_id: null,
           confidence: match?.confidence ?? null,
-          assignment_method: assignmentMethod,
+          assignment_method: null,
+          recommendation_method: recommendationMethod,
+          recommendation_reason: recommendationReason,
           assignment_status: "rejected",
         };
       }
@@ -92,7 +97,9 @@ export function applyTopicApprovals(params: {
         ...theme,
         topic_id: null,
         confidence: match?.confidence ?? null,
-        assignment_method: assignmentMethod,
+        assignment_method: null,
+        recommendation_method: recommendationMethod,
+        recommendation_reason: recommendationReason,
         assignment_status: "pending_review",
       };
     }),
@@ -177,8 +184,8 @@ function buildApprovalMap(approvals: TopicApproval[], ticker: string, filingDate
   return new Map(scopedApprovals.map((approval) => [normalizeTheme(approval.theme), approval]));
 }
 
-function deriveAssignmentMethod(match: SemanticTopicMatch): TopicAssignmentMethod {
-  return match.match_reason.includes("variant_match") ? "variant_match" : "semantic";
+function deriveRecommendationMethod(_match: SemanticTopicMatch): TopicRecommendationMethod {
+  return "semantic";
 }
 
 function normalizeTheme(value: string): string {
