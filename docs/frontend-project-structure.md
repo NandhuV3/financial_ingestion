@@ -6,9 +6,11 @@ This document defines the frontend folder structure and ownership boundaries for
 
 The frontend consumes only the Partner Intelligence API and Partner Domain concepts. It must not consume raw intelligence artifacts.
 
+Long-term TurboRepo alignment is documented in [turborepo-alignment.md](./turborepo-alignment.md). When the monorepo is introduced, this structure should live under `apps/partner-web/src/`.
+
 ## 1. Frontend Folder Structure
 
-Recommended Vite app structure:
+Recommended Vite app structure. In the future TurboRepo layout, this lives at `apps/partner-web/src/`:
 
 ```text
 src/

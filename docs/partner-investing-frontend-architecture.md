@@ -4,6 +4,8 @@
 
 Partner Investing helps users understand businesses as if they are becoming small partners, not trading price movements. The frontend should translate the Partner Domain contract into calm, plain-language product experiences.
 
+Long-term TurboRepo alignment is documented in [turborepo-alignment.md](./turborepo-alignment.md). Phase 6.x frontend work can proceed inside `apps/partner-web` without extracting shared packages prematurely.
+
 The frontend consumes:
 
 ```text
