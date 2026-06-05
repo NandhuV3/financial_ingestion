@@ -1,5 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { buildBusinessHealth } from "../src/partner-domain/builders/build-business-health.js";
 import { buildCompanyProfile } from "../src/partner-domain/builders/build-company-profile.js";
 import { buildCompanyStory } from "../src/partner-domain/builders/build-company-story.js";
 import { buildCustomerSegments } from "../src/partner-domain/builders/build-customer-segments.js";
@@ -76,6 +77,42 @@ describe("partner domain builders", () => {
       toPartnerRiskLanguage("competition received more supporting references (2 -> 3)."),
       "Competition is receiving more attention as a business risk.",
     );
+  });
+
+  it("builds improving business health from positive quarter signals", () => {
+    const source = artifacts();
+
+    source.quarterChange!.summary.importance_increases = 2;
+    source.quarterChange!.summary.evidence_increases = 2;
+    source.quarterChange!.summary.importance_decreases = 0;
+    source.quarterChange!.summary.evidence_decreases = 0;
+    source.quarterChange!.summary.removed_categories = 0;
+
+    assert.equal(buildBusinessHealth(source), "improving");
+  });
+
+  it("builds weakening business health from negative quarter signals", () => {
+    const source = artifacts();
+
+    source.quarterChange!.summary.importance_increases = 0;
+    source.quarterChange!.summary.evidence_increases = 0;
+    source.quarterChange!.summary.importance_decreases = 1;
+    source.quarterChange!.summary.evidence_decreases = 1;
+    source.quarterChange!.summary.removed_categories = 1;
+
+    assert.equal(buildBusinessHealth(source), "weakening");
+  });
+
+  it("builds stable business health when positive and negative signals are balanced", () => {
+    const source = artifacts();
+
+    source.quarterChange!.summary.importance_increases = 1;
+    source.quarterChange!.summary.evidence_increases = 0;
+    source.quarterChange!.summary.importance_decreases = 1;
+    source.quarterChange!.summary.evidence_decreases = 0;
+    source.quarterChange!.summary.removed_categories = 0;
+
+    assert.equal(buildBusinessHealth(source), "stable");
   });
 });
 

@@ -9,6 +9,7 @@ import { getCompanyDirectory, getFilingDirectory } from "../storage/filing-paths
 import { resolveFilingDate } from "../storage/resolve-filing.js";
 import type { FilingMetadata } from "../types/pipeline.types.js";
 import type { ThemeOutput } from "../types/theme.types.js";
+import { buildBusinessHealth } from "./builders/build-business-health.js";
 import { buildCompanyProfile } from "./builders/build-company-profile.js";
 import { buildCompanyStory } from "./builders/build-company-story.js";
 import { buildCustomerSegments } from "./builders/build-customer-segments.js";
@@ -16,7 +17,7 @@ import { buildForensicsSignals } from "./builders/build-forensics-signals.js";
 import { buildMoneyProfile } from "./builders/build-money-profile.js";
 import { buildPartnerSummary } from "./builders/build-partner-summary.js";
 import { buildTrustProfile } from "./builders/build-trust-profile.js";
-import type { BusinessHealth, PartnerCompanyIntelligence, PartnerIntelligenceSource } from "./partner-domain.types.js";
+import type { PartnerCompanyIntelligence, PartnerIntelligenceSource } from "./partner-domain.types.js";
 import type { PartnerSourceArtifacts, PartnerTopicEvolutionSource } from "./partner-source.types.js";
 
 const logger = createLogger("partner-domain");
@@ -29,7 +30,7 @@ export async function buildPartnerCompanyIntelligence(
   const company = getCompanyConfig(ticker);
   const resolvedFilingDate = await resolveFilingDate(company.ticker, filingDate);
   const artifacts = await loadPartnerSourceArtifacts(company.ticker, resolvedFilingDate);
-  const businessHealth = mapBusinessHealth(artifacts);
+  const businessHealth = buildBusinessHealth(artifacts);
   const profile = buildCompanyProfile(artifacts);
   const summary = buildPartnerSummary(artifacts, businessHealth);
   const story = buildCompanyStory(artifacts, profile);
@@ -86,36 +87,6 @@ async function readOptionalJson<T>(path: string): Promise<T | null> {
   }
 
   return readJsonFile<T>(path);
-}
-
-function mapBusinessHealth(artifacts: PartnerSourceArtifacts): BusinessHealth {
-  const summary = artifacts.topicEvolution?.summary ?? {};
-  const strengthening = Number(summary.strengthening_topics ?? 0) + Number(summary.new_topics ?? 0);
-  const weakening = Number(summary.weakening_topics ?? 0) + Number(summary.disappeared_topics ?? 0);
-  const quarterSummary = artifacts.quarterChange?.summary;
-
-  if (quarterSummary) {
-    const positiveQuarterSignals = quarterSummary.importance_increases + quarterSummary.evidence_increases;
-    const negativeQuarterSignals = quarterSummary.importance_decreases + quarterSummary.evidence_decreases + quarterSummary.removed_categories;
-
-    if (negativeQuarterSignals > positiveQuarterSignals + 1) {
-      return "weakening";
-    }
-
-    if (positiveQuarterSignals > negativeQuarterSignals + 1) {
-      return "improving";
-    }
-  }
-
-  if (weakening > strengthening + 1) {
-    return "weakening";
-  }
-
-  if (strengthening > weakening + 1) {
-    return "improving";
-  }
-
-  return "stable";
 }
 
 function buildSources(artifacts: PartnerSourceArtifacts): PartnerIntelligenceSource[] {
