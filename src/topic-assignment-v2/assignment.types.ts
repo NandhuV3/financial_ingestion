@@ -7,14 +7,21 @@ export type TopicAssignmentStatus = "approved" | "pending_review" | "rejected";
 
 export type TopicApprovalDecision = "approved" | "rejected";
 
-export type TopicApproval = {
+// export type TopicApproval = {
+//   theme: string;
+//   topic_id: string;
+//   decision: TopicApprovalDecision;
+//   reviewed_at: string;
+//   ticker?: string;
+//   filing_date?: string;
+// };
+
+export interface TopicApproval {
   theme: string;
   topic_id: string;
-  decision: TopicApprovalDecision;
+  decision: "approved" | "rejected";
   reviewed_at: string;
-  ticker?: string;
-  filing_date?: string;
-};
+}
 
 export type TopicApprovalFile = {
   approvals: TopicApproval[];

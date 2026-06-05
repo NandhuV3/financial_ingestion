@@ -35,6 +35,7 @@
     "topics:match": "tsx src/topic-intelligence/match-topics.ts",
     "topics:review-queue": "tsx src/topic-assignment-v2/build-review-queue.ts",
     "topics:apply": "tsx src/topic-assignment-v2/generate-topic-assignments.ts",
+    "topics:evolution": "tsx src/topic-evolution/generate-topic-evolution-report.ts",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts tests/contracts/*.test.ts"
   },

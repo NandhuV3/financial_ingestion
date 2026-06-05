@@ -1,0 +1,265 @@
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import { buildTopicEvolutionReport } from "../src/topic-evolution/build-topic-evolution-report.js";
+import { classifyPresenceState, classifyTrendState } from "../src/topic-evolution/classify-topic-evolution.js";
+import { validateTopicEvolutionInputs } from "../src/topic-evolution/validate-topic-evolution.js";
+import type { TopicEvolutionFilingInput, TopicObservation } from "../src/topic-evolution/topic-evolution.types.js";
+import type { TopicRegistry } from "../src/topic-layer/topic.types.js";
+import type { ThemeImportance } from "../src/types/theme.types.js";
+
+describe("topic evolution", () => {
+  it("uses only approved topic assignments", () => {
+    const report = buildReport([
+      filing("2026-01-29", [
+        approvedTheme("Cloud Revenue Growth", "cloud", "high", ["a", "a", "b"]),
+        pendingTheme("AI Infrastructure", "artificial_intelligence"),
+        rejectedTheme("Competition", "competition"),
+        themeWithoutTopic("Margins"),
+      ]),
+      filing("2026-04-29", [
+        approvedTheme("Cloud Revenue Growth", "cloud", "high", ["c", "d"]),
+        pendingTheme("AI Infrastructure", "artificial_intelligence"),
+      ]),
+    ]);
+
+    assert.equal(report.summary.topics_analyzed, 1);
+    assert.equal(report.topics[0].topic_id, "cloud");
+    assert.equal(report.diagnostics.approved_assignments_used, 2);
+    assert.equal(report.diagnostics.pending_assignments_ignored, 2);
+    assert.equal(report.diagnostics.rejected_assignments_ignored, 1);
+    assert.equal(report.diagnostics.themes_without_topic_ignored, 1);
+    assert.equal(report.topics[0].history[0].evidence_count, 2);
+  });
+
+  it("aggregates multiple approved themes into one topic observation", () => {
+    const report = buildReport([
+      filing("2026-01-29", [
+        approvedTheme("Cloud Revenue Growth", "cloud", "medium", ["a", "b"]),
+        approvedTheme("Azure Demand", "cloud", "high", ["b", "c"]),
+      ]),
+      filing("2026-04-29", [
+        approvedTheme("Cloud Revenue Growth", "cloud", "high", ["d"]),
+      ]),
+    ]);
+    const cloud = report.topics[0];
+
+    assert.equal(cloud.history[0].importance, "high");
+    assert.equal(cloud.history[0].importance_score, 3);
+    assert.equal(cloud.history[0].evidence_count, 3);
+    assert.equal(cloud.history[0].theme_count, 2);
+    assert.deepEqual(cloud.history[0].theme_names, ["Azure Demand", "Cloud Revenue Growth"]);
+  });
+
+  it("detects persistent and strengthening topics", () => {
+    const report = buildReport([
+      filing("2025-04-30", [approvedTheme("Cloud", "cloud", "medium", ["a", "b"])]),
+      filing("2025-07-30", [approvedTheme("Cloud", "cloud", "medium", ["a", "b", "c", "d"])]),
+      filing("2025-10-29", [approvedTheme("Cloud", "cloud", "high", ["a", "b", "c", "d", "e", "f"])]),
+      filing("2026-04-29", [approvedTheme("Cloud", "cloud", "high", ["a", "b", "c", "d", "e", "f", "g", "h"])]),
+    ]);
+
+    assert.equal(report.topics[0].presence_state, "persistent");
+    assert.equal(report.topics[0].trend_state, "strengthening");
+    assert.equal(report.topics[0].current_status, "present");
+    assert.equal(report.summary.persistent_topics, 1);
+    assert.equal(report.summary.strengthening_topics, 1);
+  });
+
+  it("detects new, recurring, dormant, and disappeared presence states", () => {
+    const report = buildReport([
+      filing("2025-04-30", [
+        approvedTheme("Supply Chain", "supply_chain"),
+        approvedTheme("Margins", "margins"),
+        approvedTheme("Competition", "competition"),
+      ]),
+      filing("2025-07-30", [
+        approvedTheme("Supply Chain", "supply_chain"),
+      ]),
+      filing("2025-10-29", [
+        approvedTheme("Competition", "competition"),
+        approvedTheme("AI", "artificial_intelligence"),
+      ]),
+    ]);
+    const byTopic = new Map(report.topics.map((topic) => [topic.topic_id, topic]));
+
+    assert.equal(byTopic.get("artificial_intelligence")?.presence_state, "new");
+    assert.equal(byTopic.get("competition")?.presence_state, "recurring");
+    assert.equal(byTopic.get("margins")?.presence_state, "dormant");
+    assert.equal(byTopic.get("supply_chain")?.presence_state, "disappeared");
+  });
+
+  it("detects weakening, stable, mixed, unknown, and insufficient trend states", () => {
+    assert.equal(classifyTrendState([
+      observation("2026-01-29", true, 3, 6, 2),
+      observation("2026-04-29", true, 2, 3, 2),
+    ]), "weakening");
+
+    assert.equal(classifyTrendState([
+      observation("2026-01-29", true, 2, 3, 1),
+      observation("2026-04-29", true, 2, 3, 1),
+    ]), "stable");
+
+    assert.equal(classifyTrendState([
+      observation("2026-01-29", true, 2, 2, 1),
+      observation("2026-04-29", true, 3, 0, 1),
+    ]), "mixed");
+
+    assert.equal(classifyTrendState([
+      observation("2026-01-29", true, 2, 2, 1),
+      observation("2026-04-29", true, 2, 3, 1),
+    ]), "unknown");
+
+    assert.equal(classifyTrendState([
+      observation("2026-01-29", false, 0, 0, 0),
+      observation("2026-04-29", true, 2, 3, 1),
+    ]), "insufficient_history");
+  });
+
+  it("handles missing files, single filing history, and chronological ordering", () => {
+    const report = buildReport([
+      filing("2026-04-29", [approvedTheme("Cloud", "cloud")]),
+      filing("2026-01-29", [], false),
+    ]);
+
+    assert.deepEqual(report.filing_dates, ["2026-01-29", "2026-04-29"]);
+    assert.equal(report.diagnostics.missing_themes_with_topics_files[0], "2026-01-29");
+    assert.equal(report.diagnostics.filings_with_no_approved_topics[0], "2026-01-29");
+    assert.equal(report.topics[0].presence_state, "new");
+
+    assert.equal(classifyPresenceState([observation("2026-04-29", true, 2, 1, 1)]), "insufficient_history");
+  });
+
+  it("includes registry audit metadata", () => {
+    const report = buildReport([
+      filing("2026-01-29", [approvedTheme("Cloud", "cloud")]),
+      filing("2026-04-29", [approvedTheme("Cloud", "cloud")]),
+    ]);
+
+    assert.equal(report.topic_registry_version, "test-registry");
+    assert.equal(report.topic_registry_hash, "registry-hash");
+    assert.deepEqual(report.assignment_policy.included_statuses, ["approved"]);
+  });
+
+  it("validates registry and filing inputs", () => {
+    assert.throws(() =>
+      validateTopicEvolutionInputs(
+        [filing("2026-04-29", [approvedTheme("Cloud", "cloud")])],
+        {
+          version: "bad-registry",
+          topics: [
+            topic("cloud", "Cloud"),
+            topic("cloud", "Duplicate Cloud"),
+          ],
+        },
+      ),
+    );
+
+    assert.throws(() =>
+      validateTopicEvolutionInputs(
+        [filing("not-a-date", [approvedTheme("Cloud", "cloud")])],
+        registry(),
+      ),
+    );
+  });
+});
+
+function buildReport(filings: TopicEvolutionFilingInput[]) {
+  return buildTopicEvolutionReport({
+    filings,
+    registry: registry(),
+    topicRegistryHash: "registry-hash",
+    generatedAt: "2026-06-05T00:00:00.000Z",
+    durationMs: 12,
+  });
+}
+
+function registry(): TopicRegistry {
+  return {
+    version: "test-registry",
+    topics: [
+      topic("artificial_intelligence", "Artificial Intelligence"),
+      topic("cloud", "Cloud"),
+      topic("competition", "Competition"),
+      topic("margins", "Margins"),
+      topic("supply_chain", "Supply Chain"),
+    ],
+  };
+}
+
+function topic(topicId: string, topicName: string) {
+  return {
+    topic_id: topicId,
+    topic_name: topicName,
+  };
+}
+
+function filing(filingDate: string, themes: TopicEvolutionFilingInput["themes"], fileExists = true): TopicEvolutionFilingInput {
+  return {
+    metadata: {
+      company: "Microsoft",
+      ticker: "MSFT",
+      filing_date: filingDate,
+      form_type: "10-Q",
+      accession_number: `accession-${filingDate}`,
+    },
+    themes,
+    themes_with_topics_file_exists: fileExists,
+  };
+}
+
+function approvedTheme(themeName: string, topicId: string, importance: ThemeImportance = "medium", evidence = ["chunk_001"]) {
+  return {
+    theme: themeName,
+    category: topicId,
+    importance,
+    summary: `${themeName} summary`,
+    evidence,
+    topic_id: topicId,
+    assignment_status: "approved" as const,
+  };
+}
+
+function pendingTheme(themeName: string, topicId: string) {
+  return {
+    ...approvedTheme(themeName, topicId),
+    assignment_status: "pending_review" as const,
+  };
+}
+
+function rejectedTheme(themeName: string, topicId: string) {
+  return {
+    ...approvedTheme(themeName, topicId),
+    assignment_status: "rejected" as const,
+  };
+}
+
+function themeWithoutTopic(themeName: string) {
+  return {
+    theme: themeName,
+    category: "margins",
+    importance: "medium" as const,
+    summary: `${themeName} summary`,
+    evidence: ["chunk_001"],
+    topic_id: null,
+  };
+}
+
+function observation(
+  filingDate: string,
+  present: boolean,
+  importanceScore: number,
+  evidenceCount: number,
+  themeCount: number,
+): TopicObservation {
+  return {
+    filing_date: filingDate,
+    form_type: "10-Q",
+    accession_number: `accession-${filingDate}`,
+    present,
+    importance: importanceScore === 3 ? "high" : importanceScore === 2 ? "medium" : importanceScore === 1 ? "low" : null,
+    importance_score: importanceScore,
+    evidence_count: evidenceCount,
+    theme_count: themeCount,
+    theme_names: present ? ["Theme"] : [],
+  };
+}

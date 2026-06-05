@@ -10,6 +10,7 @@ export type TopicDefinition = {
 };
 
 export type TopicRegistry = {
+  version?: string;
   topics: TopicDefinition[];
 };
 
