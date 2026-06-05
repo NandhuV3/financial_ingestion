@@ -1,6 +1,15 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-partner-ink: #1f2933;
+  --color-partner-muted: #667085;
+  --color-partner-paper: #fbfaf7;
+  --color-partner-surface: #ffffff;
+  --color-partner-line: #e7e3da;
+  --color-partner-accent: #3f6f5f;
+  --color-partner-amber: #b7791f;
+  --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+}
 
 :root {
   color: #1f2933;
