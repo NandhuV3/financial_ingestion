@@ -17,12 +17,14 @@ import {
 import { getPartnerCompany } from "../apps/partner-web/src/api/partner-api.ts";
 import { HomeScreen } from "../apps/partner-web/src/features/home/HomeScreen.tsx";
 import { CompanyList } from "../apps/partner-web/src/features/explore/components/CompanyList.tsx";
+import { PortfolioScreen } from "../apps/partner-web/src/features/portfolio/PortfolioScreen.tsx";
 import {
   findCompanyByTicker,
   filterCompanies,
   homeHoldings,
   mockCompanies,
 } from "../apps/partner-web/src/features/company/mock/companies.ts";
+import { PORTFOLIO_HOLDINGS_KEY } from "../apps/partner-web/src/constants/local-storage.ts";
 import {
   CompanyDetailContent,
   CompanyDetailScreen,
@@ -35,6 +37,14 @@ import {
 } from "../apps/partner-web/src/features/company/hooks/usePartnerIntelligence.ts";
 import type { PartnerCompanyIntelligence } from "../apps/partner-web/src/types/partner-domain.types.ts";
 import type { PartnerCompanyViewModel } from "../apps/partner-web/src/features/company/types/partner-company-view-model.ts";
+import type { PortfolioHolding } from "../apps/partner-web/src/features/portfolio/types.ts";
+import {
+  addPortfolioHolding,
+  buildPortfolioSummary,
+  updatePortfolioConviction,
+  updatePortfolioNote,
+  updatePortfolioReviewTimestamp,
+} from "../apps/partner-web/src/features/portfolio/usePortfolio.ts";
 
 function setupDom() {
   const previousWindow = globalThis.window;
@@ -43,7 +53,9 @@ function setupDom() {
   const previousActEnvironment = (globalThis as typeof globalThis & {
     IS_REACT_ACT_ENVIRONMENT?: boolean;
   }).IS_REACT_ACT_ENVIRONMENT;
-  const dom = new JSDOM("<!doctype html><html><body><div id=\"root\"></div></body></html>");
+  const dom = new JSDOM("<!doctype html><html><body><div id=\"root\"></div></body></html>", {
+    url: "http://localhost:5173/",
+  });
 
   globalThis.window = dom.window as unknown as Window & typeof globalThis;
   globalThis.document = dom.window.document;
@@ -115,9 +127,11 @@ function renderPartnerIntelligenceHook(ticker: string, filingDate?: string) {
   };
 }
 
-function renderCompanyRoute(initialEntry: string) {
+function renderCompanyRoute(initialEntry: string, initialHoldings: PortfolioHolding[] = []) {
   const dom = setupDom();
   const root = createRoot(dom.container);
+
+  dom.container.ownerDocument.defaultView!.localStorage.setItem(PORTFOLIO_HOLDINGS_KEY, JSON.stringify(initialHoldings));
 
   act(() => {
     root.render(
@@ -151,6 +165,59 @@ function renderCompanyRoute(initialEntry: string) {
         button.dispatchEvent(new dom.container.ownerDocument.defaultView!.MouseEvent("click", {
           bubbles: true,
         }));
+      });
+    },
+    unmount() {
+      act(() => {
+        root.unmount();
+      });
+      dom.cleanup();
+    },
+  };
+}
+
+function renderPortfolioRoute(initialHoldings: PortfolioHolding[] = []) {
+  const dom = setupDom();
+  const root = createRoot(dom.container);
+
+  dom.container.ownerDocument.defaultView!.localStorage.setItem(PORTFOLIO_HOLDINGS_KEY, JSON.stringify(initialHoldings));
+
+  act(() => {
+    root.render(
+      React.createElement(
+        MemoryRouter,
+        { initialEntries: [PORTFOLIO_ROUTE] },
+        React.createElement(PortfolioScreen),
+      ),
+    );
+  });
+
+  return {
+    container: dom.container,
+    storage: dom.container.ownerDocument.defaultView!.localStorage,
+    text() {
+      return dom.container.textContent ?? "";
+    },
+    selectConviction(value: string) {
+      const select = dom.container.querySelector("select");
+
+      assert.ok(select, "Expected conviction select to exist");
+
+      act(() => {
+        select.value = value;
+        select.dispatchEvent(new dom.container.ownerDocument.defaultView!.Event("change", { bubbles: true }));
+      });
+    },
+    updateNote(value: string) {
+      const textarea = dom.container.querySelector("textarea");
+
+      assert.ok(textarea, "Expected ownership note textarea to exist");
+
+      act(() => {
+        const valueSetter = Object.getOwnPropertyDescriptor(dom.container.ownerDocument.defaultView!.HTMLTextAreaElement.prototype, "value")?.set;
+        valueSetter?.call(textarea, value);
+        textarea.dispatchEvent(new dom.container.ownerDocument.defaultView!.Event("input", { bubbles: true }));
+        textarea.dispatchEvent(new dom.container.ownerDocument.defaultView!.Event("change", { bubbles: true }));
       });
     },
     unmount() {
@@ -567,6 +634,150 @@ describe("partner web company story experience", () => {
     assert.ok(trust.includes("Decision Style"));
     assert.ok(forensics.includes("Profits backed by cash"));
     assert.ok(forensics.includes("Security trust"));
+  });
+
+  it("adds API-backed companies to the local portfolio and prevents duplicates", async () => {
+    const previousFetch = globalThis.fetch;
+
+    globalThis.fetch = async () => new Response(JSON.stringify(apiCompanyResponse), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+    const rendered = renderCompanyRoute("/company/MSFT");
+
+    try {
+      await waitForCondition(() => rendered.text().includes("Microsoft API"));
+      rendered.clickButton("Add To Portfolio");
+      rendered.clickButton("Added To Portfolio");
+
+      const holdings = JSON.parse(window.localStorage.getItem(PORTFOLIO_HOLDINGS_KEY) ?? "[]") as PortfolioHolding[];
+
+      assert.equal(holdings.length, 1);
+      assert.equal(holdings[0]?.ticker, "MSFT");
+      assert.equal(holdings[0]?.companyName, "Microsoft API");
+      assert.equal(holdings[0]?.conviction, "medium");
+    } finally {
+      rendered.unmount();
+      globalThis.fetch = previousFetch;
+    }
+  });
+
+  it("updates last reviewed timestamp when opened from portfolio", async () => {
+    const previousFetch = globalThis.fetch;
+
+    globalThis.fetch = async () => new Response(JSON.stringify(apiCompanyResponse), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+    const rendered = renderCompanyRoute("/company/MSFT?fromPortfolio=1", [{
+      ticker: "MSFT",
+      companyName: "Microsoft",
+      addedAt: "2026-06-01T00:00:00.000Z",
+      conviction: "medium",
+    }]);
+
+    try {
+      await waitForCondition(() => {
+        const holdings = JSON.parse(window.localStorage.getItem(PORTFOLIO_HOLDINGS_KEY) ?? "[]") as PortfolioHolding[];
+
+        return Boolean(holdings[0]?.lastReviewedAt);
+      });
+
+      const holdings = JSON.parse(window.localStorage.getItem(PORTFOLIO_HOLDINGS_KEY) ?? "[]") as PortfolioHolding[];
+
+      assert.equal(holdings[0]?.ticker, "MSFT");
+      assert.ok(holdings[0]?.lastReviewedAt);
+    } finally {
+      rendered.unmount();
+      globalThis.fetch = previousFetch;
+    }
+  });
+});
+
+describe("partner web portfolio experience", () => {
+  const baseHolding: PortfolioHolding = {
+    ticker: "MSFT",
+    companyName: "Microsoft",
+    addedAt: "2026-06-01T00:00:00.000Z",
+    conviction: "medium",
+  };
+
+  it("prevents duplicate portfolio additions", () => {
+    const holdings = addPortfolioHolding([baseHolding], {
+      ticker: "msft",
+      companyName: "Microsoft",
+      addedAt: "2026-06-02T00:00:00.000Z",
+      conviction: "medium",
+    });
+
+    assert.equal(holdings.length, 1);
+    assert.equal(holdings[0]?.addedAt, baseHolding.addedAt);
+  });
+
+  it("updates conviction, ownership notes, reviewed timestamp, and summary counts", () => {
+    const reviewed = updatePortfolioReviewTimestamp([baseHolding], "MSFT", "2026-06-06T00:00:00.000Z");
+    const withConviction = updatePortfolioConviction(reviewed, "MSFT", "high");
+    const withNote = updatePortfolioNote(withConviction, "MSFT", "Strong cloud business. Want to understand Azure better.");
+    const summary = buildPortfolioSummary(withNote);
+
+    assert.equal(withNote[0]?.conviction, "high");
+    assert.equal(withNote[0]?.ownershipNote, "Strong cloud business. Want to understand Azure better.");
+    assert.equal(withNote[0]?.lastReviewedAt, "2026-06-06T00:00:00.000Z");
+    assert.equal(summary.businesses, 1);
+    assert.equal(summary.highConviction, 1);
+  });
+
+  it("renders the empty portfolio state with an Explore action", () => {
+    const rendered = renderPortfolioRoute();
+
+    try {
+      assert.ok(rendered.text().includes("You have not added any businesses yet."));
+      assert.ok(rendered.text().includes("Explore companies and add businesses"));
+      assert.ok(rendered.container.innerHTML.includes('href="/explore"'));
+    } finally {
+      rendered.unmount();
+    }
+  });
+
+  it("renders holdings, summary counts, conviction controls, notes, and review links", () => {
+    const rendered = renderPortfolioRoute([{
+      ...baseHolding,
+      conviction: "high",
+      ownershipNote: "Strong cloud business.",
+      lastReviewedAt: new Date().toISOString(),
+    }]);
+
+    try {
+      assert.ok(rendered.text().includes("Partner Portfolio"));
+      assert.ok(rendered.text().includes("Businesses"));
+      assert.ok(rendered.text().includes("High Conviction"));
+      assert.ok(rendered.text().includes("Recently Reviewed"));
+      assert.ok(rendered.text().includes("Microsoft"));
+      assert.ok(rendered.text().includes("Health: improving"));
+      assert.ok(rendered.text().includes("Conviction: high"));
+      assert.ok(rendered.text().includes("Reviewed today"));
+      assert.ok(rendered.container.innerHTML.includes('href="/company/MSFT?fromPortfolio=1"'));
+    } finally {
+      rendered.unmount();
+    }
+  });
+
+  it("persists conviction and ownership note edits from the Portfolio screen", () => {
+    const rendered = renderPortfolioRoute([baseHolding]);
+
+    try {
+      rendered.selectConviction("high");
+      rendered.updateNote("Strong cloud business. Want to understand Azure better.");
+
+      const holdings = JSON.parse(rendered.storage.getItem(PORTFOLIO_HOLDINGS_KEY) ?? "[]") as PortfolioHolding[];
+
+      assert.equal(holdings[0]?.conviction, "high");
+      assert.equal(holdings[0]?.ownershipNote, "Strong cloud business. Want to understand Azure better.");
+    } finally {
+      rendered.unmount();
+    }
   });
 });
 

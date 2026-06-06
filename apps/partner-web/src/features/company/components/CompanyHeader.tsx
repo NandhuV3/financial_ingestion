@@ -1,15 +1,18 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Badge } from "../../../components/ui/Badge";
+import { Button } from "../../../components/ui/Button";
 import { Card } from "../../../components/ui/Card";
 import { EXPLORE_ROUTE } from "../../../constants/routes";
 import type { PartnerCompanyViewModel } from "../types/partner-company-view-model";
 
 interface CompanyHeaderProps {
   company: PartnerCompanyViewModel;
+  onAddToPortfolio?: () => void;
+  isInPortfolio?: boolean;
 }
 
-export function CompanyHeader({ company }: CompanyHeaderProps) {
+export function CompanyHeader({ company, onAddToPortfolio, isInPortfolio = false }: CompanyHeaderProps) {
   return (
     <header className="space-y-4">
       <Link
@@ -31,6 +34,17 @@ export function CompanyHeader({ company }: CompanyHeaderProps) {
           </div>
         </div>
         <p className="max-w-2xl text-base leading-7 text-partner-muted">{company.tagline}</p>
+        {onAddToPortfolio && (
+          <Button
+            type="button"
+            onClick={onAddToPortfolio}
+            disabled={isInPortfolio}
+            aria-label={isInPortfolio ? `${company.name} is already in your portfolio` : `Add ${company.name} to portfolio`}
+            className={isInPortfolio ? "bg-partner-muted" : ""}
+          >
+            {isInPortfolio ? "Added To Portfolio" : "Add To Portfolio"}
+          </Button>
+        )}
       </Card>
     </header>
   );

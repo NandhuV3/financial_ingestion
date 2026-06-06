@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Card } from "../../components/ui/Card";
 import { PageContainer } from "../../components/ui/PageContainer";
 import { EXPLORE_ROUTE } from "../../constants/routes";
@@ -14,10 +14,13 @@ import { TrustSection } from "./components/TrustSection";
 import { usePartnerIntelligence } from "./hooks/usePartnerIntelligence";
 import { findCompanyByTicker, type MockCompany } from "./mock/companies";
 import type { PartnerCompanyViewModel } from "./types/partner-company-view-model";
+import { usePortfolio } from "../portfolio/usePortfolio";
 
 interface CompanyDetailContentProps {
   company: PartnerCompanyViewModel;
   initialTab?: CompanyTabId;
+  onAddToPortfolio?: () => void;
+  isInPortfolio?: boolean;
 }
 
 function mapMockCompanyToViewModel(company: MockCompany): PartnerCompanyViewModel {
@@ -67,13 +70,22 @@ function CompanyErrorState() {
   );
 }
 
-export function CompanyDetailContent({ company, initialTab = "story" }: CompanyDetailContentProps) {
+export function CompanyDetailContent({
+  company,
+  initialTab = "story",
+  onAddToPortfolio,
+  isInPortfolio,
+}: CompanyDetailContentProps) {
   const [activeTab, setActiveTab] = useState<CompanyTabId>(initialTab);
 
   return (
     <PageContainer>
       <div className="space-y-6">
-        <CompanyHeader company={company} />
+        <CompanyHeader
+          company={company}
+          onAddToPortfolio={onAddToPortfolio}
+          isInPortfolio={isInPortfolio}
+        />
         <CompanyTabs activeTab={activeTab} onChange={setActiveTab} />
 
         {activeTab === "story" && <StorySection company={company} />}
@@ -88,8 +100,11 @@ export function CompanyDetailContent({ company, initialTab = "story" }: CompanyD
 
 export function CompanyDetailScreen() {
   const { ticker = "" } = useParams();
+  const [searchParams] = useSearchParams();
   const normalizedTicker = ticker.trim().toUpperCase();
   const { data, loading, error } = usePartnerIntelligence(normalizedTicker);
+  const { addHolding, hasHolding, markReviewed } = usePortfolio();
+  const reviewMarkedRef = useRef(false);
   const mockCompany = useMemo(() => findCompanyByTicker(normalizedTicker), [normalizedTicker]);
   const mockViewModel = useMemo(
     () => mockCompany ? mapMockCompanyToViewModel(mockCompany) : null,
@@ -105,6 +120,17 @@ export function CompanyDetailScreen() {
     });
   }, [normalizedTicker, dataSource]);
 
+  useEffect(() => {
+    reviewMarkedRef.current = false;
+  }, [normalizedTicker]);
+
+  useEffect(() => {
+    if (!reviewMarkedRef.current && searchParams.get("fromPortfolio") === "1" && hasHolding(normalizedTicker)) {
+      reviewMarkedRef.current = true;
+      markReviewed(normalizedTicker);
+    }
+  }, [hasHolding, markReviewed, normalizedTicker, searchParams]);
+
   if (loading) {
     return <CompanyLoadingState />;
   }
@@ -113,5 +139,14 @@ export function CompanyDetailScreen() {
     return <CompanyErrorState />;
   }
 
-  return <CompanyDetailContent company={company} />;
+  return (
+    <CompanyDetailContent
+      company={company}
+      onAddToPortfolio={() => addHolding({
+        ticker: company.ticker,
+        companyName: company.name,
+      })}
+      isInPortfolio={hasHolding(company.ticker)}
+    />
+  );
 }
