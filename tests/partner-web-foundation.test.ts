@@ -26,6 +26,8 @@ import {
   CompanyDetailScreen,
 } from "../apps/partner-web/src/features/company/CompanyDetailScreen.tsx";
 import { getPartnerIntelligence } from "../apps/partner-web/src/features/company/api/partner-intelligence.api.ts";
+import { mapPartnerCompanyToViewModel } from "../apps/partner-web/src/features/company/adapters/partner-company.adapter.ts";
+import type { PartnerCompanyIntelligence } from "../apps/partner-web/src/types/partner-domain.types.ts";
 
 describe("partner web foundation", () => {
   it("defines placeholder routes for the foundation screens", () => {
@@ -380,5 +382,127 @@ describe("partner intelligence feature api", () => {
     } finally {
       globalThis.fetch = previousFetch;
     }
+  });
+});
+
+describe("partner company adapter", () => {
+  const partnerIntelligence: PartnerCompanyIntelligence = {
+    ticker: "MSFT",
+    companyName: "Microsoft",
+    asOfFilingDate: "2026-04-29",
+    profile: {
+      ticker: "MSFT",
+      companyName: "Microsoft",
+      tagline: "Builds software and cloud infrastructure.",
+      whatTheyDo: "Runs business software and cloud tools.",
+      whoTheyServe: "Businesses and developers.",
+    },
+    summary: {
+      headline: "Microsoft continues building durable cloud demand.",
+      summary: "The company remains focused on cloud and AI infrastructure.",
+      businessHealth: "improving",
+      conviction: "high",
+    },
+    story: {
+      whatTheyDo: "Sells software, cloud services, and developer tools.",
+      whoBuys: "Businesses, developers, schools, and governments.",
+      whyTheyWin: "Its tools are deeply embedded in daily work.",
+      whatCouldGoWrong: "Security incidents or cloud competition could weaken trust.",
+    },
+    customers: [
+      {
+        customerType: "Large companies",
+        whyTheyBuy: "Need reliable tools across many teams.",
+      },
+    ],
+    money: {
+      dailySales: {
+        label: "Revenue",
+        plainLanguageName: "Daily Sales",
+        explanation: "Recurring software and cloud sales.",
+      },
+      whatsLeftAfterCosts: {
+        label: "Margin",
+        plainLanguageName: "What's Left After Costs",
+        explanation: "Software can leave meaningful room after costs.",
+      },
+      loansToExpand: {
+        label: "Debt",
+        plainLanguageName: "Loans To Expand",
+        explanation: "Borrowing is modest compared with business size.",
+      },
+      moneyInTheDrawer: {
+        label: "Cash Flow",
+        plainLanguageName: "Money In The Drawer",
+        explanation: "Renewals turn into steady cash.",
+      },
+      overallExplanation: "A cash-generative business.",
+    },
+    trust: {
+      managementQuality: "Experienced leadership with a platform mindset.",
+      longTermThinking: "Invests for long-term cloud and AI demand.",
+      capitalAllocation: "Balances investment with shareholder returns.",
+      skinInTheGame: "Leadership incentives are tied to company performance.",
+      confidence: "high",
+      dataAvailability: "partial",
+    },
+    forensics: [
+      {
+        label: "Profits backed by cash",
+        severity: "green",
+        explanation: "The business regularly turns sales into cash.",
+      },
+    ],
+    sources: [],
+  };
+
+  it("maps the happy path PartnerCompanyIntelligence contract", () => {
+    const viewModel = mapPartnerCompanyToViewModel(partnerIntelligence);
+
+    assert.equal(viewModel.name, "Microsoft");
+    assert.equal(viewModel.ticker, "MSFT");
+    assert.equal(viewModel.tagline, "Builds software and cloud infrastructure.");
+    assert.equal(viewModel.businessHealth, "improving");
+    assert.equal(viewModel.conviction, "high");
+    assert.equal(viewModel.story.whatTheySell, "Sells software, cloud services, and developer tools.");
+    assert.equal(viewModel.customers[0]?.segment, "Large companies");
+    assert.equal(viewModel.money.dailySales, "Recurring software and cloud sales.");
+    assert.equal(viewModel.money.margin, "Software can leave meaningful room after costs.");
+    assert.equal(viewModel.trust.decisionStyle, "Balances investment with shareholder returns.");
+    assert.equal(viewModel.forensics[0]?.title, "Profits backed by cash");
+    assert.equal(viewModel.forensics[0]?.status, "green");
+  });
+
+  it("preserves empty arrays for empty API sections", () => {
+    const viewModel = mapPartnerCompanyToViewModel({
+      ...partnerIntelligence,
+      customers: [],
+      forensics: [],
+    });
+
+    assert.deepEqual(viewModel.customers, []);
+    assert.deepEqual(viewModel.forensics, []);
+  });
+
+  it("uses safe defaults for partial responses", () => {
+    const partialResponse = {
+      ticker: "MSFT",
+      companyName: "Microsoft",
+      profile: {},
+      story: {},
+      money: {},
+      trust: {},
+    } as PartnerCompanyIntelligence;
+
+    const viewModel = mapPartnerCompanyToViewModel(partialResponse);
+
+    assert.equal(viewModel.name, "Microsoft");
+    assert.equal(viewModel.ticker, "MSFT");
+    assert.equal(viewModel.tagline, "");
+    assert.equal(viewModel.story.whatTheySell, "");
+    assert.deepEqual(viewModel.customers, []);
+    assert.equal(viewModel.money.cashflow, "");
+    assert.equal(viewModel.trust.skinInTheGame, "");
+    assert.deepEqual(viewModel.forensics, []);
   });
 });
