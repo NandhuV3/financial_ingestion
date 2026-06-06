@@ -25,6 +25,7 @@ import {
   CompanyDetailContent,
   CompanyDetailScreen,
 } from "../apps/partner-web/src/features/company/CompanyDetailScreen.tsx";
+import { getPartnerIntelligence } from "../apps/partner-web/src/features/company/api/partner-intelligence.api.ts";
 
 describe("partner web foundation", () => {
   it("defines placeholder routes for the foundation screens", () => {
@@ -267,5 +268,117 @@ describe("partner web company story experience", () => {
     assert.ok(trust.includes("Decision Style"));
     assert.ok(forensics.includes("Profits backed by cash"));
     assert.ok(forensics.includes("Security trust"));
+  });
+});
+
+describe("partner intelligence feature api", () => {
+  const validPartnerResponse = {
+    ticker: "MSFT",
+    companyName: "Microsoft",
+    asOfFilingDate: "2026-04-29",
+    profile: {},
+    summary: {},
+    story: {},
+    customers: [],
+    money: {},
+    trust: {},
+    forensics: [],
+    sources: [],
+  };
+
+  it("fetches Partner Intelligence successfully", async () => {
+    const previousFetch = globalThis.fetch;
+
+    globalThis.fetch = async (input: string | URL | Request) => {
+      const url = input instanceof Request ? input.url : String(input);
+      assert.equal(url, "http://127.0.0.1:4310/partner-intelligence/MSFT");
+
+      return new Response(JSON.stringify(validPartnerResponse), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    };
+
+    try {
+      const result = await getPartnerIntelligence("msft");
+
+      assert.equal(result.ticker, "MSFT");
+      assert.equal(result.companyName, "Microsoft");
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
+  });
+
+  it("adds filingDate as a query parameter", async () => {
+    const previousFetch = globalThis.fetch;
+
+    globalThis.fetch = async (input: string | URL | Request) => {
+      const url = input instanceof Request ? input.url : String(input);
+      assert.equal(url, "http://127.0.0.1:4310/partner-intelligence/MSFT?filingDate=2026-04-29");
+
+      return new Response(JSON.stringify(validPartnerResponse), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    };
+
+    try {
+      await getPartnerIntelligence("MSFT", "2026-04-29");
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
+  });
+
+  it("normalizes invalid responses", async () => {
+    const previousFetch = globalThis.fetch;
+
+    globalThis.fetch = async () => new Response(JSON.stringify({ ticker: "MSFT" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+    try {
+      await assert.rejects(
+        () => getPartnerIntelligence("MSFT"),
+        { message: "Partner Intelligence response was invalid." },
+      );
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
+  });
+
+  it("normalizes HTTP errors", async () => {
+    const previousFetch = globalThis.fetch;
+
+    globalThis.fetch = async () => new Response(JSON.stringify({ error: "Filing not found" }), {
+      status: 404,
+      headers: { "content-type": "application/json" },
+    });
+
+    try {
+      await assert.rejects(
+        () => getPartnerIntelligence("MSFT", "2026-01-01"),
+        { message: "Filing not found", status: 404 },
+      );
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
+  });
+
+  it("normalizes network failures", async () => {
+    const previousFetch = globalThis.fetch;
+
+    globalThis.fetch = async () => {
+      throw new Error("network unavailable");
+    };
+
+    try {
+      await assert.rejects(
+        () => getPartnerIntelligence("MSFT"),
+        { message: "network unavailable" },
+      );
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
   });
 });
