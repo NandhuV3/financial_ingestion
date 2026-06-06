@@ -63,7 +63,7 @@ export type ForensicsSignal = {
 };
 
 export type PartnerIntelligenceSource = {
-  artifact: "investor_narrative" | "investor_insight" | "topic_evolution" | "quarter_change" | "themes";
+  artifact: "company_profile" | "investor_narrative" | "investor_insight" | "topic_evolution" | "quarter_change" | "themes";
   path?: string;
   generatedAt?: string;
 };

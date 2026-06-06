@@ -1,40 +1,23 @@
 import type { CustomerSegment } from "../partner-domain.types.js";
 import type { PartnerSourceArtifacts } from "../partner-source.types.js";
-import { getArtifactText } from "./builder-utils.js";
+import { sentenceList } from "./business-language.js";
 
 export function buildCustomerSegments(artifacts: PartnerSourceArtifacts): CustomerSegment[] {
-  const text = getArtifactText(artifacts);
-  const segments: CustomerSegment[] = [];
+  const products = sentenceList(artifacts.companyProfile.products, "the company's products or services");
+  const customers = artifacts.companyProfile.customers.length > 0
+    ? artifacts.companyProfile.customers
+    : ["Customers"];
 
-  if (text.includes("consumer") || text.includes("people")) {
-    segments.push({
-      customerType: "Consumers",
-      whyTheyBuy: "They use the company's products and services in everyday personal workflows.",
-      importance: "important",
-    });
-  }
+  return customers.map((customer, index) => ({
+    customerType: capitalize(customer),
+    whyTheyBuy: `They use ${products} to meet practical needs described in the company's filings.`,
+    importance: index === 0 ? "core" : "important",
+  })).slice(0, 4) as CustomerSegment[];
+}
 
-  if (text.includes("business") || text.includes("organization") || text.includes("enterprise") || text.includes("cloud")) {
-    segments.push({
-      customerType: "Businesses and organizations",
-      whyTheyBuy: "They rely on the company's products and services to run, communicate, analyze, and grow.",
-      importance: "core",
-    });
-  }
-
-  if (text.includes("developer") || text.includes("platform") || text.includes("ai")) {
-    segments.push({
-      customerType: "Developers and technology teams",
-      whyTheyBuy: "They build on the company's platforms, tools, cloud infrastructure, or AI capabilities.",
-      importance: "important",
-    });
-  }
-
-  return segments.length > 0
-    ? segments
-    : [{
-      customerType: "Customers",
-      whyTheyBuy: "The current artifacts do not yet provide a detailed customer breakdown.",
-      importance: "important",
-    }];
+function capitalize(value: string): string {
+  const cleaned = value.trim();
+  return cleaned.length > 0
+    ? cleaned.charAt(0).toUpperCase() + cleaned.slice(1)
+    : "Customers";
 }

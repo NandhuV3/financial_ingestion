@@ -47,6 +47,25 @@ describe("partner intelligence api", () => {
     }
   });
 
+  it("allows the local frontend origin through CORS", async () => {
+    const server = await createPartnerIntelligenceServer();
+
+    try {
+      const response = await server.inject({
+        method: "GET",
+        url: "/partner-intelligence/MSFT?filingDate=2026-04-29",
+        headers: {
+          origin: "http://localhost:5173",
+        },
+      });
+
+      assert.equal(response.statusCode, 200);
+      assert.equal(response.headers["access-control-allow-origin"], "http://localhost:5173");
+    } finally {
+      await server.close();
+    }
+  });
+
   it("rejects non-GET requests", async () => {
     const server = await createPartnerIntelligenceServer();
 
@@ -120,7 +139,17 @@ function assertNoForbiddenKeys(value: unknown): void {
 function assertNoInternalLanguage(value: unknown): void {
   const serialized = JSON.stringify(value).toLowerCase();
 
-  for (const phrase of ["supporting references", "filing topic", "new categories", "removed categories"]) {
+  for (const phrase of [
+    "supporting references",
+    "filing topic",
+    "new categories",
+    "removed categories",
+    "intelligence pipeline",
+    "future enrichment",
+    "not yet implemented",
+    "not yet populated",
+    "data not populated",
+  ]) {
     assert.ok(!serialized.includes(phrase), `Partner API leaked internal phrase: ${phrase}`);
   }
 }

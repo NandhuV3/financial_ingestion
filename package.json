@@ -36,6 +36,7 @@
     "topics:review-queue": "tsx src/topic-assignment-v2/build-review-queue.ts",
     "topics:apply": "tsx src/topic-assignment-v2/generate-topic-assignments.ts",
     "topics:evolution": "tsx src/topic-evolution/generate-topic-evolution-report.ts",
+    "enrich:company-profile": "tsx src/company-profile/enrichment/enrich-company-profile.ts",
     "api:partner": "tsx src/api/server.ts",
     "web:dev": "vite --config apps/partner-web/vite.config.ts",
     "web:build": "vite build --config apps/partner-web/vite.config.ts",
@@ -47,6 +48,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@fastify/cors": "^11.2.0",
     "cheerio": "^1.2.0",
     "fastify": "^5.8.5",
     "react": "^19.2.7",

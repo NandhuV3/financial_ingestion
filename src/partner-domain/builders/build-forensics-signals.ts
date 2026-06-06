@@ -1,11 +1,17 @@
 import type { ForensicsSignal } from "../partner-domain.types.js";
 import type { PartnerSourceArtifacts } from "../partner-source.types.js";
+import { removeFilingStyleLanguage } from "./business-language.js";
 import { isRiskTheme } from "./builder-utils.js";
 
 export function buildForensicsSignals(artifacts: PartnerSourceArtifacts): ForensicsSignal[] {
   const riskItems = artifacts.insight?.risks ?? [];
   const riskThemes = (artifacts.themes?.themes ?? []).filter((theme) => isRiskTheme(theme));
   const signals = [
+    ...artifacts.companyProfile.business_risks.slice(0, 4).map((risk) => ({
+      label: firstSentence(risk, 70),
+      severity: "yellow" as const,
+      explanation: risk,
+    })),
     ...riskItems.slice(0, 4).map((risk) => ({
       label: firstSentence(toPartnerRiskLanguage(risk), 70),
       severity: "yellow" as const,
@@ -19,11 +25,11 @@ export function buildForensicsSignals(artifacts: PartnerSourceArtifacts): Forens
   ];
 
   return signals.length > 0
-    ? dedupeSignals(signals).slice(0, 6)
+    ? consolidateSignalsByRiskCategory(signals).slice(0, 6)
     : [{
       label: "No obvious risk signal",
       severity: "green",
-      explanation: "The available partner intelligence artifacts did not produce a specific forensics warning.",
+      explanation: "No specific business warning stood out from the available partner intelligence.",
     }];
 }
 
@@ -46,7 +52,7 @@ export function toPartnerRiskLanguage(value: string): string {
     return `${capitalizePhrase(emergedMatch[1])} is newly highlighted as a business consideration.`;
   }
 
-  return value
+  return removeFilingStyleLanguage(value)
     .replace(/\bsupporting references\b/gi, "business discussion")
     .replace(/\bfiling topic\b/gi, "business consideration")
     .replace(/\bcategory\b/gi, "area");
@@ -62,18 +68,55 @@ function firstSentence(value: string, maxLength: number): string {
   return sentence.length <= maxLength ? sentence : `${sentence.slice(0, maxLength - 3)}...`;
 }
 
-function dedupeSignals(signals: ForensicsSignal[]): ForensicsSignal[] {
-  const seen = new Set<string>();
-  const deduped: ForensicsSignal[] = [];
+function consolidateSignalsByRiskCategory(signals: ForensicsSignal[]): ForensicsSignal[] {
+  const byCategory = new Map<string, ForensicsSignal>();
 
   for (const signal of signals) {
-    const key = signal.label.trim().toLowerCase();
+    const category = categorizeRisk(`${signal.label} ${signal.explanation}`);
+    const current = byCategory.get(category);
+    const normalizedSignal = {
+      ...signal,
+      label: category,
+      explanation: removeFilingStyleLanguage(signal.explanation),
+    };
 
-    if (!seen.has(key)) {
-      seen.add(key);
-      deduped.push(signal);
+    if (!current || severityRank(normalizedSignal.severity) > severityRank(current.severity)) {
+      byCategory.set(category, normalizedSignal);
     }
   }
 
-  return deduped;
+  return Array.from(byCategory.values());
+}
+
+function categorizeRisk(value: string): string {
+  const text = value.toLowerCase();
+
+  if (text.includes("competition") || text.includes("competitive")) return "Competition";
+  if (text.includes("cyber") || text.includes("security")) return "Cybersecurity";
+  if (text.includes("regulation") || text.includes("regulatory") || text.includes("antitrust")) return "Regulation";
+  if (
+    text.includes("supply")
+    || text.includes("supplier")
+    || text.includes("manufacturing")
+    || text.includes("tariff")
+    || text.includes("import")
+    || text.includes("export")
+  ) {
+    return "Supply Chain";
+  }
+  if (text.includes("customer concentration") || text.includes("concentration")) return "Customer Concentration";
+  if (text.includes("tax")) return "Taxation";
+  if (text.includes("macro") || text.includes("economic") || text.includes("currency") || text.includes("foreign exchange")) {
+    return "Macroeconomic";
+  }
+  if (text.includes("privacy")) return "Privacy";
+  if (text.includes("ai") || text.includes("artificial intelligence")) return "Artificial Intelligence";
+
+  return firstSentence(value, 70);
+}
+
+function severityRank(severity: ForensicsSignal["severity"]): number {
+  if (severity === "red") return 3;
+  if (severity === "yellow") return 2;
+  return 1;
 }

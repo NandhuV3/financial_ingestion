@@ -1,19 +1,24 @@
 import type { CompanyProfile, CompanyStory } from "../partner-domain.types.js";
 import type { PartnerSourceArtifacts } from "../partner-source.types.js";
-import { findRiskTheme, findTheme } from "./builder-utils.js";
+import { sentenceList } from "./business-language.js";
+import { getBusinessModel, getCompetitiveAdvantages } from "../../company-profile/company-profile-accessors.js";
 
 export function buildCompanyStory(
   artifacts: PartnerSourceArtifacts,
   profile: CompanyProfile,
 ): CompanyStory {
-  const themes = artifacts.themes?.themes ?? [];
-  const opportunity = findTheme(themes, ["growth", "cloud", "investment", "investments"]);
-  const risk = findRiskTheme(themes);
+  const intelligence = artifacts.companyProfile;
 
   return {
-    whatTheyDo: profile.whatTheyDo,
-    whoBuys: profile.whoTheyServe,
-    whyTheyWin: opportunity?.summary ?? artifacts.narrative?.bull_case ?? "The current artifacts do not yet explain the company's advantage clearly.",
-    whatCouldGoWrong: risk?.summary ?? artifacts.narrative?.bear_case ?? "The current artifacts do not yet identify a specific business risk.",
+    whatTheyDo: getBusinessModel(intelligence) || profile.whatTheyDo,
+    whoBuys: sentenceList(intelligence.customers, profile.whoTheyServe),
+    whyTheyWin: `Customers may choose this business for ${sentenceList(
+      getCompetitiveAdvantages(intelligence),
+      "capabilities described in its company filings",
+    )}.`,
+    whatCouldGoWrong: `The main areas to watch are ${sentenceList(
+      intelligence.business_risks,
+      "demand, competition, execution, and regulation",
+    )}.`,
   };
 }

@@ -3,12 +3,18 @@ import { getCompanyConfig } from "../config/companies.js";
 import type { QuarterChangeReport } from "../change-engine/change.types.js";
 import type { InvestorInsight } from "../insights/insight.types.js";
 import type { InvestorNarrative } from "../narratives/narrative.types.js";
+import {
+  buildCompanyProfileIntelligence,
+  readCompanyProfileIntelligence,
+  type CompanyProfileSourceArtifacts,
+} from "../company-profile/build-company-profile-intelligence.js";
 import { fileExists, readJsonFile } from "../shared/filesystem/file-reader.js";
 import { createLogger } from "../shared/logger.js";
 import { getCompanyDirectory, getFilingDirectory } from "../storage/filing-paths.js";
 import { resolveFilingDate } from "../storage/resolve-filing.js";
 import type { FilingMetadata } from "../types/pipeline.types.js";
 import type { ThemeOutput } from "../types/theme.types.js";
+import type { TopicAssignmentOutputV2 } from "../topic-assignment-v2/assignment.types.js";
 import { buildBusinessHealth } from "./builders/build-business-health.js";
 import { buildCompanyProfile } from "./builders/build-company-profile.js";
 import { buildCompanyStory } from "./builders/build-company-story.js";
@@ -68,16 +74,25 @@ export async function buildPartnerCompanyIntelligence(
 async function loadPartnerSourceArtifacts(ticker: string, filingDate: string): Promise<PartnerSourceArtifacts> {
   const filingDir = getFilingDirectory(ticker, filingDate);
   const filing = await readJsonFile<FilingMetadata>(join(filingDir, "metadata", "filing.json"));
-
-  return {
+  const artifactsWithoutProfile: CompanyProfileSourceArtifacts = {
     filing,
     themes: await readOptionalJson<ThemeOutput>(join(filingDir, "intelligence", "themes.json")),
+    topicAssignments: await readOptionalJson<TopicAssignmentOutputV2>(
+      join(filingDir, "intelligence", "themes.with-topics.json"),
+    ),
     insight: await readOptionalJson<InvestorInsight>(join(filingDir, "insights", "investor-insight.json")),
     narrative: await readOptionalJson<InvestorNarrative>(join(filingDir, "narratives", "investor-narrative.json")),
     quarterChange: await readOptionalJson<QuarterChangeReport>(join(filingDir, "comparison", "quarter-change-report.json")),
     topicEvolution: await readOptionalJson<PartnerTopicEvolutionSource>(
       join(getCompanyDirectory(ticker), "reports", "topic-evolution-report.json"),
     ),
+  };
+  const companyProfile = await readCompanyProfileIntelligence(ticker)
+    ?? buildCompanyProfileIntelligence(artifactsWithoutProfile);
+
+  return {
+    ...artifactsWithoutProfile,
+    companyProfile,
   };
 }
 
@@ -94,6 +109,7 @@ function buildSources(artifacts: PartnerSourceArtifacts): PartnerIntelligenceSou
 
   if (artifacts.narrative) sources.push({ artifact: "investor_narrative" });
   if (artifacts.insight) sources.push({ artifact: "investor_insight" });
+  sources.push({ artifact: "company_profile" });
   if (artifacts.topicEvolution) sources.push({ artifact: "topic_evolution", generatedAt: artifacts.topicEvolution.generated_at });
   if (artifacts.quarterChange) sources.push({ artifact: "quarter_change" });
   if (artifacts.themes) sources.push({ artifact: "themes" });

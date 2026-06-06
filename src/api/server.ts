@@ -1,9 +1,14 @@
 import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
+import cors from "@fastify/cors";
 import { registerPartnerIntelligenceRoutes } from "./routes/partner-intelligence.routes.js";
 import { createLogger } from "../shared/logger.js";
 
 const logger = createLogger("partner-intelligence-api");
 const defaultPort = 4310;
+const allowedCorsOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+];
 
 export async function createPartnerIntelligenceServer(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -20,6 +25,11 @@ export async function createPartnerIntelligenceServer(): Promise<FastifyInstance
       error: error.message,
     });
     reply.code(500).send({ error: "Internal server error" });
+  });
+
+  await app.register(cors, {
+    origin: allowedCorsOrigins,
+    methods: ["GET"],
   });
 
   app.get("/health", async () => ({ status: "ok" }));

@@ -1,5 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { buildCompanyProfileIntelligence } from "../src/company-profile/build-company-profile-intelligence.js";
 import { buildBusinessHealth } from "../src/partner-domain/builders/build-business-health.js";
 import { buildCompanyProfile } from "../src/partner-domain/builders/build-company-profile.js";
 import { buildCompanyStory } from "../src/partner-domain/builders/build-company-story.js";
@@ -12,37 +15,102 @@ import type { PartnerSourceArtifacts } from "../src/partner-domain/partner-sourc
 import type { Theme } from "../src/types/theme.types.js";
 
 describe("partner domain builders", () => {
-  it("builds a company profile from narrative and growth themes", () => {
+  it("keeps business-language helpers free of ticker-specific narratives", () => {
+    const content = readFileSync(join(process.cwd(), "src", "partner-domain", "builders", "business-language.ts"), "utf8");
+
+    for (const forbidden of ["MSFT", "AAPL", "AMZN", "GOOGL", "META", "NVDA", "Visa operates", "Microsoft provides"]) {
+      assert.equal(content.includes(forbidden), false, `Unexpected ticker-specific language in business-language.ts: ${forbidden}`);
+    }
+  });
+
+  it("builds company profile intelligence deterministically from source artifacts", () => {
+    const profile = buildCompanyProfileIntelligence(artifacts());
+
+    assert.equal(profile.company, "Microsoft");
+    assert.equal("business_model" in profile, false);
+    assert.equal("competitive_advantages" in profile, false);
+    assert.ok(profile.products.includes("cloud services"));
+    assert.ok(profile.customers.includes("businesses and organizations"));
+    assert.ok(profile.business_risks.some((risk) => risk.toLowerCase().includes("competition")));
+    assert.ok(profile.themes.includes("Cloud Revenue Growth"));
+    assert.ok(profile.topics.includes("growth"));
+    assert.deepEqual(profile.source_filings, ["2026-04-29"]);
+  });
+
+  it("builds a fallback company profile intelligence artifact without company-specific code", () => {
+    const profile = buildCompanyProfileIntelligence({
+      filing: {
+        company: "Example Systems",
+        ticker: "EXMP",
+        filing_date: "2026-04-29",
+        form_type: "10-Q",
+        accession_number: "0000000000-00-000000",
+      },
+      themes: null,
+      topicAssignments: null,
+      insight: null,
+      narrative: null,
+      quarterChange: null,
+      topicEvolution: null,
+    });
+
+    assert.equal(profile.company, "Example Systems");
+    assert.equal("business_model" in profile, false);
+    assert.equal("competitive_advantages" in profile, false);
+    assert.deepEqual(profile.products, ["products and services described in company filings"]);
+    assert.deepEqual(profile.customers, ["customers described in company filings"]);
+    assert.deepEqual(profile.themes, []);
+    assert.deepEqual(profile.topics, []);
+  });
+
+  it("builds a company profile from CompanyProfileIntelligence", () => {
     const profile = buildCompanyProfile(artifacts());
 
     assert.equal(profile.ticker, "MSFT");
     assert.equal(profile.companyName, "Microsoft");
-    assert.equal(profile.tagline, "Microsoft shows cloud revenue growth.");
-    assert.equal(profile.whatTheyDo, "Cloud revenue increased as businesses adopted more services.");
-    assert.match(profile.whoTheyServe, /Businesses/);
+    assert.match(profile.tagline, /serves businesses, organizations, and developers/);
+    assert.match(profile.whatTheyDo, /cloud and AI platforms/);
+    assert.match(profile.whoTheyServe, /businesses and organizations/);
+    assertNoFilingLanguage(profile);
+  });
+
+  it("builds Partner Domain output from raw profile fallback", () => {
+    const source = artifacts({
+      companyProfile: rawCompanyProfile("Microsoft"),
+    });
+    const profile = buildCompanyProfile(source);
+    const summary = buildPartnerSummary(source, "stable");
+    const story = buildCompanyStory(source, profile);
+
+    assert.match(profile.whatTheyDo, /Microsoft sells cloud services/);
+    assert.match(summary.summary, /Microsoft sells cloud services/);
+    assert.match(story.whyTheyWin, /cloud capabilities/);
   });
 
   it("builds the partner summary without exposing internal artifact language", () => {
     const summary = buildPartnerSummary(artifacts(), "stable");
 
-    assert.equal(summary.headline, "Microsoft shows cloud revenue growth.");
+    assert.match(summary.headline, /serves businesses, organizations, and developers/);
     assert.equal(summary.businessHealth, "stable");
     assert.equal(summary.conviction, "high");
-    assert.match(summary.summary, /cloud growth/);
+    assert.match(summary.summary, /cloud and AI platforms/);
+    assertNoFilingLanguage(summary);
   });
 
-  it("builds the story from profile, opportunity, and risk themes", () => {
+  it("builds the story from business model language instead of quarterly metrics", () => {
     const source = artifacts();
     const profile = buildCompanyProfile(source);
     const story = buildCompanyStory(source, profile);
 
     assert.equal(story.whatTheyDo, profile.whatTheyDo);
     assert.equal(story.whoBuys, profile.whoTheyServe);
-    assert.match(story.whyTheyWin, /Cloud revenue/);
+    assert.match(story.whyTheyWin, /platform ecosystem/);
     assert.match(story.whatCouldGoWrong, /competition/);
+    assertNoFilingLanguage(story);
+    assert.equal(JSON.stringify(story).toLowerCase().includes("revenue increased"), false);
   });
 
-  it("builds customer segments from business, cloud, developer, and AI language", () => {
+  it("builds customer segments from CompanyProfileIntelligence", () => {
     const segments = buildCustomerSegments(artifacts());
 
     assert.ok(segments.some((segment) => segment.customerType === "Businesses and organizations"));
@@ -57,13 +125,17 @@ describe("partner domain builders", () => {
     assert.equal(money.loansToExpand.plainLanguageName, "Loans To Expand");
     assert.equal(money.moneyInTheDrawer.plainLanguageName, "Money In The Drawer");
     assert.equal(money.dailySales.status, "weakening");
+    assert.match(money.dailySales.explanation, /businesses and organizations/);
+    assertNoFilingLanguage(money);
   });
 
-  it("builds trust profile as partial when trust intelligence is unavailable", () => {
+  it("builds trust profile without exposing implementation gaps", () => {
     const trust = buildTrustProfile(artifacts());
 
     assert.equal(trust.dataAvailability, "partial");
-    assert.equal(trust.confidence, "low");
+    assert.equal(trust.confidence, "medium");
+    assert.match(trust.managementQuality, /judged/);
+    assertNoFilingLanguage(trust);
   });
 
   it("builds forensics signals and sanitizes internal intelligence language", () => {
@@ -73,6 +145,7 @@ describe("partner domain builders", () => {
     assert.ok(signals.length > 0);
     assert.ok(!serialized.includes("supporting references"));
     assert.ok(!serialized.includes("filing topic"));
+    assert.equal(signals.filter((signal) => signal.label === "Competition").length, 1);
     assert.equal(
       toPartnerRiskLanguage("competition received more supporting references (2 -> 3)."),
       "Competition is receiving more attention as a business risk.",
@@ -114,34 +187,134 @@ describe("partner domain builders", () => {
 
     assert.equal(buildBusinessHealth(source), "stable");
   });
+
+  it("renders Apple from supplied CompanyProfileIntelligence without ticker-specific code", () => {
+    const source = artifacts({
+      company: "Apple",
+      ticker: "AAPL",
+      companyProfile: {
+        company: "Apple",
+        business_model: "Apple sells consumer devices, software products, and digital services used by consumers and creators.",
+        products: ["consumer devices", "software products", "digital services"],
+        customers: ["consumers", "creators and media partners"],
+        competitive_advantages: ["platform ecosystem", "brand trust and customer loyalty"],
+        business_risks: ["supply chain and manufacturing", "regulation and antitrust"],
+        themes: ["Consumer Device Demand"],
+        topics: ["consumer_devices"],
+        source_filings: ["2026-04-29"],
+        customer_value_proposition: "Customers use Apple products because its devices and services work together simply.",
+        profile_quality: "enriched",
+        enrichment: {
+          model: "test",
+          generated_at: "2026-06-06T00:00:00.000Z",
+          input_hash: "hash-1",
+        },
+      },
+    });
+
+    const profile = buildCompanyProfile(source);
+    const story = buildCompanyStory(source, profile);
+    const customers = buildCustomerSegments(source);
+
+    assert.equal(profile.ticker, "AAPL");
+    assert.match(profile.whatTheyDo, /consumer devices/);
+    assert.match(story.whyTheyWin, /platform ecosystem/);
+    assert.ok(customers.some((customer) => customer.customerType === "Consumers"));
+  });
+
+  it("scales to a new company without writing ticker-specific builder code", () => {
+    const source = artifacts({
+      company: "Harbor Tools",
+      ticker: "HBR",
+      companyProfile: {
+        company: "Harbor Tools",
+        business_model: "Harbor Tools sells software products and payments services to merchants and sellers.",
+        products: ["software products", "payments and transaction services"],
+        customers: ["merchants and sellers"],
+        competitive_advantages: ["distribution and marketplace reach"],
+        business_risks: ["competition"],
+        themes: ["Merchant Tools"],
+        topics: ["payments"],
+        source_filings: ["2026-04-29"],
+        customer_value_proposition: "Merchants use Harbor Tools to manage software and payments in one workflow.",
+        profile_quality: "enriched",
+        enrichment: {
+          model: "test",
+          generated_at: "2026-06-06T00:00:00.000Z",
+          input_hash: "hash-1",
+        },
+      },
+    });
+
+    const profile = buildCompanyProfile(source);
+    const money = buildMoneyProfile(source, "stable");
+
+    assert.equal(profile.ticker, "HBR");
+    assert.match(profile.whoTheyServe, /merchants and sellers/);
+    assert.match(money.dailySales.explanation, /merchants and sellers/);
+  });
 });
 
-function artifacts(): PartnerSourceArtifacts {
+function artifacts(overrides: Partial<{
+  company: string;
+  ticker: string;
+  themes: Theme[];
+  narrativeSummary: string;
+  insightSummary: string;
+  companyProfile: PartnerSourceArtifacts["companyProfile"];
+}> = {}): PartnerSourceArtifacts {
+  const company = overrides.company ?? "Microsoft";
+  const ticker = overrides.ticker ?? "MSFT";
+  const narrativeSummary = overrides.narrativeSummary
+    ?? `${company} serves businesses, organizations, and developers with cloud and AI platforms.`;
+  const insightSummary = overrides.insightSummary
+    ?? `${company} cloud growth remains important for businesses and developer platforms.`;
+  const themes = overrides.themes ?? [
+    theme("Cloud Revenue Growth", "growth", "high", "Cloud revenue increased as businesses adopted more services."),
+    theme("Competitive Market Landscape", "competition", "high", "The company faces competition in cloud and AI services."),
+    theme("R&D Expenses and Margins", "margins", "medium", "Costs increased as the company invested in AI infrastructure."),
+  ];
+
   return {
     filing: {
-      company: "Microsoft",
-      ticker: "MSFT",
+      company,
+      ticker,
       filing_date: "2026-04-29",
       form_type: "10-Q",
       accession_number: "0000000000-00-000000",
     },
-    themes: {
-      company: "Microsoft",
-      ticker: "MSFT",
-      filing_date: "2026-04-29",
-      themes: [
-        theme("Cloud Revenue Growth", "growth", "high", "Cloud revenue increased as businesses adopted more services."),
-        theme("Competitive Market Landscape", "competition", "high", "The company faces competition in cloud and AI services."),
-        theme("R&D Expenses and Margins", "margins", "medium", "Costs increased as the company invested in AI infrastructure."),
-      ],
+    companyProfile: overrides.companyProfile ?? {
+      company,
+      business_model: narrativeSummary,
+      products: ["cloud services", "software products", "artificial intelligence capabilities"],
+      customers: ["businesses and organizations", "developers and technology teams"],
+      competitive_advantages: ["platform ecosystem", "technical infrastructure and operating capabilities"],
+      business_risks: ["competition", "AI execution and infrastructure investment"],
+      themes: themes.map((theme) => theme.theme),
+      topics: themes.map((theme) => theme.category),
+      source_filings: ["2026-04-29"],
+      customer_value_proposition: `${company} helps customers run digital work with reliable software and cloud services.`,
+      profile_quality: "enriched",
+      enrichment: {
+        model: "test",
+        generated_at: "2026-06-06T00:00:00.000Z",
+        input_hash: "hash-1",
+      },
     },
+    themes: {
+      company,
+      ticker,
+      filing_date: "2026-04-29",
+      themes,
+    },
+    topicAssignments: null,
     insight: {
-      company: "Microsoft",
-      ticker: "MSFT",
+      company,
+      ticker,
       filing_date: "2026-04-29",
       previous_filing_date: "2026-01-28",
-      headline: "Microsoft shows cloud revenue growth.",
-      executive_summary: "Microsoft cloud growth remains important for businesses and developer platforms.",
+      headline: `${company} shows cloud revenue growth.`,
+      executive_summary: insightSummary,
       key_changes: [],
       new_topics: [],
       removed_topics: [],
@@ -152,8 +325,8 @@ function artifacts(): PartnerSourceArtifacts {
       opportunities: [],
       source: {
         current_filing: {
-          company: "Microsoft",
-          ticker: "MSFT",
+          company,
+          ticker,
           filing_date: "2026-04-29",
           form_type: "10-Q",
           accession_number: "0000000000-00-000000",
@@ -164,20 +337,20 @@ function artifacts(): PartnerSourceArtifacts {
       },
     },
     narrative: {
-      headline: "Microsoft shows cloud revenue growth.",
-      executive_summary: "Microsoft serves businesses, organizations, and developers with cloud and AI platforms.",
+      headline: `${company} shows cloud revenue growth.`,
+      executive_summary: narrativeSummary,
       what_changed: "Cloud growth remained prominent.",
       bull_case: "The business benefits from cloud demand and AI platform adoption.",
       bear_case: "Competition and cost pressure could weigh on results.",
-      investor_takeaway: "Microsoft continues emphasizing cloud growth while managing business risks.",
+      investor_takeaway: `${company} continues emphasizing cloud growth while managing business risks.`,
     },
     quarterChange: {
-      company: "Microsoft",
-      ticker: "MSFT",
+      company,
+      ticker,
       previous_filing: null,
       current_filing: {
-        company: "Microsoft",
-        ticker: "MSFT",
+        company,
+        ticker,
         filing_date: "2026-04-29",
         form_type: "10-Q",
         accession_number: "0000000000-00-000000",
@@ -209,6 +382,37 @@ function artifacts(): PartnerSourceArtifacts {
       },
     },
   };
+}
+
+function rawCompanyProfile(company: string): PartnerSourceArtifacts["companyProfile"] {
+  return {
+    company,
+    products: ["cloud services", "software products"],
+    customers: ["businesses and organizations"],
+    business_risks: ["competition"],
+    themes: ["Cloud Revenue Growth"],
+    topics: ["cloud"],
+    source_filings: ["2026-04-29"],
+    profile_quality: "raw",
+  };
+}
+
+function assertNoFilingLanguage(value: unknown): void {
+  const serialized = JSON.stringify(value).toLowerCase();
+
+  for (const phrase of [
+    "investors should note",
+    "shareholders should consider",
+    "revenue increased",
+    "earnings improved",
+    "intelligence pipeline",
+    "future enrichment",
+    "not yet implemented",
+    "not yet populated",
+    "data not populated",
+  ]) {
+    assert.equal(serialized.includes(phrase), false, `Unexpected filing or implementation language: ${phrase}`);
+  }
 }
 
 function theme(
