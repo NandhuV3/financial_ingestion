@@ -8,6 +8,7 @@ import {
   readCompanyProfileIntelligence,
   type CompanyProfileSourceArtifacts,
 } from "../company-profile/build-company-profile-intelligence.js";
+import { readCompanyIdentityIntelligence } from "../company-identity/company-identity-accessors.js";
 import { fileExists, readJsonFile } from "../shared/filesystem/file-reader.js";
 import { createLogger } from "../shared/logger.js";
 import { getCompanyDirectory, getFilingDirectory } from "../storage/filing-paths.js";
@@ -89,10 +90,12 @@ async function loadPartnerSourceArtifacts(ticker: string, filingDate: string): P
   };
   const companyProfile = await readCompanyProfileIntelligence(ticker)
     ?? buildCompanyProfileIntelligence(artifactsWithoutProfile);
+  const companyIdentity = await readCompanyIdentityIntelligence(ticker);
 
   return {
     ...artifactsWithoutProfile,
     companyProfile,
+    companyIdentity,
   };
 }
 

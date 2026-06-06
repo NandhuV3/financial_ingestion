@@ -1,17 +1,20 @@
 import type { CompanyProfile } from "../partner-domain.types.js";
 import type { PartnerSourceArtifacts } from "../partner-source.types.js";
 import { firstSentence, sentenceList } from "./business-language.js";
-import { getBusinessModel } from "../../company-profile/company-profile-accessors.js";
+import {
+  getBusinessDescription,
+  getPrimaryCustomers,
+} from "../../company-identity/company-identity-accessors.js";
 
 export function buildCompanyProfile(artifacts: PartnerSourceArtifacts): CompanyProfile {
-  const profile = artifacts.companyProfile;
-  const businessModel = getBusinessModel(profile);
+  const businessDescription = getBusinessDescription(artifacts.companyIdentity, artifacts.companyProfile);
+  const customers = getPrimaryCustomers(artifacts.companyIdentity, artifacts.companyProfile);
 
   return {
     ticker: artifacts.filing.ticker,
     companyName: artifacts.filing.company,
-    tagline: firstSentence(businessModel, 140),
-    whatTheyDo: businessModel,
-    whoTheyServe: sentenceList(profile.customers, "Customers described in the company's public filings."),
+    tagline: firstSentence(businessDescription, 140),
+    whatTheyDo: businessDescription,
+    whoTheyServe: sentenceList(customers, "Customers described in the company's public filings."),
   };
 }

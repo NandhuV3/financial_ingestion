@@ -1,8 +1,11 @@
 import type { CompanyProfileEnriched, CompanyProfileRaw } from "../company-profile.types.js";
 
 export type CompanyProfileEnrichmentFields = {
+  /** @deprecated Company Identity owns business descriptions. */
   business_model: string;
+  /** @deprecated Company Identity owns competitive signals. */
   competitive_advantages: string[];
+  /** @deprecated Company Identity owns customer value synthesis. */
   customer_value_proposition: string;
 };
 
@@ -13,7 +16,7 @@ export type CompanyProfileEnrichmentPromptInput = {
 export type CompanyProfileEnrichmentDecision = {
   shouldGenerate: boolean;
   status: "generated" | "skipped";
-  reason: "raw_profile_changed" | "raw_profile_unchanged";
+  reason: "raw_profile_changed" | "raw_profile_unchanged" | "identity_owns_business_understanding";
 };
 
 export type CompanyProfileEnrichmentReport = {

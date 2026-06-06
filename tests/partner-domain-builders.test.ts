@@ -77,14 +77,15 @@ describe("partner domain builders", () => {
   it("builds Partner Domain output from raw profile fallback", () => {
     const source = artifacts({
       companyProfile: rawCompanyProfile("Microsoft"),
+      companyIdentity: null,
     });
     const profile = buildCompanyProfile(source);
     const summary = buildPartnerSummary(source, "stable");
     const story = buildCompanyStory(source, profile);
 
-    assert.match(profile.whatTheyDo, /Microsoft sells cloud services/);
-    assert.match(summary.summary, /Microsoft sells cloud services/);
-    assert.match(story.whyTheyWin, /cloud capabilities/);
+    assert.match(profile.whatTheyDo, /Microsoft provides cloud services/);
+    assert.match(summary.summary, /Microsoft provides cloud services/);
+    assert.match(story.whyTheyWin, /capabilities described/);
   });
 
   it("builds the partner summary without exposing internal artifact language", () => {
@@ -194,16 +195,23 @@ describe("partner domain builders", () => {
       ticker: "AAPL",
       companyProfile: {
         company: "Apple",
-        business_model: "Apple sells consumer devices, software products, and digital services used by consumers and creators.",
         products: ["consumer devices", "software products", "digital services"],
         customers: ["consumers", "creators and media partners"],
-        competitive_advantages: ["platform ecosystem", "brand trust and customer loyalty"],
         business_risks: ["supply chain and manufacturing", "regulation and antitrust"],
         themes: ["Consumer Device Demand"],
         topics: ["consumer_devices"],
         source_filings: ["2026-04-29"],
-        customer_value_proposition: "Customers use Apple products because its devices and services work together simply.",
-        profile_quality: "enriched",
+        profile_quality: "raw",
+      },
+      companyIdentity: {
+        company: "Apple",
+        business_description: "Apple sells consumer devices, software products, and digital services used by consumers and creators.",
+        primary_products: ["consumer devices", "software products", "digital services"],
+        primary_customers: ["consumers", "creators and media partners"],
+        revenue_drivers: ["device sales", "software services"],
+        business_model_signals: ["consumer platform"],
+        competitive_signals: ["platform ecosystem", "brand trust and customer loyalty"],
+        operating_signals: ["global distribution network"],
         enrichment: {
           model: "test",
           generated_at: "2026-06-06T00:00:00.000Z",
@@ -228,16 +236,23 @@ describe("partner domain builders", () => {
       ticker: "HBR",
       companyProfile: {
         company: "Harbor Tools",
-        business_model: "Harbor Tools sells software products and payments services to merchants and sellers.",
         products: ["software products", "payments and transaction services"],
         customers: ["merchants and sellers"],
-        competitive_advantages: ["distribution and marketplace reach"],
         business_risks: ["competition"],
         themes: ["Merchant Tools"],
         topics: ["payments"],
         source_filings: ["2026-04-29"],
-        customer_value_proposition: "Merchants use Harbor Tools to manage software and payments in one workflow.",
-        profile_quality: "enriched",
+        profile_quality: "raw",
+      },
+      companyIdentity: {
+        company: "Harbor Tools",
+        business_description: "Harbor Tools sells software products and payments services to merchants and sellers.",
+        primary_products: ["software products", "payments and transaction services"],
+        primary_customers: ["merchants and sellers"],
+        revenue_drivers: ["software subscriptions", "payment transaction volume"],
+        business_model_signals: ["merchant software"],
+        competitive_signals: ["distribution and marketplace reach"],
+        operating_signals: ["payment network operations"],
         enrichment: {
           model: "test",
           generated_at: "2026-06-06T00:00:00.000Z",
@@ -262,6 +277,7 @@ function artifacts(overrides: Partial<{
   narrativeSummary: string;
   insightSummary: string;
   companyProfile: PartnerSourceArtifacts["companyProfile"];
+  companyIdentity: PartnerSourceArtifacts["companyIdentity"];
 }> = {}): PartnerSourceArtifacts {
   const company = overrides.company ?? "Microsoft";
   const ticker = overrides.ticker ?? "MSFT";
@@ -285,16 +301,23 @@ function artifacts(overrides: Partial<{
     },
     companyProfile: overrides.companyProfile ?? {
       company,
-      business_model: narrativeSummary,
       products: ["cloud services", "software products", "artificial intelligence capabilities"],
       customers: ["businesses and organizations", "developers and technology teams"],
-      competitive_advantages: ["platform ecosystem", "technical infrastructure and operating capabilities"],
       business_risks: ["competition", "AI execution and infrastructure investment"],
       themes: themes.map((theme) => theme.theme),
       topics: themes.map((theme) => theme.category),
       source_filings: ["2026-04-29"],
-      customer_value_proposition: `${company} helps customers run digital work with reliable software and cloud services.`,
-      profile_quality: "enriched",
+      profile_quality: "raw",
+    },
+    companyIdentity: "companyIdentity" in overrides ? overrides.companyIdentity! : {
+      company,
+      business_description: narrativeSummary,
+      primary_products: ["cloud services", "software products", "artificial intelligence capabilities"],
+      primary_customers: ["businesses and organizations", "developers and technology teams"],
+      revenue_drivers: ["cloud computing consumption", "software subscriptions"],
+      business_model_signals: ["recurring revenue"],
+      competitive_signals: ["platform ecosystem", "technical infrastructure and operating capabilities"],
+      operating_signals: ["cloud infrastructure", "developer platform ecosystem"],
       enrichment: {
         model: "test",
         generated_at: "2026-06-06T00:00:00.000Z",

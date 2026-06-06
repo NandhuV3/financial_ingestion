@@ -16,8 +16,11 @@ export type CompanyProfileEnrichmentMetadata = {
 };
 
 export type CompanyProfileEnriched = Omit<CompanyProfileRaw, "profile_quality"> & {
+  /** @deprecated Company Identity owns business descriptions. Preserved only for legacy artifact compatibility. */
   business_model: string;
+  /** @deprecated Company Identity owns competitive signals. Preserved only for legacy artifact compatibility. */
   competitive_advantages: string[];
+  /** @deprecated Company Identity owns customer value synthesis. Preserved only for legacy artifact compatibility. */
   customer_value_proposition: string;
   profile_quality: "enriched";
   enrichment: CompanyProfileEnrichmentMetadata;
