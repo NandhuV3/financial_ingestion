@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { routes } from "../apps/partner-web/src/app/router.tsx";
 import { BottomNav } from "../apps/partner-web/src/layouts/BottomNav.tsx";
 import {
@@ -16,10 +16,15 @@ import { getPartnerCompany } from "../apps/partner-web/src/api/partner-api.ts";
 import { HomeScreen } from "../apps/partner-web/src/features/home/HomeScreen.tsx";
 import { CompanyList } from "../apps/partner-web/src/features/explore/components/CompanyList.tsx";
 import {
+  findCompanyByTicker,
   filterCompanies,
   homeHoldings,
   mockCompanies,
 } from "../apps/partner-web/src/features/company/mock/companies.ts";
+import {
+  CompanyDetailContent,
+  CompanyDetailScreen,
+} from "../apps/partner-web/src/features/company/CompanyDetailScreen.tsx";
 
 describe("partner web foundation", () => {
   it("defines placeholder routes for the foundation screens", () => {
@@ -145,5 +150,122 @@ describe("partner web explore experience", () => {
         `Expected ${company.name} list item to link to /company/${company.ticker}`,
       );
     }
+  });
+});
+
+describe("partner web company story experience", () => {
+  it("loads a company by ticker", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(
+        MemoryRouter,
+        { initialEntries: ["/company/MSFT"] },
+        React.createElement(
+          Routes,
+          null,
+          React.createElement(Route, {
+            path: "/company/:ticker",
+            element: React.createElement(CompanyDetailScreen),
+          }),
+        ),
+      ),
+    );
+
+    assert.ok(markup.includes("Microsoft"));
+    assert.ok(markup.includes("Builds software and cloud infrastructure"));
+  });
+
+  it("handles an unknown ticker gracefully", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(
+        MemoryRouter,
+        { initialEntries: ["/company/UNKNOWN"] },
+        React.createElement(
+          Routes,
+          null,
+          React.createElement(Route, {
+            path: "/company/:ticker",
+            element: React.createElement(CompanyDetailScreen),
+          }),
+        ),
+      ),
+    );
+
+    assert.ok(markup.includes("Company not found"));
+    assert.ok(markup.includes("UNKNOWN"));
+  });
+
+  it("renders back navigation to Explore", () => {
+    const company = findCompanyByTicker("MSFT");
+    assert.ok(company);
+
+    const markup = renderToStaticMarkup(
+      React.createElement(MemoryRouter, null, React.createElement(CompanyDetailContent, { company })),
+    );
+
+    assert.ok(markup.includes("Back to Explore"));
+    assert.ok(markup.includes('href="/explore"'));
+  });
+
+  it("shows the Story tab by default", () => {
+    const company = findCompanyByTicker("MSFT");
+    assert.ok(company);
+
+    const markup = renderToStaticMarkup(
+      React.createElement(MemoryRouter, null, React.createElement(CompanyDetailContent, { company })),
+    );
+
+    assert.ok(markup.includes("If this were a shop in your neighbourhood"));
+    assert.ok(markup.includes("What they sell"));
+    assert.ok(markup.includes('aria-selected="true"'));
+  });
+
+  it("renders selected tab content", () => {
+    const company = findCompanyByTicker("MSFT");
+    assert.ok(company);
+
+    const markup = renderToStaticMarkup(
+      React.createElement(
+        MemoryRouter,
+        null,
+        React.createElement(CompanyDetailContent, { company, initialTab: "money" }),
+      ),
+    );
+
+    assert.ok(markup.includes("Daily Sales"));
+    assert.ok(markup.includes("Money In The Drawer"));
+  });
+
+  it("renders customers, trust, and forensics sections", () => {
+    const company = findCompanyByTicker("MSFT");
+    assert.ok(company);
+
+    const customers = renderToStaticMarkup(
+      React.createElement(
+        MemoryRouter,
+        null,
+        React.createElement(CompanyDetailContent, { company, initialTab: "customers" }),
+      ),
+    );
+    const trust = renderToStaticMarkup(
+      React.createElement(
+        MemoryRouter,
+        null,
+        React.createElement(CompanyDetailContent, { company, initialTab: "trust" }),
+      ),
+    );
+    const forensics = renderToStaticMarkup(
+      React.createElement(
+        MemoryRouter,
+        null,
+        React.createElement(CompanyDetailContent, { company, initialTab: "forensics" }),
+      ),
+    );
+
+    assert.ok(customers.includes("Large companies"));
+    assert.ok(customers.includes("Developers"));
+    assert.ok(trust.includes("Would I trust these people"));
+    assert.ok(trust.includes("Decision Style"));
+    assert.ok(forensics.includes("Profits backed by cash"));
+    assert.ok(forensics.includes("Security trust"));
   });
 });
