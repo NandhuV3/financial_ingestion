@@ -1,9 +1,9 @@
 import React from "react";
 import { Card } from "../../../components/ui/Card";
-import type { MockCompany } from "../mock/companies";
+import type { PartnerCompanyViewModel } from "../types/partner-company-view-model";
 
 interface CustomersSectionProps {
-  company: MockCompany;
+  company: PartnerCompanyViewModel;
 }
 
 export function CustomersSection({ company }: CustomersSectionProps) {

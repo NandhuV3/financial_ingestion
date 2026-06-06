@@ -3,10 +3,10 @@ import { Link } from "react-router-dom";
 import { Badge } from "../../../components/ui/Badge";
 import { Card } from "../../../components/ui/Card";
 import { EXPLORE_ROUTE } from "../../../constants/routes";
-import type { MockCompany } from "../mock/companies";
+import type { PartnerCompanyViewModel } from "../types/partner-company-view-model";
 
 interface CompanyHeaderProps {
-  company: MockCompany;
+  company: PartnerCompanyViewModel;
 }
 
 export function CompanyHeader({ company }: CompanyHeaderProps) {
@@ -26,8 +26,8 @@ export function CompanyHeader({ company }: CompanyHeaderProps) {
             <h1 className="mt-1 text-3xl font-semibold tracking-normal text-partner-ink">{company.name}</h1>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Badge className="capitalize">{company.businessHealth}</Badge>
-            <Badge>Conviction: {company.conviction}</Badge>
+            {company.businessHealth && <Badge className="capitalize">{company.businessHealth}</Badge>}
+            {company.conviction && <Badge>Conviction: {company.conviction}</Badge>}
           </div>
         </div>
         <p className="max-w-2xl text-base leading-7 text-partner-muted">{company.tagline}</p>

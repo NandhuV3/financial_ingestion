@@ -16,6 +16,7 @@ export function mapPartnerCompanyToViewModel(
     name: safeText(intelligence.companyName),
     ticker: safeText(intelligence.ticker),
     tagline: safeText(intelligence.profile?.tagline),
+    neighbourhoodExplanation: safeText(intelligence.summary?.summary),
     businessHealth: intelligence.summary?.businessHealth,
     conviction: intelligence.summary?.conviction,
     story: {

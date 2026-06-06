@@ -1,9 +1,9 @@
 import React from "react";
 import { Card } from "../../../components/ui/Card";
-import type { MockCompany } from "../mock/companies";
+import type { PartnerCompanyViewModel } from "../types/partner-company-view-model";
 
 interface TrustSectionProps {
-  company: MockCompany;
+  company: PartnerCompanyViewModel;
 }
 
 const trustItems = [

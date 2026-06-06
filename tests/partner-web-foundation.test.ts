@@ -34,6 +34,7 @@ import {
   type UsePartnerIntelligenceResult,
 } from "../apps/partner-web/src/features/company/hooks/usePartnerIntelligence.ts";
 import type { PartnerCompanyIntelligence } from "../apps/partner-web/src/types/partner-domain.types.ts";
+import type { PartnerCompanyViewModel } from "../apps/partner-web/src/features/company/types/partner-company-view-model.ts";
 
 function setupDom() {
   const previousWindow = globalThis.window;
@@ -111,6 +112,72 @@ function renderPartnerIntelligenceHook(ticker: string, filingDate?: string) {
       });
       dom.cleanup();
     },
+  };
+}
+
+function renderCompanyRoute(initialEntry: string) {
+  const dom = setupDom();
+  const root = createRoot(dom.container);
+
+  act(() => {
+    root.render(
+      React.createElement(
+        MemoryRouter,
+        { initialEntries: [initialEntry] },
+        React.createElement(
+          Routes,
+          null,
+          React.createElement(Route, {
+            path: "/company/:ticker",
+            element: React.createElement(CompanyDetailScreen),
+          }),
+        ),
+      ),
+    );
+  });
+
+  return {
+    container: dom.container,
+    text() {
+      return dom.container.textContent ?? "";
+    },
+    clickButton(label: string) {
+      const button = Array.from(dom.container.querySelectorAll("button"))
+        .find((element) => element.textContent === label);
+
+      assert.ok(button, `Expected button ${label} to exist`);
+
+      act(() => {
+        button.dispatchEvent(new dom.container.ownerDocument.defaultView!.MouseEvent("click", {
+          bubbles: true,
+        }));
+      });
+    },
+    unmount() {
+      act(() => {
+        root.unmount();
+      });
+      dom.cleanup();
+    },
+  };
+}
+
+function mockViewModel(ticker: string): PartnerCompanyViewModel {
+  const company = findCompanyByTicker(ticker);
+  assert.ok(company, `Expected mock company ${ticker} to exist`);
+
+  return {
+    name: company.name,
+    ticker: company.ticker,
+    tagline: company.tagline,
+    neighbourhoodExplanation: company.neighbourhoodExplanation,
+    businessHealth: company.businessHealth,
+    conviction: company.conviction,
+    story: company.story,
+    customers: company.customers,
+    money: company.money,
+    trust: company.trust,
+    forensics: company.forensics,
   };
 }
 
@@ -242,49 +309,197 @@ describe("partner web explore experience", () => {
 });
 
 describe("partner web company story experience", () => {
-  it("loads a company by ticker", () => {
-    const markup = renderToStaticMarkup(
-      React.createElement(
-        MemoryRouter,
-        { initialEntries: ["/company/MSFT"] },
-        React.createElement(
-          Routes,
-          null,
-          React.createElement(Route, {
-            path: "/company/:ticker",
-            element: React.createElement(CompanyDetailScreen),
-          }),
-        ),
-      ),
-    );
+  const apiCompanyResponse: PartnerCompanyIntelligence = {
+    ticker: "MSFT",
+    companyName: "Microsoft API",
+    asOfFilingDate: "2026-04-29",
+    profile: {
+      ticker: "MSFT",
+      companyName: "Microsoft API",
+      tagline: "API tagline for Microsoft.",
+      whatTheyDo: "Runs business software and cloud tools.",
+      whoTheyServe: "Businesses and developers.",
+    },
+    summary: {
+      headline: "Microsoft API headline.",
+      summary: "API view of Microsoft as a business partner.",
+      businessHealth: "improving",
+      conviction: "high",
+    },
+    story: {
+      whatTheyDo: "API story sells software, cloud services, and developer tools.",
+      whoBuys: "API customers include businesses and developers.",
+      whyTheyWin: "API story says its tools are embedded in daily work.",
+      whatCouldGoWrong: "API story warns about security and competition.",
+    },
+    customers: [
+      {
+        customerType: "API enterprise customers",
+        whyTheyBuy: "Need dependable tools across many teams.",
+      },
+    ],
+    money: {
+      dailySales: {
+        label: "Revenue",
+        plainLanguageName: "Daily Sales",
+        explanation: "API recurring software and cloud sales.",
+      },
+      whatsLeftAfterCosts: {
+        label: "Margin",
+        plainLanguageName: "What's Left After Costs",
+        explanation: "API software can leave room after costs.",
+      },
+      loansToExpand: {
+        label: "Debt",
+        plainLanguageName: "Loans To Expand",
+        explanation: "API borrowing remains manageable.",
+      },
+      moneyInTheDrawer: {
+        label: "Cash Flow",
+        plainLanguageName: "Money In The Drawer",
+        explanation: "API renewals turn into steady cash.",
+      },
+      overallExplanation: "API cash explanation.",
+    },
+    trust: {
+      managementQuality: "API leadership quality.",
+      longTermThinking: "API long-term thinking.",
+      capitalAllocation: "API decision style.",
+      skinInTheGame: "API skin in the game.",
+      confidence: "high",
+      dataAvailability: "partial",
+    },
+    forensics: [
+      {
+        label: "API profits backed by cash",
+        severity: "green",
+        explanation: "API cash signal explanation.",
+      },
+    ],
+    sources: [],
+  };
 
-    assert.ok(markup.includes("Microsoft"));
-    assert.ok(markup.includes("Builds software and cloud infrastructure"));
+  it("renders API data for a known ticker", async () => {
+    const previousFetch = globalThis.fetch;
+
+    globalThis.fetch = async () => new Response(JSON.stringify(apiCompanyResponse), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+    const rendered = renderCompanyRoute("/company/MSFT");
+
+    try {
+      await waitForCondition(() => rendered.text().includes("Microsoft API"));
+
+      assert.ok(rendered.text().includes("API tagline for Microsoft."));
+      assert.ok(rendered.text().includes("API story sells software"));
+    } finally {
+      rendered.unmount();
+      globalThis.fetch = previousFetch;
+    }
   });
 
-  it("handles an unknown ticker gracefully", () => {
-    const markup = renderToStaticMarkup(
-      React.createElement(
-        MemoryRouter,
-        { initialEntries: ["/company/UNKNOWN"] },
-        React.createElement(
-          Routes,
-          null,
-          React.createElement(Route, {
-            path: "/company/:ticker",
-            element: React.createElement(CompanyDetailScreen),
-          }),
-        ),
-      ),
-    );
+  it("renders a calm loading state", () => {
+    const previousFetch = globalThis.fetch;
 
-    assert.ok(markup.includes("Company not found"));
-    assert.ok(markup.includes("UNKNOWN"));
+    globalThis.fetch = async () => new Promise<Response>(() => undefined);
+
+    const rendered = renderCompanyRoute("/company/MSFT");
+
+    try {
+      assert.ok(rendered.text().includes("Loading company story..."));
+    } finally {
+      rendered.unmount();
+      globalThis.fetch = previousFetch;
+    }
+  });
+
+  it("falls back to mock data when the API fails and mock data exists", async () => {
+    const previousFetch = globalThis.fetch;
+
+    globalThis.fetch = async () => new Response(JSON.stringify({ error: "Filing not found" }), {
+      status: 404,
+      headers: { "content-type": "application/json" },
+    });
+
+    const rendered = renderCompanyRoute("/company/MSFT");
+
+    try {
+      await waitForCondition(() => rendered.text().includes("Microsoft"));
+
+      assert.ok(rendered.text().includes("Builds software and cloud infrastructure used by businesses worldwide."));
+      assert.ok(rendered.text().includes("If this were a shop in your neighbourhood"));
+    } finally {
+      rendered.unmount();
+      globalThis.fetch = previousFetch;
+    }
+  });
+
+  it("shows a generic error when the API fails and no mock data exists", async () => {
+    const previousFetch = globalThis.fetch;
+
+    globalThis.fetch = async () => new Response(JSON.stringify({ error: "Ticker not found" }), {
+      status: 404,
+      headers: { "content-type": "application/json" },
+    });
+
+    const rendered = renderCompanyRoute("/company/UNKNOWN");
+
+    try {
+      await waitForCondition(() => rendered.text().includes("We couldn't load this business right now."));
+
+      assert.ok(rendered.text().includes("Please try again later."));
+      assert.ok(rendered.container.innerHTML.includes('href="/explore"'));
+    } finally {
+      rendered.unmount();
+      globalThis.fetch = previousFetch;
+    }
+  });
+
+  it("renders tab content from an API-backed view model", async () => {
+    const previousFetch = globalThis.fetch;
+
+    globalThis.fetch = async () => new Response(JSON.stringify(apiCompanyResponse), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+    const rendered = renderCompanyRoute("/company/MSFT");
+
+    try {
+      await waitForCondition(() => rendered.text().includes("Microsoft API"));
+      rendered.clickButton("Customers");
+
+      assert.ok(rendered.text().includes("API enterprise customers"));
+      assert.ok(rendered.text().includes("Need dependable tools across many teams."));
+    } finally {
+      rendered.unmount();
+      globalThis.fetch = previousFetch;
+    }
+  });
+
+  it("handles unknown ticker behavior without raw errors", async () => {
+    const previousFetch = globalThis.fetch;
+
+    globalThis.fetch = async () => {
+      throw new Error("network unavailable");
+    };
+
+    const rendered = renderCompanyRoute("/company/UNKNOWN");
+
+    try {
+      await waitForCondition(() => rendered.text().includes("We couldn't load this business right now."));
+
+      assert.equal(rendered.text().includes("network unavailable"), false);
+    } finally {
+      rendered.unmount();
+      globalThis.fetch = previousFetch;
+    }
   });
 
   it("renders back navigation to Explore", () => {
-    const company = findCompanyByTicker("MSFT");
-    assert.ok(company);
+    const company = mockViewModel("MSFT");
 
     const markup = renderToStaticMarkup(
       React.createElement(MemoryRouter, null, React.createElement(CompanyDetailContent, { company })),
@@ -295,8 +510,7 @@ describe("partner web company story experience", () => {
   });
 
   it("shows the Story tab by default", () => {
-    const company = findCompanyByTicker("MSFT");
-    assert.ok(company);
+    const company = mockViewModel("MSFT");
 
     const markup = renderToStaticMarkup(
       React.createElement(MemoryRouter, null, React.createElement(CompanyDetailContent, { company })),
@@ -308,8 +522,7 @@ describe("partner web company story experience", () => {
   });
 
   it("renders selected tab content", () => {
-    const company = findCompanyByTicker("MSFT");
-    assert.ok(company);
+    const company = mockViewModel("MSFT");
 
     const markup = renderToStaticMarkup(
       React.createElement(
@@ -324,8 +537,7 @@ describe("partner web company story experience", () => {
   });
 
   it("renders customers, trust, and forensics sections", () => {
-    const company = findCompanyByTicker("MSFT");
-    assert.ok(company);
+    const company = mockViewModel("MSFT");
 
     const customers = renderToStaticMarkup(
       React.createElement(

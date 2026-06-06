@@ -1,9 +1,9 @@
 import React from "react";
 import { Card } from "../../../components/ui/Card";
-import type { MockCompany } from "../mock/companies";
+import type { PartnerCompanyViewModel } from "../types/partner-company-view-model";
 
 interface StorySectionProps {
-  company: MockCompany;
+  company: PartnerCompanyViewModel;
 }
 
 const storyItems = [
@@ -25,7 +25,9 @@ export function StorySection({ company }: StorySectionProps) {
         <p className="text-sm font-semibold uppercase tracking-wide text-partner-muted">
           If this were a shop in your neighbourhood...
         </p>
-        <p className="mt-3 text-lg leading-7 text-partner-ink">{company.neighbourhoodExplanation}</p>
+        <p className="mt-3 text-lg leading-7 text-partner-ink">
+          {company.neighbourhoodExplanation || company.story.whatTheySell}
+        </p>
       </Card>
 
       <div className="grid gap-3">

@@ -2,6 +2,7 @@ export type PartnerCompanyViewModel = {
   name: string;
   ticker: string;
   tagline: string;
+  neighbourhoodExplanation: string;
   businessHealth?: string;
   conviction?: string;
   story: {
