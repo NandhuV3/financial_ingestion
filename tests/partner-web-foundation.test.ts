@@ -1,6 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import React from "react";
+import React, { act } from "react";
+import { JSDOM } from "jsdom";
+import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { routes } from "../apps/partner-web/src/app/router.tsx";
@@ -27,7 +29,90 @@ import {
 } from "../apps/partner-web/src/features/company/CompanyDetailScreen.tsx";
 import { getPartnerIntelligence } from "../apps/partner-web/src/features/company/api/partner-intelligence.api.ts";
 import { mapPartnerCompanyToViewModel } from "../apps/partner-web/src/features/company/adapters/partner-company.adapter.ts";
+import {
+  usePartnerIntelligence,
+  type UsePartnerIntelligenceResult,
+} from "../apps/partner-web/src/features/company/hooks/usePartnerIntelligence.ts";
 import type { PartnerCompanyIntelligence } from "../apps/partner-web/src/types/partner-domain.types.ts";
+
+function setupDom() {
+  const previousWindow = globalThis.window;
+  const previousDocument = globalThis.document;
+  const previousNavigator = globalThis.navigator;
+  const previousActEnvironment = (globalThis as typeof globalThis & {
+    IS_REACT_ACT_ENVIRONMENT?: boolean;
+  }).IS_REACT_ACT_ENVIRONMENT;
+  const dom = new JSDOM("<!doctype html><html><body><div id=\"root\"></div></body></html>");
+
+  globalThis.window = dom.window as unknown as Window & typeof globalThis;
+  globalThis.document = dom.window.document;
+  (globalThis as typeof globalThis & {
+    IS_REACT_ACT_ENVIRONMENT?: boolean;
+  }).IS_REACT_ACT_ENVIRONMENT = true;
+  Object.defineProperty(globalThis, "navigator", {
+    value: dom.window.navigator,
+    configurable: true,
+  });
+
+  return {
+    container: dom.window.document.getElementById("root") as HTMLElement,
+    cleanup() {
+      globalThis.window = previousWindow;
+      globalThis.document = previousDocument;
+      Object.defineProperty(globalThis, "navigator", {
+        value: previousNavigator,
+        configurable: true,
+      });
+      (globalThis as typeof globalThis & {
+        IS_REACT_ACT_ENVIRONMENT?: boolean;
+      }).IS_REACT_ACT_ENVIRONMENT = previousActEnvironment;
+      dom.window.close();
+    },
+  };
+}
+
+async function waitForCondition(condition: () => boolean): Promise<void> {
+  for (let index = 0; index < 20; index += 1) {
+    if (condition()) {
+      return;
+    }
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  }
+
+  throw new Error("Timed out waiting for hook state.");
+}
+
+function renderPartnerIntelligenceHook(ticker: string, filingDate?: string) {
+  const dom = setupDom();
+  const snapshots: UsePartnerIntelligenceResult[] = [];
+  const root: Root = createRoot(dom.container);
+
+  function HookProbe() {
+    const result = usePartnerIntelligence(ticker, filingDate);
+    snapshots.push(result);
+    return null;
+  }
+
+  act(() => {
+    root.render(React.createElement(HookProbe));
+  });
+
+  return {
+    snapshots,
+    latest() {
+      return snapshots[snapshots.length - 1];
+    },
+    unmount() {
+      act(() => {
+        root.unmount();
+      });
+      dom.cleanup();
+    },
+  };
+}
 
 describe("partner web foundation", () => {
   it("defines placeholder routes for the foundation screens", () => {
@@ -504,5 +589,191 @@ describe("partner company adapter", () => {
     assert.equal(viewModel.money.cashflow, "");
     assert.equal(viewModel.trust.skinInTheGame, "");
     assert.deepEqual(viewModel.forensics, []);
+  });
+});
+
+describe("usePartnerIntelligence", () => {
+  const validPartnerResponse: PartnerCompanyIntelligence = {
+    ticker: "MSFT",
+    companyName: "Microsoft",
+    asOfFilingDate: "2026-04-29",
+    profile: {
+      ticker: "MSFT",
+      companyName: "Microsoft",
+      tagline: "Builds software and cloud infrastructure.",
+      whatTheyDo: "Runs business software and cloud tools.",
+      whoTheyServe: "Businesses and developers.",
+    },
+    summary: {
+      headline: "Microsoft continues building durable cloud demand.",
+      summary: "The company remains focused on cloud and AI infrastructure.",
+      businessHealth: "improving",
+      conviction: "high",
+    },
+    story: {
+      whatTheyDo: "Sells software, cloud services, and developer tools.",
+      whoBuys: "Businesses, developers, schools, and governments.",
+      whyTheyWin: "Its tools are deeply embedded in daily work.",
+      whatCouldGoWrong: "Security incidents or cloud competition could weaken trust.",
+    },
+    customers: [
+      {
+        customerType: "Large companies",
+        whyTheyBuy: "Need reliable tools across many teams.",
+      },
+    ],
+    money: {
+      dailySales: {
+        label: "Revenue",
+        plainLanguageName: "Daily Sales",
+        explanation: "Recurring software and cloud sales.",
+      },
+      whatsLeftAfterCosts: {
+        label: "Margin",
+        plainLanguageName: "What's Left After Costs",
+        explanation: "Software can leave meaningful room after costs.",
+      },
+      loansToExpand: {
+        label: "Debt",
+        plainLanguageName: "Loans To Expand",
+        explanation: "Borrowing is modest compared with business size.",
+      },
+      moneyInTheDrawer: {
+        label: "Cash Flow",
+        plainLanguageName: "Money In The Drawer",
+        explanation: "Renewals turn into steady cash.",
+      },
+      overallExplanation: "A cash-generative business.",
+    },
+    trust: {
+      managementQuality: "Experienced leadership with a platform mindset.",
+      longTermThinking: "Invests for long-term cloud and AI demand.",
+      capitalAllocation: "Balances investment with shareholder returns.",
+      skinInTheGame: "Leadership incentives are tied to company performance.",
+      confidence: "high",
+      dataAvailability: "partial",
+    },
+    forensics: [
+      {
+        label: "Profits backed by cash",
+        severity: "green",
+        explanation: "The business regularly turns sales into cash.",
+      },
+    ],
+    sources: [],
+  };
+
+  it("exposes loading state on initial render", () => {
+    const previousFetch = globalThis.fetch;
+
+    globalThis.fetch = async () => new Promise<Response>(() => undefined);
+
+    const rendered = renderPartnerIntelligenceHook("MSFT");
+
+    try {
+      assert.equal(rendered.latest()?.loading, true);
+      assert.equal(rendered.latest()?.data, null);
+      assert.equal(rendered.latest()?.error, null);
+    } finally {
+      rendered.unmount();
+      globalThis.fetch = previousFetch;
+    }
+  });
+
+  it("fetches successfully and applies the adapter mapping", async () => {
+    const previousFetch = globalThis.fetch;
+
+    globalThis.fetch = async () => new Response(JSON.stringify(validPartnerResponse), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+    const rendered = renderPartnerIntelligenceHook("msft");
+
+    try {
+      await waitForCondition(() => rendered.latest()?.loading === false);
+
+      assert.equal(rendered.latest()?.error, null);
+      assert.equal(rendered.latest()?.data?.name, "Microsoft");
+      assert.equal(rendered.latest()?.data?.story.whatTheySell, "Sells software, cloud services, and developer tools.");
+      assert.equal(rendered.latest()?.data?.money.dailySales, "Recurring software and cloud sales.");
+    } finally {
+      rendered.unmount();
+      globalThis.fetch = previousFetch;
+    }
+  });
+
+  it("updates state after success", async () => {
+    const previousFetch = globalThis.fetch;
+
+    globalThis.fetch = async () => new Response(JSON.stringify(validPartnerResponse), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+    const rendered = renderPartnerIntelligenceHook("MSFT", "2026-04-29");
+
+    try {
+      await waitForCondition(() => rendered.latest()?.data !== null);
+
+      assert.equal(rendered.latest()?.loading, false);
+      assert.equal(rendered.latest()?.error, null);
+      assert.equal(rendered.latest()?.data?.ticker, "MSFT");
+    } finally {
+      rendered.unmount();
+      globalThis.fetch = previousFetch;
+    }
+  });
+
+  it("sets error state on failure", async () => {
+    const previousFetch = globalThis.fetch;
+
+    globalThis.fetch = async () => new Response(JSON.stringify({ error: "Filing not found" }), {
+      status: 404,
+      headers: { "content-type": "application/json" },
+    });
+
+    const rendered = renderPartnerIntelligenceHook("MSFT");
+
+    try {
+      await waitForCondition(() => rendered.latest()?.loading === false);
+
+      assert.equal(rendered.latest()?.data, null);
+      assert.equal(rendered.latest()?.error?.message, "Filing not found");
+      assert.equal(rendered.latest()?.error?.status, 404);
+    } finally {
+      rendered.unmount();
+      globalThis.fetch = previousFetch;
+    }
+  });
+
+  it("aborts the request on unmount", async () => {
+    const previousFetch = globalThis.fetch;
+    let capturedSignal: AbortSignal | undefined;
+
+    globalThis.fetch = async (_input: string | URL | Request, init?: RequestInit) => {
+      capturedSignal = init?.signal ?? undefined;
+
+      return new Promise<Response>((_resolve, reject) => {
+        capturedSignal?.addEventListener("abort", () => {
+          reject(new Error("aborted"));
+        });
+      });
+    };
+
+    const rendered = renderPartnerIntelligenceHook("MSFT");
+
+    try {
+      assert.equal(rendered.latest()?.loading, true);
+      rendered.unmount();
+
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      assert.equal(capturedSignal?.aborted, true);
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
   });
 });

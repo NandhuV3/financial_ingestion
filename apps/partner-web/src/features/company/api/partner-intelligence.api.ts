@@ -80,12 +80,15 @@ function normalizeError(error: unknown, status?: number): PartnerApiError {
 export async function getPartnerIntelligence(
   ticker: string,
   filingDate?: string,
+  options: { signal?: AbortSignal } = {},
 ): Promise<PartnerCompanyIntelligence> {
   const normalizedTicker = ticker.trim().toUpperCase();
   const startedAt = performance.now();
 
   try {
-    const response = await fetch(buildPartnerIntelligenceUrl(normalizedTicker, filingDate));
+    const response = await fetch(buildPartnerIntelligenceUrl(normalizedTicker, filingDate), {
+      signal: options.signal,
+    });
     const durationMs = Math.round(performance.now() - startedAt);
 
     if (!response.ok) {
@@ -109,6 +112,10 @@ export async function getPartnerIntelligence(
   } catch (error) {
     const durationMs = Math.round(performance.now() - startedAt);
     const normalizedError = normalizeError(error);
+
+    if (options.signal?.aborted) {
+      throw normalizedError;
+    }
 
     logger.warn("Partner Intelligence request failed", {
       ticker: normalizedTicker,
