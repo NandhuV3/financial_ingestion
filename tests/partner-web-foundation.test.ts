@@ -25,6 +25,7 @@ import {
   mockCompanies,
 } from "../apps/partner-web/src/features/company/mock/companies.ts";
 import { PORTFOLIO_HOLDINGS_KEY } from "../apps/partner-web/src/constants/local-storage.ts";
+import { PARTNER_JOURNAL_ENTRIES_KEY } from "../apps/partner-web/src/constants/local-storage.ts";
 import {
   CompanyDetailContent,
   CompanyDetailScreen,
@@ -38,6 +39,7 @@ import {
 import type { PartnerCompanyIntelligence } from "../apps/partner-web/src/types/partner-domain.types.ts";
 import type { PartnerCompanyViewModel } from "../apps/partner-web/src/features/company/types/partner-company-view-model.ts";
 import type { PortfolioHolding } from "../apps/partner-web/src/features/portfolio/types.ts";
+import type { PartnerJournalEntry } from "../apps/partner-web/src/features/journal/types.ts";
 import {
   addPortfolioHolding,
   buildPortfolioSummary,
@@ -45,6 +47,12 @@ import {
   updatePortfolioNote,
   updatePortfolioReviewTimestamp,
 } from "../apps/partner-web/src/features/portfolio/usePortfolio.ts";
+import {
+  addJournalEntry,
+  countJournalEntriesByTicker,
+  createJournalEntry,
+  getJournalEntriesForTicker,
+} from "../apps/partner-web/src/features/journal/useJournal.ts";
 
 function setupDom() {
   const previousWindow = globalThis.window;
@@ -127,11 +135,19 @@ function renderPartnerIntelligenceHook(ticker: string, filingDate?: string) {
   };
 }
 
-function renderCompanyRoute(initialEntry: string, initialHoldings: PortfolioHolding[] = []) {
+function renderCompanyRoute(
+  initialEntry: string,
+  initialHoldings: PortfolioHolding[] = [],
+  initialJournalEntries: PartnerJournalEntry[] = [],
+) {
   const dom = setupDom();
   const root = createRoot(dom.container);
 
   dom.container.ownerDocument.defaultView!.localStorage.setItem(PORTFOLIO_HOLDINGS_KEY, JSON.stringify(initialHoldings));
+  dom.container.ownerDocument.defaultView!.localStorage.setItem(
+    PARTNER_JOURNAL_ENTRIES_KEY,
+    JSON.stringify(initialJournalEntries),
+  );
 
   act(() => {
     root.render(
@@ -167,6 +183,24 @@ function renderCompanyRoute(initialEntry: string, initialHoldings: PortfolioHold
         }));
       });
     },
+    fillJournalField(label: string, value: string) {
+      const textareas = Array.from(dom.container.querySelectorAll("textarea"));
+      const labels = Array.from(dom.container.querySelectorAll("label"));
+      const labelElement = labels.find((element) => element.textContent?.includes(label));
+
+      assert.ok(labelElement, `Expected journal label ${label} to exist`);
+
+      const textarea = textareas.find((element) => labelElement.contains(element));
+
+      assert.ok(textarea, `Expected textarea for ${label} to exist`);
+
+      act(() => {
+        const valueSetter = Object.getOwnPropertyDescriptor(dom.container.ownerDocument.defaultView!.HTMLTextAreaElement.prototype, "value")?.set;
+        valueSetter?.call(textarea, value);
+        textarea.dispatchEvent(new dom.container.ownerDocument.defaultView!.Event("input", { bubbles: true }));
+        textarea.dispatchEvent(new dom.container.ownerDocument.defaultView!.Event("change", { bubbles: true }));
+      });
+    },
     unmount() {
       act(() => {
         root.unmount();
@@ -176,11 +210,18 @@ function renderCompanyRoute(initialEntry: string, initialHoldings: PortfolioHold
   };
 }
 
-function renderPortfolioRoute(initialHoldings: PortfolioHolding[] = []) {
+function renderPortfolioRoute(
+  initialHoldings: PortfolioHolding[] = [],
+  initialJournalEntries: PartnerJournalEntry[] = [],
+) {
   const dom = setupDom();
   const root = createRoot(dom.container);
 
   dom.container.ownerDocument.defaultView!.localStorage.setItem(PORTFOLIO_HOLDINGS_KEY, JSON.stringify(initialHoldings));
+  dom.container.ownerDocument.defaultView!.localStorage.setItem(
+    PARTNER_JOURNAL_ENTRIES_KEY,
+    JSON.stringify(initialJournalEntries),
+  );
 
   act(() => {
     root.render(
@@ -694,6 +735,79 @@ describe("partner web company story experience", () => {
       globalThis.fetch = previousFetch;
     }
   });
+
+  it("creates journal entries from the company page and shows most recent history first", async () => {
+    const previousFetch = globalThis.fetch;
+
+    globalThis.fetch = async () => new Response(JSON.stringify(apiCompanyResponse), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+    const oldEntry = createJournalEntry("MSFT", {
+      understanding: "Older understanding.",
+      convictionReason: "Older conviction.",
+      concerns: "Older concern.",
+      nextQuestion: "Older question.",
+    }, "2026-06-01T00:00:00.000Z");
+    const rendered = renderCompanyRoute("/company/MSFT", [], [oldEntry]);
+
+    try {
+      await waitForCondition(() => rendered.text().includes("Partner Journal"));
+
+      rendered.fillJournalField("My Understanding", "Microsoft makes money primarily through software subscriptions and cloud infrastructure.");
+      rendered.fillJournalField("Why I Have Conviction", "Strong ecosystem and enterprise adoption.");
+      rendered.fillJournalField("Concerns", "Cloud competition.");
+      rendered.fillJournalField("What I Want To Learn Next", "How dependent is Azure growth on AI demand?");
+      rendered.clickButton("Save Journal Entry");
+
+      await waitForCondition(() => {
+        const entries = JSON.parse(window.localStorage.getItem(PARTNER_JOURNAL_ENTRIES_KEY) ?? "[]") as PartnerJournalEntry[];
+        return entries.length === 2;
+      });
+
+      const entries = JSON.parse(window.localStorage.getItem(PARTNER_JOURNAL_ENTRIES_KEY) ?? "[]") as PartnerJournalEntry[];
+
+      assert.equal(entries[0]?.ticker, "MSFT");
+      assert.equal(entries[0]?.understanding, "Microsoft makes money primarily through software subscriptions and cloud infrastructure.");
+      assert.ok(rendered.text().includes("Cloud competition."));
+      assert.ok(rendered.text().indexOf("Microsoft makes money primarily") < rendered.text().indexOf("Older understanding."));
+    } finally {
+      rendered.unmount();
+      globalThis.fetch = previousFetch;
+    }
+  });
+});
+
+describe("partner journal local state", () => {
+  it("creates entries, filters by company, and orders history newest first", () => {
+    const older = createJournalEntry("MSFT", {
+      understanding: "Older Microsoft thought.",
+      convictionReason: "",
+      concerns: "",
+      nextQuestion: "",
+    }, "2026-06-01T00:00:00.000Z");
+    const newer = createJournalEntry("MSFT", {
+      understanding: "Newer Microsoft thought.",
+      convictionReason: "",
+      concerns: "",
+      nextQuestion: "",
+    }, "2026-06-07T00:00:00.000Z");
+    const apple = createJournalEntry("AAPL", {
+      understanding: "Apple thought.",
+      convictionReason: "",
+      concerns: "",
+      nextQuestion: "",
+    }, "2026-06-08T00:00:00.000Z");
+    const entries = addJournalEntry(addJournalEntry([older], apple), newer);
+    const microsoftEntries = getJournalEntriesForTicker(entries, "msft");
+    const counts = countJournalEntriesByTicker(entries);
+
+    assert.equal(microsoftEntries.length, 2);
+    assert.equal(microsoftEntries[0]?.understanding, "Newer Microsoft thought.");
+    assert.equal(counts.MSFT, 2);
+    assert.equal(counts.AAPL, 1);
+  });
 });
 
 describe("partner web portfolio experience", () => {
@@ -741,22 +855,30 @@ describe("partner web portfolio experience", () => {
     }
   });
 
-  it("renders holdings, summary counts, conviction controls, notes, and review links", () => {
+  it("renders holdings, summary counts, conviction controls, notes, journal counts, and review links", () => {
+    const journalEntry = createJournalEntry("MSFT", {
+      understanding: "Microsoft journal thought.",
+      convictionReason: "",
+      concerns: "",
+      nextQuestion: "",
+    }, "2026-06-07T00:00:00.000Z");
     const rendered = renderPortfolioRoute([{
       ...baseHolding,
       conviction: "high",
       ownershipNote: "Strong cloud business.",
       lastReviewedAt: new Date().toISOString(),
-    }]);
+    }], [journalEntry]);
 
     try {
       assert.ok(rendered.text().includes("Partner Portfolio"));
       assert.ok(rendered.text().includes("Businesses"));
       assert.ok(rendered.text().includes("High Conviction"));
       assert.ok(rendered.text().includes("Recently Reviewed"));
+      assert.ok(rendered.text().includes("Journal Entries"));
       assert.ok(rendered.text().includes("Microsoft"));
       assert.ok(rendered.text().includes("Health: improving"));
       assert.ok(rendered.text().includes("Conviction: high"));
+      assert.ok(rendered.text().includes("Journal Entries: 1"));
       assert.ok(rendered.text().includes("Reviewed today"));
       assert.ok(rendered.container.innerHTML.includes('href="/company/MSFT?fromPortfolio=1"'));
     } finally {

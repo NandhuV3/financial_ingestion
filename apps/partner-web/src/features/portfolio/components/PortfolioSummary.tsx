@@ -5,14 +5,16 @@ interface PortfolioSummaryProps {
   businesses: number;
   highConviction: number;
   recentlyReviewed: number;
+  journalEntries: number;
 }
 
-export function PortfolioSummary({ businesses, highConviction, recentlyReviewed }: PortfolioSummaryProps) {
+export function PortfolioSummary({ businesses, highConviction, recentlyReviewed, journalEntries }: PortfolioSummaryProps) {
   return (
-    <section className="grid gap-3 sm:grid-cols-3" aria-label="Portfolio summary">
+    <section className="grid gap-3 sm:grid-cols-4" aria-label="Portfolio summary">
       <SummaryCard label="Businesses" value={businesses} />
       <SummaryCard label="High Conviction" value={highConviction} />
       <SummaryCard label="Recently Reviewed" value={recentlyReviewed} />
+      <SummaryCard label="Journal Entries" value={journalEntries} />
     </section>
   );
 }

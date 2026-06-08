@@ -4,6 +4,7 @@ import { PortfolioEmptyState } from "./components/PortfolioEmptyState";
 import { PortfolioHoldingCard } from "./components/PortfolioHoldingCard";
 import { PortfolioSummary } from "./components/PortfolioSummary";
 import { buildPortfolioSummary, usePortfolio } from "./usePortfolio";
+import { countJournalEntriesByTicker, useJournal } from "../journal/useJournal";
 
 export function PortfolioScreen() {
   const {
@@ -11,7 +12,9 @@ export function PortfolioScreen() {
     updateConviction,
     updateOwnershipNote,
   } = usePortfolio();
+  const { entries } = useJournal();
   const summary = buildPortfolioSummary(holdings);
+  const journalCounts = countJournalEntriesByTicker(entries);
 
   return (
     <PageContainer>
@@ -27,6 +30,7 @@ export function PortfolioScreen() {
           businesses={summary.businesses}
           highConviction={summary.highConviction}
           recentlyReviewed={summary.recentlyReviewed}
+          journalEntries={entries.length}
         />
 
         {holdings.length === 0 ? (
@@ -37,6 +41,7 @@ export function PortfolioScreen() {
               <PortfolioHoldingCard
                 key={holding.ticker}
                 holding={holding}
+                journalEntryCount={journalCounts[holding.ticker] ?? 0}
                 onConvictionChange={updateConviction}
                 onNoteChange={updateOwnershipNote}
               />

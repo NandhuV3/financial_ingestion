@@ -9,6 +9,7 @@ import { formatReviewedAt } from "../usePortfolio";
 
 interface PortfolioHoldingCardProps {
   holding: PortfolioHolding;
+  journalEntryCount: number;
   onConvictionChange: (ticker: string, conviction: PortfolioConviction) => void;
   onNoteChange: (ticker: string, note: string) => void;
 }
@@ -17,6 +18,7 @@ const convictionOptions: PortfolioConviction[] = ["low", "medium", "high"];
 
 export function PortfolioHoldingCard({
   holding,
+  journalEntryCount,
   onConvictionChange,
   onNoteChange,
 }: PortfolioHoldingCardProps) {
@@ -37,6 +39,7 @@ export function PortfolioHoldingCard({
         <div className="flex flex-wrap gap-2">
           <Badge className="capitalize">Health: {businessHealth}</Badge>
           <Badge className="capitalize">Conviction: {holding.conviction}</Badge>
+          <Badge>Journal Entries: {journalEntryCount}</Badge>
         </div>
       </div>
 

@@ -15,12 +15,18 @@ import { usePartnerIntelligence } from "./hooks/usePartnerIntelligence";
 import { findCompanyByTicker, type MockCompany } from "./mock/companies";
 import type { PartnerCompanyViewModel } from "./types/partner-company-view-model";
 import { usePortfolio } from "../portfolio/usePortfolio";
+import { JournalForm } from "../journal/components/JournalForm";
+import { JournalHistory } from "../journal/components/JournalHistory";
+import type { PartnerJournalDraft, PartnerJournalEntry } from "../journal/types";
+import { useJournal } from "../journal/useJournal";
 
 interface CompanyDetailContentProps {
   company: PartnerCompanyViewModel;
   initialTab?: CompanyTabId;
   onAddToPortfolio?: () => void;
   isInPortfolio?: boolean;
+  journalEntries?: PartnerJournalEntry[];
+  onSaveJournalEntry?: (draft: PartnerJournalDraft) => void;
 }
 
 function mapMockCompanyToViewModel(company: MockCompany): PartnerCompanyViewModel {
@@ -75,6 +81,8 @@ export function CompanyDetailContent({
   initialTab = "story",
   onAddToPortfolio,
   isInPortfolio,
+  journalEntries,
+  onSaveJournalEntry,
 }: CompanyDetailContentProps) {
   const [activeTab, setActiveTab] = useState<CompanyTabId>(initialTab);
 
@@ -93,6 +101,13 @@ export function CompanyDetailContent({
         {activeTab === "money" && <MoneySection company={company} />}
         {activeTab === "trust" && <TrustSection company={company} />}
         {activeTab === "forensics" && <ForensicsSection company={company} />}
+
+        {onSaveJournalEntry && journalEntries && (
+          <section className="space-y-4" aria-label="Partner Journal">
+            <JournalForm onSave={onSaveJournalEntry} />
+            <JournalHistory entries={journalEntries} />
+          </section>
+        )}
       </div>
     </PageContainer>
   );
@@ -104,6 +119,7 @@ export function CompanyDetailScreen() {
   const normalizedTicker = ticker.trim().toUpperCase();
   const { data, loading, error } = usePartnerIntelligence(normalizedTicker);
   const { addHolding, hasHolding, markReviewed } = usePortfolio();
+  const { createEntry, getEntriesForTicker } = useJournal();
   const reviewMarkedRef = useRef(false);
   const mockCompany = useMemo(() => findCompanyByTicker(normalizedTicker), [normalizedTicker]);
   const mockViewModel = useMemo(
@@ -147,6 +163,8 @@ export function CompanyDetailScreen() {
         companyName: company.name,
       })}
       isInPortfolio={hasHolding(company.ticker)}
+      journalEntries={getEntriesForTicker(company.ticker)}
+      onSaveJournalEntry={(draft) => createEntry(company.ticker, draft)}
     />
   );
 }
