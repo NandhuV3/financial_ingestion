@@ -9,12 +9,14 @@ export function usePortfolio() {
   const addHolding = useCallback((params: {
     ticker: string;
     companyName: string;
+    businessHealth?: PortfolioHolding["businessHealth"];
   }) => {
     const nextHoldings = addPortfolioHolding(holdings, {
       ticker: params.ticker,
       companyName: params.companyName,
       addedAt: new Date().toISOString(),
       conviction: "medium",
+      businessHealth: params.businessHealth,
     });
 
     setHoldings(nextHoldings);
@@ -114,6 +116,14 @@ export function buildPortfolioSummary(holdings: PortfolioHolding[]) {
     businesses: holdings.length,
     highConviction: holdings.filter((holding) => holding.conviction === "high").length,
     recentlyReviewed: holdings.filter((holding) => isRecentlyReviewed(holding.lastReviewedAt)).length,
+  };
+}
+
+export function buildPortfolioHealthSummary(holdings: PortfolioHolding[]) {
+  return {
+    improving: holdings.filter((holding) => holding.businessHealth === "improving").length,
+    stable: holdings.filter((holding) => !holding.businessHealth || holding.businessHealth === "stable").length,
+    needsAttention: holdings.filter((holding) => holding.businessHealth === "needs_attention").length,
   };
 }
 

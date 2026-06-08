@@ -5,6 +5,23 @@ export type PartnerCompanyViewModel = {
   neighbourhoodExplanation: string;
   businessHealth?: string;
   conviction?: string;
+  health?: {
+    status: string;
+    explanation: string;
+    strengtheningAreas: Array<{
+      title: string;
+      explanation: string;
+    }>;
+    watchAreas: Array<{
+      title: string;
+      explanation: string;
+    }>;
+    timeline: Array<{
+      label: string;
+      filingDate: string;
+      status: string;
+    }>;
+  };
   story: {
     whatTheySell: string;
     whoBuys: string;

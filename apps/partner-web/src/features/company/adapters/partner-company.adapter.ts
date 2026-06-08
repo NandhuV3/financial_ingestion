@@ -19,6 +19,23 @@ export function mapPartnerCompanyToViewModel(
     neighbourhoodExplanation: safeText(intelligence.summary?.summary),
     businessHealth: intelligence.summary?.businessHealth,
     conviction: intelligence.summary?.conviction,
+    health: intelligence.health ? {
+      status: safeText(intelligence.health.status),
+      explanation: safeText(intelligence.health.explanation),
+      strengtheningAreas: safeArray(intelligence.health.strengtheningAreas).map((area) => ({
+        title: safeText(area.title),
+        explanation: safeText(area.explanation),
+      })),
+      watchAreas: safeArray(intelligence.health.watchAreas).map((area) => ({
+        title: safeText(area.title),
+        explanation: safeText(area.explanation),
+      })),
+      timeline: safeArray(intelligence.health.timeline).map((point) => ({
+        label: safeText(point.label),
+        filingDate: safeText(point.filingDate),
+        status: safeText(point.status),
+      })),
+    } : undefined,
     story: {
       whatTheySell: safeText(intelligence.story?.whatTheyDo),
       whoBuys: safeText(intelligence.story?.whoBuys),

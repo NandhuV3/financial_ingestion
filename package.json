@@ -40,6 +40,8 @@
     "identity:company:evidence": "tsx src/company-identity/build-company-identity.ts",
     "identity:company:enrich": "tsx src/company-identity/enrichment/enrich-company-identity.ts",
     "enrich:company-profile": "tsx src/company-profile/enrichment/enrich-company-profile.ts",
+    "health:evidence": "tsx src/health-dashboard/build-health-dashboard-evidence.ts",
+    "health:enrich": "tsx src/health-dashboard/enrichment/enrich-health-dashboard.ts",
     "api:partner": "tsx src/api/server.ts",
     "web:dev": "vite --config apps/partner-web/vite.config.ts",
     "web:build": "vite build --config apps/partner-web/vite.config.ts",

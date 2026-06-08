@@ -42,6 +42,7 @@ import type { PortfolioHolding } from "../apps/partner-web/src/features/portfoli
 import type { PartnerJournalEntry } from "../apps/partner-web/src/features/journal/types.ts";
 import {
   addPortfolioHolding,
+  buildPortfolioHealthSummary,
   buildPortfolioSummary,
   updatePortfolioConviction,
   updatePortfolioNote,
@@ -434,6 +435,38 @@ describe("partner web company story experience", () => {
       businessHealth: "improving",
       conviction: "high",
     },
+    health: {
+      status: "improving",
+      explanation: "Cloud and AI strengthened, while margins should be watched closely.",
+      strengtheningAreas: [
+        {
+          title: "Cloud demand",
+          explanation: "More customer activity is showing up around cloud services.",
+        },
+        {
+          title: "AI adoption",
+          explanation: "AI-related products are becoming more central to the business story.",
+        },
+      ],
+      watchAreas: [
+        {
+          title: "Margin pressure",
+          explanation: "Higher investment costs deserve owner attention.",
+        },
+      ],
+      timeline: [
+        {
+          label: "Current Filing",
+          filingDate: "2026-04-29",
+          status: "improving",
+        },
+        {
+          label: "Previous Filing",
+          filingDate: "2026-01-28",
+          status: "stable",
+        },
+      ],
+    },
     story: {
       whatTheyDo: "API story sells software, cloud services, and developer tools.",
       whoBuys: "API customers include businesses and developers.",
@@ -587,6 +620,35 @@ describe("partner web company story experience", () => {
     }
   });
 
+  it("renders the business health dashboard from API-backed data", async () => {
+    const previousFetch = globalThis.fetch;
+
+    globalThis.fetch = async () => new Response(JSON.stringify(apiCompanyResponse), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+    const rendered = renderCompanyRoute("/company/MSFT");
+
+    try {
+      await waitForCondition(() => rendered.text().includes("Microsoft API"));
+
+      assert.ok(rendered.text().includes("Business Health"));
+      assert.ok(rendered.text().includes("Health: Improving"));
+      assert.ok(rendered.text().includes("Getting Stronger"));
+      assert.ok(rendered.text().includes("Cloud demand"));
+      assert.ok(rendered.text().includes("More customer activity"));
+      assert.ok(rendered.text().includes("Watch Closely"));
+      assert.ok(rendered.text().includes("Margin pressure"));
+      assert.ok(rendered.text().includes("Higher investment costs"));
+      assert.ok(rendered.text().includes("Business Direction Over Time"));
+      assert.ok(rendered.text().includes("Previous Filing"));
+    } finally {
+      rendered.unmount();
+      globalThis.fetch = previousFetch;
+    }
+  });
+
   it("handles unknown ticker behavior without raw errors", async () => {
     const previousFetch = globalThis.fetch;
 
@@ -698,6 +760,7 @@ describe("partner web company story experience", () => {
       assert.equal(holdings[0]?.ticker, "MSFT");
       assert.equal(holdings[0]?.companyName, "Microsoft API");
       assert.equal(holdings[0]?.conviction, "medium");
+      assert.equal(holdings[0]?.businessHealth, "improving");
     } finally {
       rendered.unmount();
       globalThis.fetch = previousFetch;
@@ -843,6 +906,18 @@ describe("partner web portfolio experience", () => {
     assert.equal(summary.highConviction, 1);
   });
 
+  it("builds portfolio health summary counts", () => {
+    const summary = buildPortfolioHealthSummary([
+      { ...baseHolding, ticker: "MSFT", businessHealth: "improving" },
+      { ...baseHolding, ticker: "AAPL", companyName: "Apple", businessHealth: "stable" },
+      { ...baseHolding, ticker: "AMZN", companyName: "Amazon", businessHealth: "needs_attention" },
+    ]);
+
+    assert.equal(summary.improving, 1);
+    assert.equal(summary.stable, 1);
+    assert.equal(summary.needsAttention, 1);
+  });
+
   it("renders the empty portfolio state with an Explore action", () => {
     const rendered = renderPortfolioRoute();
 
@@ -875,8 +950,11 @@ describe("partner web portfolio experience", () => {
       assert.ok(rendered.text().includes("High Conviction"));
       assert.ok(rendered.text().includes("Recently Reviewed"));
       assert.ok(rendered.text().includes("Journal Entries"));
+      assert.ok(rendered.text().includes("Improving Businesses"));
+      assert.ok(rendered.text().includes("Stable Businesses"));
+      assert.ok(rendered.text().includes("Needs Attention"));
       assert.ok(rendered.text().includes("Microsoft"));
-      assert.ok(rendered.text().includes("Health: improving"));
+      assert.ok(rendered.text().includes("Health: Improving"));
       assert.ok(rendered.text().includes("Conviction: high"));
       assert.ok(rendered.text().includes("Journal Entries: 1"));
       assert.ok(rendered.text().includes("Reviewed today"));
@@ -1033,6 +1111,33 @@ describe("partner company adapter", () => {
       businessHealth: "improving",
       conviction: "high",
     },
+    health: {
+      status: "improving",
+      explanation: "Cloud and AI strengthened, while margins should be watched closely.",
+      strengtheningAreas: [
+        {
+          title: "Cloud demand",
+          explanation: "More customer activity is showing up around cloud services.",
+        },
+        {
+          title: "AI adoption",
+          explanation: "AI-related products are becoming more central to the business story.",
+        },
+      ],
+      watchAreas: [
+        {
+          title: "Margin pressure",
+          explanation: "Higher investment costs deserve owner attention.",
+        },
+      ],
+      timeline: [
+        {
+          label: "Current Filing",
+          filingDate: "2026-04-29",
+          status: "improving",
+        },
+      ],
+    },
     story: {
       whatTheyDo: "Sells software, cloud services, and developer tools.",
       whoBuys: "Businesses, developers, schools, and governments.",
@@ -1094,6 +1199,10 @@ describe("partner company adapter", () => {
     assert.equal(viewModel.tagline, "Builds software and cloud infrastructure.");
     assert.equal(viewModel.businessHealth, "improving");
     assert.equal(viewModel.conviction, "high");
+    assert.equal(viewModel.health?.status, "improving");
+    assert.deepEqual(viewModel.health?.strengtheningAreas.map((area) => area.title), ["Cloud demand", "AI adoption"]);
+    assert.deepEqual(viewModel.health?.watchAreas.map((area) => area.title), ["Margin pressure"]);
+    assert.equal(viewModel.health?.timeline[0]?.label, "Current Filing");
     assert.equal(viewModel.story.whatTheySell, "Sells software, cloud services, and developer tools.");
     assert.equal(viewModel.customers[0]?.segment, "Large companies");
     assert.equal(viewModel.money.dailySales, "Recurring software and cloud sales.");

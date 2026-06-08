@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { buildCompanyProfileIntelligence } from "../src/company-profile/build-company-profile-intelligence.js";
 import { buildBusinessHealth } from "../src/partner-domain/builders/build-business-health.js";
+import { buildBusinessHealthDashboard } from "../src/partner-domain/builders/build-business-health-dashboard.js";
 import { buildCompanyProfile } from "../src/partner-domain/builders/build-company-profile.js";
 import { buildCompanyStory } from "../src/partner-domain/builders/build-company-story.js";
 import { buildCustomerSegments } from "../src/partner-domain/builders/build-customer-segments.js";
@@ -187,6 +188,81 @@ describe("partner domain builders", () => {
     source.quarterChange!.summary.removed_categories = 0;
 
     assert.equal(buildBusinessHealth(source), "stable");
+  });
+
+  it("builds owner-facing business health dashboard details from domain signals", () => {
+    const source = artifacts();
+
+    source.quarterChange!.changes = [
+      {
+        change_type: "IMPORTANCE_INCREASED",
+        category: "artificial_intelligence",
+        previous_importance: "medium",
+        current_importance: "high",
+        previous_evidence_count: 2,
+        current_evidence_count: 4,
+        previous_theme_names: ["Artificial Intelligence Integration"],
+        current_theme_names: ["Investment in AI Infrastructure"],
+      },
+      {
+        change_type: "EVIDENCE_DECREASED",
+        category: "margins",
+        previous_importance: "high",
+        current_importance: "medium",
+        previous_evidence_count: 5,
+        current_evidence_count: 2,
+        previous_theme_names: ["Margin Pressure"],
+        current_theme_names: ["Margin Pressure"],
+      },
+    ];
+
+    const dashboard = buildBusinessHealthDashboard(source, "improving");
+
+    assert.equal(dashboard.status, "improving");
+    assert.ok(dashboard.explanation.includes("Investment In AI Infrastructure"));
+    assert.ok(dashboard.strengtheningAreas.some((area) => area.title === "Investment In AI Infrastructure"));
+    assert.ok(dashboard.watchAreas.some((area) => area.title === "Margin Pressure"));
+    assert.deepEqual(dashboard.timeline.map((point) => point.label), [
+      "Current Filing",
+      "Previous Filing",
+      "Older Filing",
+    ]);
+  });
+
+  it("uses enriched health dashboard narrative when the offline artifact is present", () => {
+    const source = artifacts();
+
+    source.healthDashboardEnriched = {
+      company: "Microsoft",
+      ticker: "MSFT",
+      filing_date: "2026-04-29",
+      health_status: "improving",
+      explanation: "Cloud demand is improving, while cost discipline deserves attention.",
+      strengthening_areas: [
+        {
+          title: "Cloud demand",
+          explanation: "Customers are using more cloud infrastructure and business software.",
+        },
+      ],
+      watch_areas: [
+        {
+          title: "Cost discipline",
+          explanation: "AI infrastructure investment can pressure what remains after costs.",
+        },
+      ],
+      enrichment: {
+        model: "test",
+        generated_at: "2026-06-08T00:00:00.000Z",
+        input_hash: "hash-1",
+      },
+    };
+
+    const dashboard = buildBusinessHealthDashboard(source, "improving");
+
+    assert.equal(dashboard.explanation, "Cloud demand is improving, while cost discipline deserves attention.");
+    assert.equal(dashboard.strengtheningAreas[0]?.title, "Cloud demand");
+    assert.equal(dashboard.strengtheningAreas[0]?.explanation, "Customers are using more cloud infrastructure and business software.");
+    assert.equal(dashboard.watchAreas[0]?.title, "Cost discipline");
   });
 
   it("renders Apple from supplied CompanyProfileIntelligence without ticker-specific code", () => {
@@ -396,14 +472,83 @@ function artifacts(overrides: Partial<{
       },
     },
     topicEvolution: {
+      company,
+      ticker,
       generated_at: "2026-06-05T00:00:00.000Z",
+      history_start: "2025-10-29",
+      history_end: "2026-04-29",
+      filings_analyzed: 3,
+      filing_dates: ["2025-10-29", "2026-01-28", "2026-04-29"],
+      topic_registry_version: "test",
+      topic_registry_hash: "hash-1",
+      assignment_policy: {
+        included_statuses: ["approved"],
+        excluded_statuses: ["pending_review", "rejected", "missing"],
+      },
       summary: {
+        topics_analyzed: 2,
+        topics_present_latest: 2,
         strengthening_topics: 0,
         weakening_topics: 0,
         new_topics: 0,
+        persistent_topics: 1,
+        recurring_topics: 1,
+        dormant_topics: 0,
         disappeared_topics: 0,
+        stable_topics: 1,
+        mixed_topics: 0,
+        unknown_trend_topics: 0,
+        insufficient_history_topics: 0,
+      },
+      topics: [
+        {
+          topic_id: "cloud",
+          topic_name: "Cloud",
+          presence_state: "persistent",
+          trend_state: "stable",
+          current_status: "present",
+          first_seen: "2025-10-29",
+          last_seen: "2026-04-29",
+          quarters_present: 3,
+          quarters_absent: 0,
+          presence_ratio: 1,
+          strength_history: [31, 32, 33],
+          history: [
+            topicObservation("2025-10-29", true, "medium", 2, ["Cloud Revenue Growth"]),
+            topicObservation("2026-01-28", true, "high", 2, ["Cloud Revenue Growth"]),
+            topicObservation("2026-04-29", true, "high", 3, ["Cloud Revenue Growth"]),
+          ],
+        },
+        {
+          topic_id: "margins",
+          topic_name: "Margins",
+          presence_state: "recurring",
+          trend_state: "weakening",
+          current_status: "present",
+          first_seen: "2025-10-29",
+          last_seen: "2026-04-29",
+          quarters_present: 2,
+          quarters_absent: 1,
+          presence_ratio: 0.67,
+          strength_history: [35, 22],
+          history: [
+            topicObservation("2025-10-29", true, "high", 5, ["Margin Pressure"]),
+            topicObservation("2026-01-28", false, null, 0, []),
+            topicObservation("2026-04-29", true, "medium", 2, ["Margin Pressure"]),
+          ],
+        },
+      ],
+      diagnostics: {
+        approved_assignments_used: 3,
+        pending_assignments_ignored: 0,
+        rejected_assignments_ignored: 0,
+        themes_without_topic_ignored: 0,
+        missing_themes_with_topics_files: [],
+        filings_with_no_approved_topics: [],
+        duration_ms: 1,
       },
     },
+    healthDashboardEnriched: null,
   };
 }
 
@@ -450,5 +595,28 @@ function theme(
     importance,
     summary,
     evidence: ["chunk_001"],
+  };
+}
+
+function topicObservation(
+  filingDate: string,
+  present: boolean,
+  importance: Theme["importance"] | null,
+  evidenceCount: number,
+  themeNames: string[],
+) {
+  return {
+    filing_date: filingDate,
+    form_type: "10-Q",
+    accession_number: null,
+    present,
+    importance,
+    importance_score: importance === "high" ? 3 : importance === "medium" ? 2 : importance === "low" ? 1 : 0,
+    evidence_count: evidenceCount,
+    theme_count: themeNames.length,
+    topic_strength: (importance === "high" ? 30 : importance === "medium" ? 20 : importance === "low" ? 10 : 0)
+      + evidenceCount
+      + themeNames.length,
+    theme_names: themeNames,
   };
 }

@@ -6,11 +6,10 @@ import type { CompanyIdentitySource } from "../company-identity/company-identity
 import type { FilingMetadata } from "../types/pipeline.types.js";
 import type { ThemeOutput } from "../types/theme.types.js";
 import type { TopicAssignmentOutputV2 } from "../topic-assignment-v2/assignment.types.js";
+import type { TopicEvolutionReport } from "../topic-evolution/topic-evolution.types.js";
+import type { HealthDashboardEnriched } from "../health-dashboard/health-dashboard.types.js";
 
-export type PartnerTopicEvolutionSource = {
-  summary?: Record<string, number>;
-  generated_at?: string;
-};
+export type PartnerTopicEvolutionSource = Pick<TopicEvolutionReport, "summary" | "generated_at" | "filing_dates" | "topics">;
 
 export type PartnerSourceArtifacts = {
   filing: FilingMetadata;
@@ -22,4 +21,5 @@ export type PartnerSourceArtifacts = {
   narrative: InvestorNarrative | null;
   quarterChange: QuarterChangeReport | null;
   topicEvolution: PartnerTopicEvolutionSource | null;
+  healthDashboardEnriched: HealthDashboardEnriched | null;
 };

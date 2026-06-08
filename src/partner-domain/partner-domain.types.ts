@@ -1,5 +1,7 @@
 export type BusinessHealth = "improving" | "stable" | "weakening";
 
+export type OwnerBusinessHealth = "improving" | "stable" | "needs_attention";
+
 export type Conviction = "low" | "medium" | "high";
 
 export type ForensicsSeverity = "green" | "yellow" | "red";
@@ -62,6 +64,25 @@ export type ForensicsSignal = {
   explanation: string;
 };
 
+export type BusinessHealthTimelinePoint = {
+  label: string;
+  filingDate: string;
+  status: OwnerBusinessHealth;
+};
+
+export type BusinessHealthArea = {
+  title: string;
+  explanation: string;
+};
+
+export type BusinessHealthDashboard = {
+  status: OwnerBusinessHealth;
+  explanation: string;
+  strengtheningAreas: BusinessHealthArea[];
+  watchAreas: BusinessHealthArea[];
+  timeline: BusinessHealthTimelinePoint[];
+};
+
 export type PartnerIntelligenceSource = {
   artifact: "company_profile" | "investor_narrative" | "investor_insight" | "topic_evolution" | "quarter_change" | "themes";
   path?: string;
@@ -79,5 +100,6 @@ export type PartnerCompanyIntelligence = {
   money: MoneyProfile;
   trust: TrustProfile;
   forensics: ForensicsSignal[];
+  health: BusinessHealthDashboard;
   sources: PartnerIntelligenceSource[];
 };

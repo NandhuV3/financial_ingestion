@@ -5,6 +5,7 @@ export type PortfolioHolding = {
   companyName: string;
   addedAt: string;
   conviction: PortfolioConviction;
+  businessHealth?: "improving" | "stable" | "needs_attention";
   ownershipNote?: string;
   lastReviewedAt?: string;
 };

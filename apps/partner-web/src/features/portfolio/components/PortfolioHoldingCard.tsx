@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Badge } from "../../../components/ui/Badge";
 import { Card } from "../../../components/ui/Card";
 import { companyRoute } from "../../../constants/routes";
+import { formatHealthStatus } from "../../health/health-formatting";
 import { findCompanyByTicker } from "../../company/mock/companies";
 import type { PortfolioConviction, PortfolioHolding } from "../types";
 import { formatReviewedAt } from "../usePortfolio";
@@ -23,7 +24,7 @@ export function PortfolioHoldingCard({
   onNoteChange,
 }: PortfolioHoldingCardProps) {
   const company = findCompanyByTicker(holding.ticker);
-  const businessHealth = company?.businessHealth ?? "stable";
+  const businessHealth = holding.businessHealth ?? toPortfolioHealth(company?.businessHealth) ?? "stable";
   const detailPath = `${companyRoute(holding.ticker)}?fromPortfolio=1`;
 
   return (
@@ -37,7 +38,7 @@ export function PortfolioHoldingCard({
           )}
         </div>
         <div className="flex flex-wrap gap-2">
-          <Badge className="capitalize">Health: {businessHealth}</Badge>
+          <Badge className="capitalize">Health: {formatHealthStatus(businessHealth)}</Badge>
           <Badge className="capitalize">Conviction: {holding.conviction}</Badge>
           <Badge>Journal Entries: {journalEntryCount}</Badge>
         </div>
@@ -84,4 +85,10 @@ export function PortfolioHoldingCard({
 
 function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function toPortfolioHealth(value?: string): PortfolioHolding["businessHealth"] {
+  if (value === "weakening") return "needs_attention";
+  if (value === "improving" || value === "stable" || value === "needs_attention") return value;
+  return "stable";
 }

@@ -19,6 +19,8 @@ import { JournalForm } from "../journal/components/JournalForm";
 import { JournalHistory } from "../journal/components/JournalHistory";
 import type { PartnerJournalDraft, PartnerJournalEntry } from "../journal/types";
 import { useJournal } from "../journal/useJournal";
+import { BusinessHealthCard } from "../health/BusinessHealthCard";
+import type { PortfolioHolding } from "../portfolio/types";
 
 interface CompanyDetailContentProps {
   company: PartnerCompanyViewModel;
@@ -76,6 +78,19 @@ function CompanyErrorState() {
   );
 }
 
+function getPortfolioHealth(company: PartnerCompanyViewModel): PortfolioHolding["businessHealth"] {
+  if (company.health?.status === "improving"
+    || company.health?.status === "stable"
+    || company.health?.status === "needs_attention") {
+    return company.health.status;
+  }
+
+  if (company.businessHealth === "weakening") return "needs_attention";
+  if (company.businessHealth === "improving" || company.businessHealth === "stable") return company.businessHealth;
+
+  return undefined;
+}
+
 export function CompanyDetailContent({
   company,
   initialTab = "story",
@@ -101,6 +116,8 @@ export function CompanyDetailContent({
         {activeTab === "money" && <MoneySection company={company} />}
         {activeTab === "trust" && <TrustSection company={company} />}
         {activeTab === "forensics" && <ForensicsSection company={company} />}
+
+        <BusinessHealthCard health={company.health} />
 
         {onSaveJournalEntry && journalEntries && (
           <section className="space-y-4" aria-label="Partner Journal">
@@ -161,6 +178,7 @@ export function CompanyDetailScreen() {
       onAddToPortfolio={() => addHolding({
         ticker: company.ticker,
         companyName: company.name,
+        businessHealth: getPortfolioHealth(company),
       })}
       isInPortfolio={hasHolding(company.ticker)}
       journalEntries={getEntriesForTicker(company.ticker)}

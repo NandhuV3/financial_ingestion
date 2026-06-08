@@ -13,10 +13,13 @@ import { fileExists, readJsonFile } from "../shared/filesystem/file-reader.js";
 import { createLogger } from "../shared/logger.js";
 import { getCompanyDirectory, getFilingDirectory } from "../storage/filing-paths.js";
 import { resolveFilingDate } from "../storage/resolve-filing.js";
+import { getHealthDashboardEnrichedPath } from "../health-dashboard/health-dashboard-paths.js";
+import type { HealthDashboardEnriched } from "../health-dashboard/health-dashboard.types.js";
 import type { FilingMetadata } from "../types/pipeline.types.js";
 import type { ThemeOutput } from "../types/theme.types.js";
 import type { TopicAssignmentOutputV2 } from "../topic-assignment-v2/assignment.types.js";
 import { buildBusinessHealth } from "./builders/build-business-health.js";
+import { buildBusinessHealthDashboard } from "./builders/build-business-health-dashboard.js";
 import { buildCompanyProfile } from "./builders/build-company-profile.js";
 import { buildCompanyStory } from "./builders/build-company-story.js";
 import { buildCustomerSegments } from "./builders/build-customer-segments.js";
@@ -38,6 +41,7 @@ export async function buildPartnerCompanyIntelligence(
   const resolvedFilingDate = await resolveFilingDate(company.ticker, filingDate);
   const artifacts = await loadPartnerSourceArtifacts(company.ticker, resolvedFilingDate);
   const businessHealth = buildBusinessHealth(artifacts);
+  const health = buildBusinessHealthDashboard(artifacts, businessHealth);
   const profile = buildCompanyProfile(artifacts);
   const summary = buildPartnerSummary(artifacts, businessHealth);
   const story = buildCompanyStory(artifacts, profile);
@@ -68,11 +72,12 @@ export async function buildPartnerCompanyIntelligence(
     money,
     trust,
     forensics,
+    health,
     sources: buildSources(artifacts),
   };
 }
 
-async function loadPartnerSourceArtifacts(ticker: string, filingDate: string): Promise<PartnerSourceArtifacts> {
+export async function loadPartnerSourceArtifacts(ticker: string, filingDate: string): Promise<PartnerSourceArtifacts> {
   const filingDir = getFilingDirectory(ticker, filingDate);
   const filing = await readJsonFile<FilingMetadata>(join(filingDir, "metadata", "filing.json"));
   const artifactsWithoutProfile: CompanyProfileSourceArtifacts = {
@@ -91,11 +96,15 @@ async function loadPartnerSourceArtifacts(ticker: string, filingDate: string): P
   const companyProfile = await readCompanyProfileIntelligence(ticker)
     ?? buildCompanyProfileIntelligence(artifactsWithoutProfile);
   const companyIdentity = await readCompanyIdentityIntelligence(ticker);
+  const healthDashboardEnriched = await readOptionalJson<HealthDashboardEnriched>(
+    getHealthDashboardEnrichedPath(ticker, filingDate),
+  );
 
   return {
     ...artifactsWithoutProfile,
     companyProfile,
     companyIdentity,
+    healthDashboardEnriched,
   };
 }
 
