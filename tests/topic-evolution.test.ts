@@ -10,37 +10,39 @@ import type { TopicRegistry } from "../src/topic-layer/topic.types.js";
 import type { ThemeImportance } from "../src/types/theme.types.js";
 
 describe("topic evolution", () => {
-  it("uses only approved topic assignments", () => {
+  it("uses assigned and low-confidence topic assignments", () => {
     const report = buildReport([
       filing("2026-01-29", [
-        approvedTheme("Cloud Revenue Growth", "cloud", "high", ["a", "a", "b"]),
-        pendingTheme("AI Infrastructure", "artificial_intelligence"),
-        rejectedTheme("Competition", "competition"),
+        assignedTheme("Cloud Revenue Growth", "cloud", "high", ["a", "a", "b"]),
+        lowConfidenceTheme("AI Infrastructure", "artificial_intelligence"),
+        unassignedTheme("Competition", "competition"),
         themeWithoutTopic("Margins"),
       ]),
       filing("2026-04-29", [
-        approvedTheme("Cloud Revenue Growth", "cloud", "high", ["c", "d"]),
-        pendingTheme("AI Infrastructure", "artificial_intelligence"),
+        assignedTheme("Cloud Revenue Growth", "cloud", "high", ["c", "d"]),
+        lowConfidenceTheme("AI Infrastructure", "artificial_intelligence"),
       ]),
     ]);
 
-    assert.equal(report.summary.topics_analyzed, 1);
-    assert.equal(report.topics[0].topic_id, "cloud");
-    assert.equal(report.diagnostics.approved_assignments_used, 2);
-    assert.equal(report.diagnostics.pending_assignments_ignored, 2);
-    assert.equal(report.diagnostics.rejected_assignments_ignored, 1);
+    assert.equal(report.summary.topics_analyzed, 2);
+    const byTopic = new Map(report.topics.map((topic) => [topic.topic_id, topic]));
+
+    assert.ok(byTopic.has("cloud"));
+    assert.ok(byTopic.has("artificial_intelligence"));
+    assert.equal(report.diagnostics.assigned_topics_used, 4);
+    assert.equal(report.diagnostics.unassigned_topics_ignored, 1);
     assert.equal(report.diagnostics.themes_without_topic_ignored, 1);
-    assert.equal(report.topics[0].history[0].evidence_count, 2);
+    assert.equal(byTopic.get("cloud")?.history[0]?.evidence_count, 2);
   });
 
-  it("aggregates multiple approved themes into one topic observation", () => {
+  it("aggregates multiple assigned themes into one topic observation", () => {
     const report = buildReport([
       filing("2026-01-29", [
-        approvedTheme("Cloud Revenue Growth", "cloud", "medium", ["a", "b"]),
-        approvedTheme("Azure Demand", "cloud", "high", ["b", "c"]),
+        assignedTheme("Cloud Revenue Growth", "cloud", "medium", ["a", "b"]),
+        assignedTheme("Azure Demand", "cloud", "high", ["b", "c"]),
       ]),
       filing("2026-04-29", [
-        approvedTheme("Cloud Revenue Growth", "cloud", "high", ["d"]),
+        assignedTheme("Cloud Revenue Growth", "cloud", "high", ["d"]),
       ]),
     ]);
     const cloud = report.topics[0];
@@ -56,10 +58,10 @@ describe("topic evolution", () => {
 
   it("detects persistent and strengthening topics", () => {
     const report = buildReport([
-      filing("2025-04-30", [approvedTheme("Cloud", "cloud", "medium", ["a", "b"])]),
-      filing("2025-07-30", [approvedTheme("Cloud", "cloud", "medium", ["a", "b", "c", "d"])]),
-      filing("2025-10-29", [approvedTheme("Cloud", "cloud", "high", ["a", "b", "c", "d", "e", "f"])]),
-      filing("2026-04-29", [approvedTheme("Cloud", "cloud", "high", ["a", "b", "c", "d", "e", "f", "g", "h"])]),
+      filing("2025-04-30", [assignedTheme("Cloud", "cloud", "medium", ["a", "b"])]),
+      filing("2025-07-30", [assignedTheme("Cloud", "cloud", "medium", ["a", "b", "c", "d"])]),
+      filing("2025-10-29", [assignedTheme("Cloud", "cloud", "high", ["a", "b", "c", "d", "e", "f"])]),
+      filing("2026-04-29", [assignedTheme("Cloud", "cloud", "high", ["a", "b", "c", "d", "e", "f", "g", "h"])]),
     ]);
 
     assert.equal(report.topics[0].presence_state, "persistent");
@@ -72,16 +74,16 @@ describe("topic evolution", () => {
   it("detects new, recurring, dormant, and disappeared presence states", () => {
     const report = buildReport([
       filing("2025-04-30", [
-        approvedTheme("Supply Chain", "supply_chain"),
-        approvedTheme("Margins", "margins"),
-        approvedTheme("Competition", "competition"),
+        assignedTheme("Supply Chain", "supply_chain"),
+        assignedTheme("Margins", "margins"),
+        assignedTheme("Competition", "competition"),
       ]),
       filing("2025-07-30", [
-        approvedTheme("Supply Chain", "supply_chain"),
+        assignedTheme("Supply Chain", "supply_chain"),
       ]),
       filing("2025-10-29", [
-        approvedTheme("Competition", "competition"),
-        approvedTheme("AI", "artificial_intelligence"),
+        assignedTheme("Competition", "competition"),
+        assignedTheme("AI", "artificial_intelligence"),
       ]),
     ]);
     const byTopic = new Map(report.topics.map((topic) => [topic.topic_id, topic]));
@@ -116,13 +118,13 @@ describe("topic evolution", () => {
 
   it("handles missing files, single filing history, and chronological ordering", () => {
     const report = buildReport([
-      filing("2026-04-29", [approvedTheme("Cloud", "cloud")]),
+      filing("2026-04-29", [assignedTheme("Cloud", "cloud")]),
       filing("2026-01-29", [], false),
     ]);
 
     assert.deepEqual(report.filing_dates, ["2026-01-29", "2026-04-29"]);
     assert.equal(report.diagnostics.missing_themes_with_topics_files[0], "2026-01-29");
-    assert.equal(report.diagnostics.filings_with_no_approved_topics[0], "2026-01-29");
+    assert.equal(report.diagnostics.filings_with_no_assigned_topics[0], "2026-01-29");
     assert.equal(report.topics[0].presence_state, "new");
     assert.deepEqual(report.topics[0].strength_history, [22]);
 
@@ -131,19 +133,19 @@ describe("topic evolution", () => {
 
   it("includes registry audit metadata", () => {
     const report = buildReport([
-      filing("2026-01-29", [approvedTheme("Cloud", "cloud")]),
-      filing("2026-04-29", [approvedTheme("Cloud", "cloud")]),
+      filing("2026-01-29", [assignedTheme("Cloud", "cloud")]),
+      filing("2026-04-29", [assignedTheme("Cloud", "cloud")]),
     ]);
 
     assert.equal(report.topic_registry_version, "test-registry");
     assert.equal(report.topic_registry_hash, "registry-hash");
-    assert.deepEqual(report.assignment_policy.included_statuses, ["approved"]);
+    assert.deepEqual(report.assignment_policy.included_statuses, ["assigned", "low_confidence"]);
   });
 
   it("validates registry and filing inputs", () => {
     assert.throws(() =>
       validateTopicEvolutionInputs(
-        [filing("2026-04-29", [approvedTheme("Cloud", "cloud")])],
+        [filing("2026-04-29", [assignedTheme("Cloud", "cloud")])],
         {
           version: "bad-registry",
           topics: [
@@ -156,7 +158,7 @@ describe("topic evolution", () => {
 
     assert.throws(() =>
       validateTopicEvolutionInputs(
-        [filing("not-a-date", [approvedTheme("Cloud", "cloud")])],
+        [filing("not-a-date", [assignedTheme("Cloud", "cloud")])],
         registry(),
       ),
     );
@@ -207,7 +209,7 @@ function filing(filingDate: string, themes: TopicEvolutionFilingInput["themes"],
   };
 }
 
-function approvedTheme(themeName: string, topicId: string, importance: ThemeImportance = "medium", evidence = ["chunk_001"]) {
+function assignedTheme(themeName: string, topicId: string, importance: ThemeImportance = "medium", evidence = ["chunk_001"]) {
   return {
     theme: themeName,
     category: topicId,
@@ -215,21 +217,21 @@ function approvedTheme(themeName: string, topicId: string, importance: ThemeImpo
     summary: `${themeName} summary`,
     evidence,
     topic_id: topicId,
-    assignment_status: "approved" as const,
+    assignment_status: "assigned" as const,
   };
 }
 
-function pendingTheme(themeName: string, topicId: string) {
+function lowConfidenceTheme(themeName: string, topicId: string) {
   return {
-    ...approvedTheme(themeName, topicId),
-    assignment_status: "pending_review" as const,
+    ...assignedTheme(themeName, topicId),
+    assignment_status: "low_confidence" as const,
   };
 }
 
-function rejectedTheme(themeName: string, topicId: string) {
+function unassignedTheme(themeName: string, topicId: string) {
   return {
-    ...approvedTheme(themeName, topicId),
-    assignment_status: "rejected" as const,
+    ...assignedTheme(themeName, topicId),
+    assignment_status: "unassigned" as const,
   };
 }
 

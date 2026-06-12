@@ -1,5 +1,9 @@
 import { getCompanyConfig } from "../config/companies.js";
-import { generateThemes } from "../ai/generate-themes.js";
+import {
+  generateThemes,
+  resolveThemePromptProvenance,
+  THEME_MODEL_VERSION,
+} from "../themes/generate-themes.js";
 import { fileExists } from "../shared/filesystem/file-reader.js";
 import { checkArtifactFreshness } from "../reporting/check-artifact-freshness.js";
 import { generateCompanyReport } from "../reporting/generate-company-report.js";
@@ -22,6 +26,7 @@ export async function runThemePipeline(ticker: string, filingDate?: string): Pro
   const currentChunkHash = await calculateFilingChunkHash(company.ticker, resolvedFilingDate);
   const storedChunkHash = await readStoredChunkHash(company.ticker, resolvedFilingDate);
   const estimatedInputTokens = await estimateThemeInputTokens(company.ticker, resolvedFilingDate);
+  const promptProvenance = await resolveThemePromptProvenance(company, resolvedFilingDate);
   const decision = decideThemeGeneration({
     themesExist: fileExists(paths.themesPath),
     storedChunkHash,
@@ -42,6 +47,8 @@ export async function runThemePipeline(ticker: string, filingDate?: string): Pro
     reason: decision.reason,
     estimatedInputTokens,
     chunkHash: currentChunkHash,
+    modelVersion: THEME_MODEL_VERSION,
+    promptProvenance,
   });
 
   await writeThemeGenerationReport(company.ticker, resolvedFilingDate, report);

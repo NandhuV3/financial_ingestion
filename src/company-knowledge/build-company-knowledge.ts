@@ -1,7 +1,6 @@
-import type { CompanyIdentityEnriched } from "../company-identity/company-identity.types.js";
-import type { CompanyProfileIntelligence } from "../company-profile/company-profile.types.js";
 import { getCurrentTimestamp } from "../shared/dates/timestamps.js";
 import { calculateStringHash } from "../shared/hashing/hash-file.js";
+import type { StructuredIntelligence } from "../structured-intelligence/types/structured-intelligence.types.js";
 import type { FilingMetadata } from "../types/pipeline.types.js";
 import type {
   CompanyKnowledge,
@@ -15,10 +14,8 @@ const DEFAULT_PROMPT_VERSION = "none";
 const DEFAULT_KNOWLEDGE_VERSION = 1;
 
 export type BuildCompanyKnowledgeInputs = {
-  companyIdentity?: CompanyIdentityEnriched | null;
-  companyProfile?: CompanyProfileIntelligence | null;
-  filingMetadata?: FilingMetadata | null;
-  derivedFrom?: string[];
+  structuredIntelligence: StructuredIntelligence;
+  filingMetadata: FilingMetadata;
   schemaVersion?: string;
   pipelineVersion?: string;
   modelVersion?: string;
@@ -28,76 +25,41 @@ export type BuildCompanyKnowledgeInputs = {
 };
 
 export function buildCompanyKnowledge(inputs: BuildCompanyKnowledgeInputs): CompanyKnowledge {
-  const company = firstText([
-    inputs.companyIdentity?.company,
-    inputs.companyProfile?.company,
-    inputs.filingMetadata?.company,
-  ]);
-  const products = firstArray([
-    inputs.companyIdentity?.primary_products,
-    inputs.companyProfile?.products,
-  ]);
-  const customers = firstArray([
-    inputs.companyIdentity?.primary_customers,
-    inputs.companyProfile?.customers,
-  ]);
-  const revenueDrivers = firstArray([
-    inputs.companyIdentity?.revenue_drivers,
-  ]);
-  const competitivePositioning = buildCompetitivePositioning(inputs);
-  const operatingModel = firstArray([
-    inputs.companyIdentity?.operating_signals,
-  ]);
-  const keyDependencies = buildKeyDependencies(inputs);
+  const si = inputs.structuredIntelligence;
   const sourceFilings = mergeSourceFilings(inputs);
-  const derivedFrom = mergeDerivedFrom(inputs);
-  const inputHash = calculateCompanyKnowledgeInputHash(inputs);
-  const confidence = calculateConfidence({
-    sourceFilingCount: sourceFilings.length,
-    hasIdentity: Boolean(inputs.companyIdentity),
-    fieldValues: [
-      firstText([inputs.companyIdentity?.business_description, getLegacyProfileBusinessModel(inputs.companyProfile)]),
-      products,
-      customers,
-      revenueDrivers,
-      competitivePositioning,
-      operatingModel,
-      keyDependencies,
-    ],
-    lineageComplete: sourceFilings.length > 0 && derivedFrom.length > 0,
-  });
 
   return {
-    company,
-    business_description: firstText([
-      inputs.companyIdentity?.business_description,
-      getLegacyProfileBusinessModel(inputs.companyProfile),
-    ]),
+    company: si.company,
+    business_description: si.business_description,
     business_model: {
-      value_creation: firstText([
-        inputs.companyIdentity?.business_description,
-        getLegacyProfileBusinessModel(inputs.companyProfile),
-      ]),
-      monetization: revenueDrivers.join("; "),
+      value_creation: si.business_description,
+      monetization: si.revenue_drivers.join("; "),
       revenue_structure: "mixed",
     },
-    products,
-    customers,
-    revenue_drivers: revenueDrivers,
-    competitive_positioning: competitivePositioning,
-    operating_model: operatingModel,
-    key_dependencies: keyDependencies,
-    confidence,
+    products: si.products,
+    customers: si.customers,
+    revenue_drivers: si.revenue_drivers,
+    competitive_positioning: buildCompetitivePositioning(si),
+    operating_model: si.operating_model,
+    key_dependencies: buildKeyDependencies(si),
+    strategic_priorities: si.strategic_priorities,
+    risks: si.risks,
+    opportunities: si.opportunities,
+    confidence: {
+      overall: si.confidence.overall,
+      filing_depth: si.confidence.source_coverage,
+      field_coverage: calculateFieldCoverage(si),
+    },
     metadata: {
       schema_version: inputs.schemaVersion ?? DEFAULT_SCHEMA_VERSION,
       pipeline_version: inputs.pipelineVersion ?? DEFAULT_PIPELINE_VERSION,
       knowledge_version: inputs.knowledgeVersion ?? DEFAULT_KNOWLEDGE_VERSION,
       generated_at: inputs.generatedAt ?? getCurrentTimestamp(),
-      input_hash: inputHash,
+      input_hash: calculateCompanyKnowledgeInputHash(inputs),
     },
     lineage: {
       source_filings: sourceFilings,
-      derived_from: derivedFrom,
+      derived_from: mergeDerivedFrom(),
       model_version: inputs.modelVersion ?? DEFAULT_MODEL_VERSION,
       prompt_version: inputs.promptVersion ?? DEFAULT_PROMPT_VERSION,
     },
@@ -106,10 +68,8 @@ export function buildCompanyKnowledge(inputs: BuildCompanyKnowledgeInputs): Comp
 
 export function calculateCompanyKnowledgeInputHash(inputs: BuildCompanyKnowledgeInputs): string {
   return calculateStringHash(JSON.stringify({
-    companyIdentity: normalizeIdentityForHash(inputs.companyIdentity ?? null),
-    companyProfile: normalizeProfileForHash(inputs.companyProfile ?? null),
-    filingMetadata: inputs.filingMetadata ?? null,
-    derivedFrom: [...(inputs.derivedFrom ?? [])].sort(),
+    structuredIntelligence: normalizeStructuredIntelligenceForHash(inputs.structuredIntelligence),
+    filingMetadata: inputs.filingMetadata,
     schemaVersion: inputs.schemaVersion ?? DEFAULT_SCHEMA_VERSION,
     pipelineVersion: inputs.pipelineVersion ?? DEFAULT_PIPELINE_VERSION,
     modelVersion: inputs.modelVersion ?? DEFAULT_MODEL_VERSION,
@@ -118,66 +78,52 @@ export function calculateCompanyKnowledgeInputHash(inputs: BuildCompanyKnowledge
   }));
 }
 
-function buildCompetitivePositioning(inputs: BuildCompanyKnowledgeInputs): CompanyKnowledgeCompetitivePositioning[] {
-  const identitySignals = cleanArray(inputs.companyIdentity?.competitive_signals ?? []);
-
-  if (identitySignals.length > 0) {
-    return dedupeBySignal(identitySignals.map((signal) => ({
-      signal,
-      source_type: "observed",
-    })));
-  }
-
-  const legacyAdvantages = cleanArray(getLegacyProfileCompetitiveAdvantages(inputs.companyProfile));
-
-  return dedupeBySignal(legacyAdvantages.map((signal) => ({
+function buildCompetitivePositioning(
+  si: StructuredIntelligence,
+): CompanyKnowledgeCompetitivePositioning[] {
+  return si.competitive_positioning.map((signal) => ({
     signal,
-    source_type: "claimed",
-  })));
+    source_type: "observed",
+  }));
 }
 
-function buildKeyDependencies(inputs: BuildCompanyKnowledgeInputs): CompanyKnowledge["key_dependencies"] {
-  void inputs;
-  return [];
+function buildKeyDependencies(
+  si: StructuredIntelligence,
+): CompanyKnowledge["key_dependencies"] {
+  return si.key_dependencies.map((dependency) => ({
+    description: dependency,
+    type: "technology",
+  }));
 }
 
-function calculateConfidence(params: {
-  sourceFilingCount: number;
-  hasIdentity: boolean;
-  fieldValues: unknown[];
-  lineageComplete: boolean;
-}): CompanyKnowledge["confidence"] {
-  const filingDepth = params.sourceFilingCount >= 2 ? 1 : params.sourceFilingCount === 1 ? 0.5 : 0;
-  const identityCoverage = params.hasIdentity ? 1 : 0;
-  const populatedFields = params.fieldValues.filter((value) =>
-    Array.isArray(value) ? value.length > 0 : Boolean(String(value ?? "").trim()),
+function calculateFieldCoverage(si: StructuredIntelligence): number {
+  const fields = [
+    si.business_description,
+    si.products,
+    si.customers,
+    si.revenue_drivers,
+    si.competitive_positioning,
+    si.operating_model,
+    si.key_dependencies,
+    si.strategic_priorities,
+    si.risks,
+    si.opportunities,
+  ];
+  const populated = fields.filter((value) =>
+    Array.isArray(value) ? value.length > 0 : Boolean(value.trim()),
   ).length;
-  const fieldCoverage = params.fieldValues.length === 0 ? 0 : populatedFields / params.fieldValues.length;
-  const lineageCoverage = params.lineageComplete ? 1 : 0;
-  const overall = clamp((filingDepth * 0.25)
-    + (identityCoverage * 0.30)
-    + (fieldCoverage * 0.30)
-    + (lineageCoverage * 0.15));
 
-  return {
-    overall: round(overall),
-    filing_depth: round(filingDepth),
-    field_coverage: round(fieldCoverage),
-  };
+  return round(populated / fields.length);
 }
 
 function mergeSourceFilings(inputs: BuildCompanyKnowledgeInputs): CompanyKnowledge["lineage"]["source_filings"] {
   const filings = [
-    ...(inputs.filingMetadata ? [{
+    ...inputs.structuredIntelligence.lineage.source_filings,
+    {
       id: inputs.filingMetadata.accession_number,
       period: inputs.filingMetadata.filing_date,
       type: inputs.filingMetadata.form_type,
-    }] : []),
-    ...(inputs.companyProfile?.source_filings ?? []).map((filingDate) => ({
-      id: filingDate,
-      period: filingDate,
-      type: "unknown",
-    })),
+    },
   ];
   const seen = new Set<string>();
   const output: CompanyKnowledge["lineage"]["source_filings"] = [];
@@ -197,100 +143,30 @@ function mergeSourceFilings(inputs: BuildCompanyKnowledgeInputs): CompanyKnowled
     });
   }
 
-  return output.sort((left, right) => left.period.localeCompare(right.period));
+  return output.sort((left, right) =>
+    left.period.localeCompare(right.period)
+    || left.id.localeCompare(right.id)
+    || left.type.localeCompare(right.type),
+  );
 }
 
-function mergeDerivedFrom(inputs: BuildCompanyKnowledgeInputs): string[] {
-  return dedupeStrings([
-    ...(inputs.companyIdentity ? ["company-identity"] : []),
-    ...(inputs.companyProfile ? [`company-profile.${inputs.companyProfile.profile_quality}`] : []),
-    ...(inputs.filingMetadata ? ["filing-metadata"] : []),
-    ...(inputs.derivedFrom ?? []),
-  ]);
+function mergeDerivedFrom(): string[] {
+  return [
+    "structured-intelligence",
+    "filing-metadata",
+  ];
 }
 
-function firstText(values: Array<string | undefined | null>): string {
-  return values.map((value) => value?.trim() ?? "").find(Boolean) ?? "";
-}
-
-function firstArray(values: Array<string[] | undefined | null>): string[] {
-  return values.map(cleanArray).find((value) => value.length > 0) ?? [];
-}
-
-function cleanArray(values: string[] | undefined | null): string[] {
-  return dedupeStrings((values ?? []).map((value) => value.trim()).filter(Boolean));
-}
-
-function dedupeStrings(values: string[]): string[] {
-  const seen = new Set<string>();
-  const output: string[] = [];
-
-  for (const value of values) {
-    const key = value.toLowerCase();
-
-    if (!seen.has(key)) {
-      seen.add(key);
-      output.push(value);
-    }
-  }
-
-  return output;
-}
-
-function dedupeBySignal(values: CompanyKnowledgeCompetitivePositioning[]): CompanyKnowledgeCompetitivePositioning[] {
-  const seen = new Set<string>();
-  const output: CompanyKnowledgeCompetitivePositioning[] = [];
-
-  for (const value of values) {
-    const key = value.signal.toLowerCase();
-
-    if (!seen.has(key)) {
-      seen.add(key);
-      output.push(value);
-    }
-  }
-
-  return output;
-}
-
-function getLegacyProfileBusinessModel(profile?: CompanyProfileIntelligence | null): string {
-  return profile && "business_model" in profile ? profile.business_model : "";
-}
-
-function getLegacyProfileCompetitiveAdvantages(profile?: CompanyProfileIntelligence | null): string[] {
-  return profile && "competitive_advantages" in profile ? profile.competitive_advantages : [];
-}
-
-function normalizeIdentityForHash(identity: CompanyIdentityEnriched | null) {
-  if (!identity) return null;
-
+function normalizeStructuredIntelligenceForHash(
+  structuredIntelligence: StructuredIntelligence,
+): StructuredIntelligence {
   return {
-    ...identity,
-    enrichment: {
-      model: identity.enrichment.model,
-      input_hash: identity.enrichment.input_hash,
+    ...structuredIntelligence,
+    metadata: {
+      ...structuredIntelligence.metadata,
+      generated_at: "",
     },
   };
-}
-
-function normalizeProfileForHash(profile: CompanyProfileIntelligence | null) {
-  if (!profile) return null;
-
-  if ("enrichment" in profile) {
-    return {
-      ...profile,
-      enrichment: {
-        model: profile.enrichment.model,
-        input_hash: profile.enrichment.input_hash,
-      },
-    };
-  }
-
-  return profile;
-}
-
-function clamp(value: number): number {
-  return Math.min(1, Math.max(0, value));
 }
 
 function round(value: number): number {

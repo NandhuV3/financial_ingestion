@@ -2,11 +2,11 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   generateCompanyKnowledge,
-  type GenerateCompanyKnowledgeParams,
 } from "../src/company-knowledge/generate-company-knowledge.js";
 import type { BuildCompanyKnowledgeInputs } from "../src/company-knowledge/build-company-knowledge.js";
 import type { CompanyKnowledgeRepository } from "../src/company-knowledge/company-knowledge.repository.js";
-import type { CompanyKnowledge } from "../src/company-knowledge/company-knowledge.types.js";
+import type { CompanyKnowledge } from "../src/company-knowledge/types/company-knowledge.types.js";
+import type { StructuredIntelligence } from "../src/structured-intelligence/types/structured-intelligence.types.js";
 import type { FilingMetadata } from "../src/types/pipeline.types.js";
 
 describe("generate company knowledge command", () => {
@@ -17,8 +17,8 @@ describe("generate company knowledge command", () => {
 
     await generateCompanyKnowledge({
       ticker: "MSFT",
+      structuredIntelligence: structuredIntelligence(),
       filingMetadata: filingMetadata(),
-      derivedFrom: ["company-identity"],
       repository,
       builder: (inputs) => {
         capturedInputs = inputs;
@@ -27,10 +27,8 @@ describe("generate company knowledge command", () => {
     });
 
     assert.deepEqual(capturedInputs, {
-      companyIdentity: undefined,
-      companyProfile: undefined,
+      structuredIntelligence: structuredIntelligence(),
       filingMetadata: filingMetadata(),
-      derivedFrom: ["company-identity"],
     });
   });
 
@@ -40,6 +38,8 @@ describe("generate company knowledge command", () => {
 
     await generateCompanyKnowledge({
       ticker: "msft",
+      structuredIntelligence: structuredIntelligence(),
+      filingMetadata: filingMetadata(),
       repository,
       builder: () => expected,
     });
@@ -55,6 +55,8 @@ describe("generate company knowledge command", () => {
 
     const result = await generateCompanyKnowledge({
       ticker: "MSFT",
+      structuredIntelligence: structuredIntelligence(),
+      filingMetadata: filingMetadata(),
       repository,
       builder: () => expected,
     });
@@ -70,6 +72,8 @@ describe("generate company knowledge command", () => {
     await assert.rejects(
       () => generateCompanyKnowledge({
         ticker: "msft",
+        structuredIntelligence: structuredIntelligence(),
+        filingMetadata: filingMetadata(),
         repository,
         builder: () => artifact(),
       }),
@@ -83,6 +87,8 @@ describe("generate company knowledge command", () => {
     await assert.rejects(
       () => generateCompanyKnowledge({
         ticker: "msft",
+        structuredIntelligence: structuredIntelligence(),
+        filingMetadata: filingMetadata(),
         repository,
         builder: () => {
           throw new Error("builder failed");
@@ -98,6 +104,8 @@ describe("generate company knowledge command", () => {
 
     await generateCompanyKnowledge({
       ticker: "MSFT",
+      structuredIntelligence: structuredIntelligence(),
+      filingMetadata: filingMetadata(),
       repository,
       builder: () => expected,
     });
@@ -105,7 +113,7 @@ describe("generate company knowledge command", () => {
     assert.deepEqual(repository.saved[0]?.artifact, expected);
     assert.equal(repository.saved[0]?.artifact.metadata.input_hash, "input-hash");
     assert.equal(repository.saved[0]?.artifact.confidence.overall, 0.9);
-    assert.deepEqual(repository.saved[0]?.artifact.lineage.derived_from, ["company-identity"]);
+    assert.deepEqual(repository.saved[0]?.artifact.lineage.derived_from, ["structured-intelligence", "filing-metadata"]);
   });
 });
 
@@ -148,6 +156,38 @@ function filingMetadata(): FilingMetadata {
   };
 }
 
+function structuredIntelligence(): StructuredIntelligence {
+  return {
+    company: "Microsoft",
+    business_description: "Microsoft provides software and cloud services.",
+    products: ["software products"],
+    customers: ["businesses"],
+    revenue_drivers: ["software subscriptions"],
+    competitive_positioning: ["developer ecosystem"],
+    operating_model: ["cloud infrastructure"],
+    key_dependencies: [],
+    strategic_priorities: ["AI infrastructure"],
+    risks: ["competition"],
+    opportunities: ["cloud adoption"],
+    confidence: {
+      overall: 0.9,
+      source_coverage: 0.5,
+    },
+    metadata: {
+      schema_version: "1.0.0",
+      pipeline_version: "structured-intelligence-v1",
+      generated_at: "2026-06-08T00:00:00.000Z",
+      input_hash: "structured-hash",
+    },
+    lineage: {
+      source_filings: [],
+      derived_from: [],
+      model_version: "gpt-4o-mini",
+      prompt_version: "structured-intelligence-v1",
+    },
+  };
+}
+
 function artifact(): CompanyKnowledge {
   return {
     company: "Microsoft",
@@ -168,6 +208,9 @@ function artifact(): CompanyKnowledge {
     ],
     operating_model: ["cloud infrastructure"],
     key_dependencies: [],
+    strategic_priorities: ["AI infrastructure"],
+    risks: ["competition"],
+    opportunities: ["cloud adoption"],
     confidence: {
       overall: 0.9,
       filing_depth: 0.5,
@@ -188,7 +231,7 @@ function artifact(): CompanyKnowledge {
           type: "10-Q",
         },
       ],
-      derived_from: ["company-identity"],
+      derived_from: ["structured-intelligence", "filing-metadata"],
       model_version: "deterministic-v1",
       prompt_version: "none",
     },

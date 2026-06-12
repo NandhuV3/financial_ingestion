@@ -1,0 +1,295 @@
+{
+  "ticker": "AAPL",
+  "filing_date": "2026-05-01",
+  "overall_score": 0.9,
+  "artifacts": [
+    {
+      "artifact": "structured_intelligence",
+      "overall_score": 0.79,
+      "dimensions": [
+        {
+          "name": "schema_compliance",
+          "score": 1,
+          "notes": [
+            "Required fields and types are valid."
+          ]
+        },
+        {
+          "name": "field_coverage",
+          "score": 0.9,
+          "notes": [
+            "9/10 fields populated."
+          ]
+        },
+        {
+          "name": "empty_fields",
+          "score": 0.9,
+          "notes": [
+            "Empty field: products"
+          ]
+        },
+        {
+          "name": "duplicate_count",
+          "score": 1,
+          "notes": [
+            "Duplicate normalized values: 0"
+          ]
+        },
+        {
+          "name": "hallucination_risk",
+          "score": 0.86,
+          "notes": [
+            "Potentially unsupported values: 6"
+          ]
+        },
+        {
+          "name": "evidence_grounding",
+          "score": 0.86,
+          "notes": [
+            "Grounded output values: 36/42"
+          ]
+        },
+        {
+          "name": "theme_utilization",
+          "score": 1,
+          "notes": [
+            "Themes reflected in output: 9/9."
+          ]
+        },
+        {
+          "name": "evidence_utilization",
+          "score": 1,
+          "notes": [
+            "No evidence groups available."
+          ]
+        },
+        {
+          "name": "business_description_specificity",
+          "score": 0,
+          "notes": [
+            "Generic description language detected.",
+            "No business identity concepts detected."
+          ]
+        },
+        {
+          "name": "product_coverage",
+          "score": 0,
+          "notes": [
+            "Products missing despite sufficient business evidence."
+          ]
+        },
+        {
+          "name": "customer_quality",
+          "score": 1,
+          "notes": [
+            "Geographic customer entries: 0/1.",
+            "Customer entries appear segment-oriented."
+          ]
+        },
+        {
+          "name": "operating_model_purity",
+          "score": 1,
+          "notes": [
+            "Risk-language operating model entries: 1/7.",
+            "Operating model entries are operationally oriented."
+          ]
+        }
+      ],
+      "warnings": [
+        "Potential unsupported output: customers",
+        "Potential unsupported output: Global scale exposes the company to international trade policies and major regulatory regimes such as the EU Digital Markets Act.",
+        "Potential unsupported output: Global trade policies and tariffs",
+        "Potential unsupported output: Cybersecurity resilience and incident prevention",
+        "Potential unsupported output: Improve profitability by optimizing product mix and managing supply costs.",
+        "Potential unsupported output: Enhance resilience and trust through strengthened cybersecurity and AI governance.",
+        "Products missing despite sufficient business evidence."
+      ],
+      "failures": []
+    },
+    {
+      "artifact": "company_knowledge",
+      "overall_score": 1,
+      "dimensions": [
+        {
+          "name": "business_description_quality",
+          "score": 1,
+          "notes": [
+            "Description length: 131"
+          ]
+        },
+        {
+          "name": "customer_coverage",
+          "score": 1,
+          "notes": [
+            "1/1 source values preserved."
+          ]
+        },
+        {
+          "name": "revenue_coverage",
+          "score": 1,
+          "notes": [
+            "3/3 source values preserved."
+          ]
+        },
+        {
+          "name": "dependency_coverage",
+          "score": 1,
+          "notes": [
+            "7/7 source values preserved."
+          ]
+        },
+        {
+          "name": "risk_coverage",
+          "score": 1,
+          "notes": [
+            "7/7 source values preserved."
+          ]
+        },
+        {
+          "name": "opportunity_coverage",
+          "score": 1,
+          "notes": [
+            "5/5 source values preserved."
+          ]
+        },
+        {
+          "name": "information_preservation",
+          "score": 1,
+          "notes": [
+            "Structured Intelligence fields are preserved in Company Knowledge."
+          ]
+        }
+      ],
+      "warnings": [],
+      "failures": []
+    },
+    {
+      "artifact": "partner_domain",
+      "overall_score": 0.81,
+      "dimensions": [
+        {
+          "name": "readability",
+          "score": 1,
+          "notes": [
+            "Average sentence length: 20 words.",
+            "Jargon terms found: 0."
+          ]
+        },
+        {
+          "name": "owner_friendliness",
+          "score": 0.85,
+          "notes": [
+            "Filing or trader-style phrases found: 1."
+          ]
+        },
+        {
+          "name": "consistency",
+          "score": 1,
+          "notes": [
+            "No obvious cross-section mismatch found."
+          ]
+        },
+        {
+          "name": "risk_signal_quality",
+          "score": 1,
+          "notes": [
+            "Forensics signals with explanations: 3/3."
+          ]
+        },
+        {
+          "name": "source_coverage",
+          "score": 0.5,
+          "notes": [
+            "Partner Domain sources present: company_knowledge, themes."
+          ]
+        },
+        {
+          "name": "source_traceability",
+          "score": 0.5,
+          "notes": [
+            "Missing source declarations: quarter change, topic evolution."
+          ]
+        }
+      ],
+      "warnings": [
+        "Filing-style language occurrences: 1"
+      ],
+      "failures": []
+    }
+  ],
+  "warnings": [
+    "Potential unsupported output: customers",
+    "Potential unsupported output: Global scale exposes the company to international trade policies and major regulatory regimes such as the EU Digital Markets Act.",
+    "Potential unsupported output: Global trade policies and tariffs",
+    "Potential unsupported output: Cybersecurity resilience and incident prevention",
+    "Potential unsupported output: Improve profitability by optimizing product mix and managing supply costs.",
+    "Potential unsupported output: Enhance resilience and trust through strengthened cybersecurity and AI governance.",
+    "Products missing despite sufficient business evidence.",
+    "Filing-style language occurrences: 1"
+  ],
+  "failures": [],
+  "architecture": {
+    "artifact": "architecture_contracts",
+    "overall_score": 1,
+    "dimensions": [
+      {
+        "name": "Themes",
+        "score": 1,
+        "notes": [
+          "Expected: LLM."
+        ]
+      },
+      {
+        "name": "Topic Assignment",
+        "score": 1,
+        "notes": [
+          "Expected: deterministic."
+        ]
+      },
+      {
+        "name": "Topic Evolution",
+        "score": 1,
+        "notes": [
+          "Expected: deterministic."
+        ]
+      },
+      {
+        "name": "Structured Intelligence",
+        "score": 1,
+        "notes": [
+          "Expected: LLM."
+        ]
+      },
+      {
+        "name": "Company Knowledge",
+        "score": 1,
+        "notes": [
+          "Expected: deterministic."
+        ]
+      },
+      {
+        "name": "Partner Domain",
+        "score": 1,
+        "notes": [
+          "Expected: deterministic."
+        ]
+      },
+      {
+        "name": "forbidden_imports",
+        "score": 1,
+        "notes": [
+          "No forbidden deterministic-layer imports found."
+        ]
+      },
+      {
+        "name": "forbidden_fetch_calls",
+        "score": 1,
+        "notes": [
+          "No forbidden deterministic-layer fetch calls found."
+        ]
+      }
+    ],
+    "warnings": [],
+    "failures": []
+  }
+}

@@ -1,13 +1,6 @@
 import type { BusinessHealth, MoneyProfile } from "../partner-domain.types.js";
 import type { PartnerSourceArtifacts } from "../partner-source.types.js";
 import { removeFilingStyleLanguage, sentenceList } from "./business-language.js";
-import {
-  getBusinessDescription,
-  getCompetitiveSignals,
-  getPrimaryCustomers,
-  getPrimaryProducts,
-  getRevenueDrivers,
-} from "../../company-identity/company-identity-accessors.js";
 
 export function buildMoneyProfile(
   artifacts: PartnerSourceArtifacts,
@@ -39,7 +32,7 @@ export function buildMoneyProfile(
       explanation: moneyContext.cashflow,
     },
     overallExplanation: removeFilingStyleLanguage(
-      `${getBusinessDescription(artifacts.companyIdentity, artifacts.companyProfile)} The money view focuses on how the business brings in sales, keeps money after costs, uses borrowing, and generates cash over time.`,
+      `${artifacts.companyKnowledge.business_description} The money view focuses on how the business brings in sales, keeps money after costs, uses borrowing, and generates cash over time.`,
     ),
   };
 }
@@ -50,10 +43,13 @@ function getMoneyContext(artifacts: PartnerSourceArtifacts): {
   debt: string;
   cashflow: string;
 } {
-  const products = sentenceList(getPrimaryProducts(artifacts.companyIdentity, artifacts.companyProfile), "products or services");
-  const customers = sentenceList(getPrimaryCustomers(artifacts.companyIdentity, artifacts.companyProfile), "customers");
-  const advantages = sentenceList(getCompetitiveSignals(artifacts.companyIdentity), "durable customer relationships");
-  const revenueDrivers = sentenceList(getRevenueDrivers(artifacts.companyIdentity), products);
+  const products = sentenceList(artifacts.companyKnowledge.products, "products or services");
+  const customers = sentenceList(artifacts.companyKnowledge.customers, "customers");
+  const advantages = sentenceList(
+    artifacts.companyKnowledge.competitive_positioning.map((item) => item.signal),
+    "durable customer relationships",
+  );
+  const revenueDrivers = sentenceList(artifacts.companyKnowledge.revenue_drivers, products);
 
   return {
     dailySales: `${artifacts.filing.company} earns sales through ${revenueDrivers} from ${customers}.`,

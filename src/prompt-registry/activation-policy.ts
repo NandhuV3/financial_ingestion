@@ -1,0 +1,2 @@
+export const ACTIVATION_MIN_SCORE = 0.90;
+export const MAX_ALLOWED_REGRESSION = 0.03;

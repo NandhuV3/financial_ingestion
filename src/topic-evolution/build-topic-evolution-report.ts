@@ -1,4 +1,4 @@
-import type { TopicRegistry } from "../topic-layer/topic.types.js";
+import type { TopicRegistry } from "../topic-intelligence/topic.types.js";
 import type {
   TopicEvolutionDiagnostics,
   TopicEvolutionFilingInput,
@@ -39,8 +39,8 @@ export function buildTopicEvolutionReport(input: BuildTopicEvolutionReportInput)
     topic_registry_version: input.registry.version ?? "unversioned",
     topic_registry_hash: input.topicRegistryHash,
     assignment_policy: {
-      included_statuses: ["approved"],
-      excluded_statuses: ["pending_review", "rejected", "missing"],
+      included_statuses: ["assigned", "low_confidence"],
+      excluded_statuses: ["unassigned", "missing"],
     },
     summary: summarizeTopicEvolution(historyResult.topics),
     topics: historyResult.topics,

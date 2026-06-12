@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { buildThemeInputEstimate, loadThemeChunks } from "../ai/theme-input.js";
+import { buildThemeInputEstimate, loadThemeChunks } from "../themes/theme-input.js";
 import { getCompanyConfig } from "../config/companies.js";
 import { getCurrentTimestamp } from "../shared/dates/timestamps.js";
 import { writeJsonFile } from "../shared/filesystem/file-writer.js";

@@ -1,5 +1,5 @@
 import type { PartnerCompanyIntelligence } from "../../../types/partner-domain.types";
-import type { PartnerCompanyViewModel } from "../types/partner-company-view-model";
+import type { OwnerQuestionCardViewModel, PartnerCompanyViewModel } from "../types/partner-company-view-model";
 
 function safeText(value: unknown): string {
   return typeof value === "string" ? value : "";
@@ -9,9 +9,25 @@ function safeArray<T>(value: T[] | undefined): T[] {
   return Array.isArray(value) ? value : [];
 }
 
+function safeQuestionCard(value: unknown): OwnerQuestionCardViewModel {
+  const record = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  const confidence = safeText(record.confidence);
+  const status = safeText(record.status);
+
+  return {
+    question: safeText(record.question),
+    answer: safeText(record.answer),
+    confidence: confidence === "high" || confidence === "medium" || confidence === "low" ? confidence : "",
+    evidence: safeArray(record.evidence as string[] | undefined).map(safeText).filter(Boolean),
+    status: status === "answered" || status === "insufficient_data" ? status : undefined,
+  };
+}
+
 export function mapPartnerCompanyToViewModel(
   intelligence: PartnerCompanyIntelligence,
 ): PartnerCompanyViewModel {
+  const fiveQuestions = intelligence.fiveQuestions;
+
   return {
     name: safeText(intelligence.companyName),
     ticker: safeText(intelligence.ticker),
@@ -35,6 +51,13 @@ export function mapPartnerCompanyToViewModel(
         filingDate: safeText(point.filingDate),
         status: safeText(point.status),
       })),
+    } : undefined,
+    fiveQuestions: fiveQuestions ? {
+      business: safeQuestionCard(fiveQuestions.business),
+      growth: safeQuestionCard(fiveQuestions.growth),
+      trust: safeQuestionCard(fiveQuestions.trust),
+      valuation: safeQuestionCard(fiveQuestions.valuation),
+      holdThesis: safeQuestionCard(fiveQuestions.holdThesis),
     } : undefined,
     story: {
       whatTheySell: safeText(intelligence.story?.whatTheyDo),

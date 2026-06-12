@@ -38,12 +38,11 @@ export function buildTopicEvolutionMarkdown(report: TopicEvolutionReport): strin
     ),
     "## Diagnostics",
     "",
-    `- Approved assignments used: ${report.diagnostics.approved_assignments_used}`,
-    `- Pending assignments ignored: ${report.diagnostics.pending_assignments_ignored}`,
-    `- Rejected assignments ignored: ${report.diagnostics.rejected_assignments_ignored}`,
+    `- Assigned topics used: ${report.diagnostics.assigned_topics_used}`,
+    `- Unassigned topics ignored: ${report.diagnostics.unassigned_topics_ignored}`,
     `- Themes without topic ignored: ${report.diagnostics.themes_without_topic_ignored}`,
     `- Missing themes.with-topics files: ${report.diagnostics.missing_themes_with_topics_files.length}`,
-    `- Filings with no approved topics: ${report.diagnostics.filings_with_no_approved_topics.length}`,
+    `- Filings with no assigned topics: ${report.diagnostics.filings_with_no_assigned_topics.length}`,
     "",
   ];
 

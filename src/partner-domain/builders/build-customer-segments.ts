@@ -1,17 +1,13 @@
 import type { CustomerSegment } from "../partner-domain.types.js";
 import type { PartnerSourceArtifacts } from "../partner-source.types.js";
 import { sentenceList } from "./business-language.js";
-import {
-  getPrimaryCustomers,
-  getPrimaryProducts,
-} from "../../company-identity/company-identity-accessors.js";
 
 export function buildCustomerSegments(artifacts: PartnerSourceArtifacts): CustomerSegment[] {
   const products = sentenceList(
-    getPrimaryProducts(artifacts.companyIdentity, artifacts.companyProfile),
+    artifacts.companyKnowledge.products,
     "the company's products or services",
   );
-  const customers = getPrimaryCustomers(artifacts.companyIdentity, artifacts.companyProfile);
+  const customers = artifacts.companyKnowledge.customers;
   const customerSegments = customers.length > 0
     ? customers
     : ["Customers"];

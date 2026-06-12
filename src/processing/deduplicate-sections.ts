@@ -1,7 +1,8 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { getCompanyConfig } from "../config/companies.js";
-import { readTextFile } from "../shared/filesystem/file-reader.js";
+import { shouldPersistProcessedArtifacts } from "../shared/config/storage-mode.js";
+import { fileExists, readTextFile } from "../shared/filesystem/file-reader.js";
 import { ensureDirectory, writeJsonFile, writeTextFile } from "../shared/filesystem/file-writer.js";
 import { getFilingDirectory } from "../storage/filing-paths.js";
 import { resolveFilingDate } from "../storage/resolve-filing.js";
@@ -11,7 +12,13 @@ import type { DeduplicationReport, SectionDeduplicationReport } from "../types/p
 export async function deduplicateSections(company: CompanyConfig, filingDate?: string): Promise<DeduplicationReport> {
   const resolvedFilingDate = await resolveFilingDate(company.ticker, filingDate);
   const processedDir = join(getFilingDirectory(company.ticker, resolvedFilingDate), "processed");
-  const fileNames = (await readdir(processedDir))
+  const sourceFileNames = shouldPersistProcessedArtifacts()
+    ? await readdir(processedDir)
+    : [
+      "management-discussion.txt",
+      "risk-factors.txt",
+    ].filter((fileName) => fileExists(join(processedDir, fileName)));
+  const fileNames = sourceFileNames
     .filter((fileName) => fileName.endsWith(".txt"))
     .filter((fileName) => !fileName.endsWith(".deduped.txt"))
     .sort();

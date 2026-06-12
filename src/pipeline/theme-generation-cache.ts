@@ -1,6 +1,7 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { getCurrentTimestamp } from "../shared/dates/timestamps.js";
+import { shouldPersistChunkArtifacts } from "../shared/config/storage-mode.js";
 import { fileExists, readJsonFile, readTextFile } from "../shared/filesystem/file-reader.js";
 import { writeJsonFile } from "../shared/filesystem/file-writer.js";
 import { calculateStringHash } from "../shared/hashing/hash-file.js";
@@ -11,6 +12,7 @@ import type {
   ThemeGenerationReport,
   ThemeGenerationStatus,
 } from "../types/theme.types.js";
+import type { PromptProvenance } from "../prompt-registry/prompt-provenance.types.js";
 
 type ThemeGenerationDecision = {
   shouldGenerate: boolean;
@@ -56,9 +58,7 @@ export function decideThemeGeneration(params: {
 
 export async function calculateFilingChunkHash(ticker: string, filingDate: string): Promise<string> {
   const chunksDir = join(getFilingDirectory(ticker, filingDate), "chunks");
-  const chunkFiles = (await readdir(chunksDir))
-    .filter((fileName) => fileName.endsWith(".json"))
-    .sort();
+  const chunkFiles = await readableChunkFileNames(chunksDir);
   let hashInput = "";
 
   for (const fileName of chunkFiles) {
@@ -71,9 +71,7 @@ export async function calculateFilingChunkHash(ticker: string, filingDate: strin
 
 export async function estimateThemeInputTokens(ticker: string, filingDate: string): Promise<number> {
   const chunksDir = join(getFilingDirectory(ticker, filingDate), "chunks");
-  const chunkFiles = (await readdir(chunksDir))
-    .filter((fileName) => fileName.endsWith(".json"))
-    .sort();
+  const chunkFiles = await readableChunkFileNames(chunksDir);
   let totalCharacters = 0;
 
   for (const fileName of chunkFiles) {
@@ -81,6 +79,19 @@ export async function estimateThemeInputTokens(ticker: string, filingDate: strin
   }
 
   return Math.ceil(totalCharacters / 4);
+}
+
+async function readableChunkFileNames(chunksDir: string): Promise<string[]> {
+  if (shouldPersistChunkArtifacts()) {
+    return (await readdir(chunksDir))
+      .filter((fileName) => fileName.endsWith(".json"))
+      .sort();
+  }
+
+  return [
+    "management-discussion.chunks.json",
+    "risk-factors.chunks.json",
+  ];
 }
 
 export async function readStoredChunkHash(ticker: string, filingDate: string): Promise<string | null> {
@@ -115,6 +126,8 @@ export function buildThemeGenerationReport(params: {
   reason: ThemeGenerationReason;
   estimatedInputTokens: number;
   chunkHash: string;
+  modelVersion: string;
+  promptProvenance: PromptProvenance;
 }): ThemeGenerationReport {
   return {
     status: params.status,
@@ -122,6 +135,8 @@ export function buildThemeGenerationReport(params: {
     estimated_input_tokens: params.estimatedInputTokens,
     chunk_hash: params.chunkHash,
     generated_at: getCurrentTimestamp(),
+    model_version: params.modelVersion,
+    prompt_provenance: params.promptProvenance,
   };
 }
 

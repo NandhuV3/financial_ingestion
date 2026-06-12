@@ -1,6 +1,6 @@
-import type { TopicDefinition } from "../topic-layer/topic.types.js";
+import type { TopicDefinition } from "../topic-intelligence/topic.types.js";
 import type {
-  ApprovedTopicTheme,
+  AssignedTopicTheme,
   FilingMetadataForEvolution,
   TopicEvolution,
   TopicEvolutionDiagnostics,
@@ -28,12 +28,11 @@ export function buildTopicHistories(
   topicDefinitions: TopicDefinition[],
 ): BuildTopicHistoriesResult {
   const diagnostics: Omit<TopicEvolutionDiagnostics, "duration_ms"> = {
-    approved_assignments_used: 0,
-    pending_assignments_ignored: 0,
-    rejected_assignments_ignored: 0,
+    assigned_topics_used: 0,
+    unassigned_topics_ignored: 0,
     themes_without_topic_ignored: 0,
     missing_themes_with_topics_files: [],
-    filings_with_no_approved_topics: [],
+    filings_with_no_assigned_topics: [],
   };
 
   const sortedFilings = [...filings].sort((a, b) => a.metadata.filing_date.localeCompare(b.metadata.filing_date));
@@ -46,7 +45,7 @@ export function buildTopicHistories(
       diagnostics.missing_themes_with_topics_files.push(filing.metadata.filing_date);
     }
 
-    const aggregates = aggregateApprovedThemes(filing.themes, diagnostics);
+    const aggregates = aggregateAssignedThemes(filing.themes, diagnostics);
     filingAggregates.set(filing.metadata.filing_date, aggregates);
 
     for (const topicId of aggregates.keys()) {
@@ -54,7 +53,7 @@ export function buildTopicHistories(
     }
 
     if (aggregates.size === 0) {
-      diagnostics.filings_with_no_approved_topics.push(filing.metadata.filing_date);
+      diagnostics.filings_with_no_assigned_topics.push(filing.metadata.filing_date);
     }
   }
 
@@ -65,29 +64,27 @@ export function buildTopicHistories(
   return { topics, diagnostics };
 }
 
-function aggregateApprovedThemes(
-  themes: ApprovedTopicTheme[],
+function aggregateAssignedThemes(
+  themes: AssignedTopicTheme[],
   diagnostics: Omit<TopicEvolutionDiagnostics, "duration_ms">,
 ): Map<string, TopicAggregate> {
   const aggregates = new Map<string, TopicAggregate>();
 
   for (const theme of themes) {
-    if (theme.assignment_status === "pending_review") {
-      diagnostics.pending_assignments_ignored += 1;
+    if (theme.assignment_status === "unassigned") {
+      diagnostics.unassigned_topics_ignored += 1;
       continue;
     }
 
-    if (theme.assignment_status === "rejected") {
-      diagnostics.rejected_assignments_ignored += 1;
-      continue;
-    }
-
-    if (theme.assignment_status !== "approved" || !theme.topic_id) {
+    if (
+      (theme.assignment_status !== "assigned" && theme.assignment_status !== "low_confidence")
+      || !theme.topic_id
+    ) {
       diagnostics.themes_without_topic_ignored += 1;
       continue;
     }
 
-    diagnostics.approved_assignments_used += 1;
+    diagnostics.assigned_topics_used += 1;
     const aggregate = getOrCreateAggregate(aggregates, theme.topic_id);
     aggregate.importance_score = Math.max(aggregate.importance_score, importanceScore(theme.importance));
     aggregate.theme_count += 1;

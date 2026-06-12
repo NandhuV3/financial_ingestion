@@ -2,9 +2,8 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { buildCompanyProfileIntelligence } from "../src/company-profile/build-company-profile-intelligence.js";
 import { buildBusinessHealth } from "../src/partner-domain/builders/build-business-health.js";
-import { buildBusinessHealthDashboard } from "../src/partner-domain/builders/build-business-health-dashboard.js";
+import { buildBusinessHealthDashboard } from "../src/partner-domain/builders/build-owner-business-health.js";
 import { buildCompanyProfile } from "../src/partner-domain/builders/build-company-profile.js";
 import { buildCompanyStory } from "../src/partner-domain/builders/build-company-story.js";
 import { buildCustomerSegments } from "../src/partner-domain/builders/build-customer-segments.js";
@@ -24,47 +23,7 @@ describe("partner domain builders", () => {
     }
   });
 
-  it("builds company profile intelligence deterministically from source artifacts", () => {
-    const profile = buildCompanyProfileIntelligence(artifacts());
-
-    assert.equal(profile.company, "Microsoft");
-    assert.equal("business_model" in profile, false);
-    assert.equal("competitive_advantages" in profile, false);
-    assert.ok(profile.products.includes("cloud services"));
-    assert.ok(profile.customers.includes("businesses and organizations"));
-    assert.ok(profile.business_risks.some((risk) => risk.toLowerCase().includes("competition")));
-    assert.ok(profile.themes.includes("Cloud Revenue Growth"));
-    assert.ok(profile.topics.includes("growth"));
-    assert.deepEqual(profile.source_filings, ["2026-04-29"]);
-  });
-
-  it("builds a fallback company profile intelligence artifact without company-specific code", () => {
-    const profile = buildCompanyProfileIntelligence({
-      filing: {
-        company: "Example Systems",
-        ticker: "EXMP",
-        filing_date: "2026-04-29",
-        form_type: "10-Q",
-        accession_number: "0000000000-00-000000",
-      },
-      themes: null,
-      topicAssignments: null,
-      insight: null,
-      narrative: null,
-      quarterChange: null,
-      topicEvolution: null,
-    });
-
-    assert.equal(profile.company, "Example Systems");
-    assert.equal("business_model" in profile, false);
-    assert.equal("competitive_advantages" in profile, false);
-    assert.deepEqual(profile.products, ["products and services described in company filings"]);
-    assert.deepEqual(profile.customers, ["customers described in company filings"]);
-    assert.deepEqual(profile.themes, []);
-    assert.deepEqual(profile.topics, []);
-  });
-
-  it("builds a company profile from CompanyProfileIntelligence", () => {
+  it("builds a company profile from CompanyKnowledge", () => {
     const profile = buildCompanyProfile(artifacts());
 
     assert.equal(profile.ticker, "MSFT");
@@ -75,18 +34,15 @@ describe("partner domain builders", () => {
     assertNoFilingLanguage(profile);
   });
 
-  it("builds Partner Domain output from raw profile fallback", () => {
-    const source = artifacts({
-      companyProfile: rawCompanyProfile("Microsoft"),
-      companyIdentity: null,
-    });
+  it("builds Partner Domain output from CompanyKnowledge", () => {
+    const source = artifacts();
     const profile = buildCompanyProfile(source);
     const summary = buildPartnerSummary(source, "stable");
     const story = buildCompanyStory(source, profile);
 
-    assert.match(profile.whatTheyDo, /Microsoft provides cloud services/);
-    assert.match(summary.summary, /Microsoft provides cloud services/);
-    assert.match(story.whyTheyWin, /capabilities described/);
+    assert.match(profile.whatTheyDo, /serves businesses, organizations, and developers/);
+    assert.match(summary.summary, /serves businesses, organizations, and developers/);
+    assert.match(story.whyTheyWin, /platform ecosystem/);
   });
 
   it("builds the partner summary without exposing internal artifact language", () => {
@@ -112,7 +68,7 @@ describe("partner domain builders", () => {
     assert.equal(JSON.stringify(story).toLowerCase().includes("revenue increased"), false);
   });
 
-  it("builds customer segments from CompanyProfileIntelligence", () => {
+  it("builds customer segments from CompanyKnowledge", () => {
     const segments = buildCustomerSegments(artifacts());
 
     assert.ok(segments.some((segment) => segment.customerType === "Businesses and organizations"));
@@ -229,71 +185,22 @@ describe("partner domain builders", () => {
     ]);
   });
 
-  it("uses enriched health dashboard narrative when the offline artifact is present", () => {
-    const source = artifacts();
-
-    source.healthDashboardEnriched = {
-      company: "Microsoft",
-      ticker: "MSFT",
-      filing_date: "2026-04-29",
-      health_status: "improving",
-      explanation: "Cloud demand is improving, while cost discipline deserves attention.",
-      strengthening_areas: [
-        {
-          title: "Cloud demand",
-          explanation: "Customers are using more cloud infrastructure and business software.",
-        },
-      ],
-      watch_areas: [
-        {
-          title: "Cost discipline",
-          explanation: "AI infrastructure investment can pressure what remains after costs.",
-        },
-      ],
-      enrichment: {
-        model: "test",
-        generated_at: "2026-06-08T00:00:00.000Z",
-        input_hash: "hash-1",
-      },
-    };
-
-    const dashboard = buildBusinessHealthDashboard(source, "improving");
-
-    assert.equal(dashboard.explanation, "Cloud demand is improving, while cost discipline deserves attention.");
-    assert.equal(dashboard.strengtheningAreas[0]?.title, "Cloud demand");
-    assert.equal(dashboard.strengtheningAreas[0]?.explanation, "Customers are using more cloud infrastructure and business software.");
-    assert.equal(dashboard.watchAreas[0]?.title, "Cost discipline");
-  });
-
-  it("renders Apple from supplied CompanyProfileIntelligence without ticker-specific code", () => {
+  it("renders Apple from supplied CompanyKnowledge without ticker-specific code", () => {
     const source = artifacts({
       company: "Apple",
       ticker: "AAPL",
-      companyProfile: {
-        company: "Apple",
+      companyKnowledge: companyKnowledge("Apple", {
+        business_description: "Apple sells consumer devices, software products, and digital services used by consumers and creators.",
         products: ["consumer devices", "software products", "digital services"],
         customers: ["consumers", "creators and media partners"],
-        business_risks: ["supply chain and manufacturing", "regulation and antitrust"],
-        themes: ["Consumer Device Demand"],
-        topics: ["consumer_devices"],
-        source_filings: ["2026-04-29"],
-        profile_quality: "raw",
-      },
-      companyIdentity: {
-        company: "Apple",
-        business_description: "Apple sells consumer devices, software products, and digital services used by consumers and creators.",
-        primary_products: ["consumer devices", "software products", "digital services"],
-        primary_customers: ["consumers", "creators and media partners"],
         revenue_drivers: ["device sales", "software services"],
-        business_model_signals: ["consumer platform"],
-        competitive_signals: ["platform ecosystem", "brand trust and customer loyalty"],
-        operating_signals: ["global distribution network"],
-        enrichment: {
-          model: "test",
-          generated_at: "2026-06-06T00:00:00.000Z",
-          input_hash: "hash-1",
-        },
-      },
+        competitive_positioning: [
+          { signal: "platform ecosystem", source_type: "observed" },
+          { signal: "brand trust and customer loyalty", source_type: "observed" },
+        ],
+        operating_model: ["global distribution network"],
+        risks: ["supply chain and manufacturing", "regulation and antitrust"],
+      }),
     });
 
     const profile = buildCompanyProfile(source);
@@ -310,31 +217,17 @@ describe("partner domain builders", () => {
     const source = artifacts({
       company: "Harbor Tools",
       ticker: "HBR",
-      companyProfile: {
-        company: "Harbor Tools",
+      companyKnowledge: companyKnowledge("Harbor Tools", {
+        business_description: "Harbor Tools sells software products and payments services to merchants and sellers.",
         products: ["software products", "payments and transaction services"],
         customers: ["merchants and sellers"],
-        business_risks: ["competition"],
-        themes: ["Merchant Tools"],
-        topics: ["payments"],
-        source_filings: ["2026-04-29"],
-        profile_quality: "raw",
-      },
-      companyIdentity: {
-        company: "Harbor Tools",
-        business_description: "Harbor Tools sells software products and payments services to merchants and sellers.",
-        primary_products: ["software products", "payments and transaction services"],
-        primary_customers: ["merchants and sellers"],
         revenue_drivers: ["software subscriptions", "payment transaction volume"],
-        business_model_signals: ["merchant software"],
-        competitive_signals: ["distribution and marketplace reach"],
-        operating_signals: ["payment network operations"],
-        enrichment: {
-          model: "test",
-          generated_at: "2026-06-06T00:00:00.000Z",
-          input_hash: "hash-1",
-        },
-      },
+        competitive_positioning: [
+          { signal: "distribution and marketplace reach", source_type: "observed" },
+        ],
+        operating_model: ["payment network operations"],
+        risks: ["competition"],
+      }),
     });
 
     const profile = buildCompanyProfile(source);
@@ -352,8 +245,7 @@ function artifacts(overrides: Partial<{
   themes: Theme[];
   narrativeSummary: string;
   insightSummary: string;
-  companyProfile: PartnerSourceArtifacts["companyProfile"];
-  companyIdentity: PartnerSourceArtifacts["companyIdentity"];
+  companyKnowledge: PartnerSourceArtifacts["companyKnowledge"];
 }> = {}): PartnerSourceArtifacts {
   const company = overrides.company ?? "Microsoft";
   const ticker = overrides.ticker ?? "MSFT";
@@ -375,38 +267,15 @@ function artifacts(overrides: Partial<{
       form_type: "10-Q",
       accession_number: "0000000000-00-000000",
     },
-    companyProfile: overrides.companyProfile ?? {
-      company,
-      products: ["cloud services", "software products", "artificial intelligence capabilities"],
-      customers: ["businesses and organizations", "developers and technology teams"],
-      business_risks: ["competition", "AI execution and infrastructure investment"],
-      themes: themes.map((theme) => theme.theme),
-      topics: themes.map((theme) => theme.category),
-      source_filings: ["2026-04-29"],
-      profile_quality: "raw",
-    },
-    companyIdentity: "companyIdentity" in overrides ? overrides.companyIdentity! : {
-      company,
+    companyKnowledge: overrides.companyKnowledge ?? companyKnowledge(company, {
       business_description: narrativeSummary,
-      primary_products: ["cloud services", "software products", "artificial intelligence capabilities"],
-      primary_customers: ["businesses and organizations", "developers and technology teams"],
-      revenue_drivers: ["cloud computing consumption", "software subscriptions"],
-      business_model_signals: ["recurring revenue"],
-      competitive_signals: ["platform ecosystem", "technical infrastructure and operating capabilities"],
-      operating_signals: ["cloud infrastructure", "developer platform ecosystem"],
-      enrichment: {
-        model: "test",
-        generated_at: "2026-06-06T00:00:00.000Z",
-        input_hash: "hash-1",
-      },
-    },
+    }),
     themes: {
       company,
       ticker,
       filing_date: "2026-04-29",
       themes,
     },
-    topicAssignments: null,
     insight: {
       company,
       ticker,
@@ -482,8 +351,8 @@ function artifacts(overrides: Partial<{
       topic_registry_version: "test",
       topic_registry_hash: "hash-1",
       assignment_policy: {
-        included_statuses: ["approved"],
-        excluded_statuses: ["pending_review", "rejected", "missing"],
+        included_statuses: ["assigned", "low_confidence"],
+        excluded_statuses: ["unassigned", "missing"],
       },
       summary: {
         topics_analyzed: 2,
@@ -539,29 +408,69 @@ function artifacts(overrides: Partial<{
         },
       ],
       diagnostics: {
-        approved_assignments_used: 3,
-        pending_assignments_ignored: 0,
-        rejected_assignments_ignored: 0,
+        assigned_topics_used: 3,
+        unassigned_topics_ignored: 0,
         themes_without_topic_ignored: 0,
         missing_themes_with_topics_files: [],
-        filings_with_no_approved_topics: [],
+        filings_with_no_assigned_topics: [],
         duration_ms: 1,
       },
     },
-    healthDashboardEnriched: null,
   };
 }
 
-function rawCompanyProfile(company: string): PartnerSourceArtifacts["companyProfile"] {
+function companyKnowledge(
+  company: string,
+  overrides: Partial<PartnerSourceArtifacts["companyKnowledge"]> = {},
+): PartnerSourceArtifacts["companyKnowledge"] {
   return {
     company,
-    products: ["cloud services", "software products"],
-    customers: ["businesses and organizations"],
-    business_risks: ["competition"],
-    themes: ["Cloud Revenue Growth"],
-    topics: ["cloud"],
-    source_filings: ["2026-04-29"],
-    profile_quality: "raw",
+    business_description: `${company} provides cloud services, software products, and cloud and AI platforms for businesses, organizations, and developers.`,
+    business_model: {
+      value_creation: `${company} helps customers run software, cloud infrastructure, and AI workloads.`,
+      monetization: "cloud computing consumption; software subscriptions",
+      revenue_structure: "mixed",
+    },
+    products: ["cloud services", "software products", "artificial intelligence capabilities"],
+    customers: ["businesses and organizations", "developers and technology teams"],
+    revenue_drivers: ["cloud computing consumption", "software subscriptions"],
+    competitive_positioning: [
+      { signal: "platform ecosystem", source_type: "observed" },
+      { signal: "technical infrastructure and operating capabilities", source_type: "observed" },
+    ],
+    operating_model: ["cloud infrastructure", "developer platform ecosystem"],
+    key_dependencies: [
+      { description: "cloud infrastructure", type: "technology" },
+      { description: "developer platform ecosystem", type: "platform" },
+    ],
+    strategic_priorities: ["AI platform adoption"],
+    risks: ["competition", "AI execution and infrastructure investment"],
+    opportunities: ["cloud demand"],
+    confidence: {
+      overall: 0.9,
+      filing_depth: 1,
+      field_coverage: 1,
+    },
+    metadata: {
+      schema_version: "1.0.0",
+      pipeline_version: "company-knowledge-builder-v1",
+      knowledge_version: 1,
+      generated_at: "2026-06-06T00:00:00.000Z",
+      input_hash: "hash-1",
+    },
+    lineage: {
+      source_filings: [
+        {
+          id: "0000000000-00-000000",
+          period: "2026-04-29",
+          type: "10-Q",
+        },
+      ],
+      derived_from: ["structured-intelligence", "filing-metadata"],
+      model_version: "deterministic-v1",
+      prompt_version: "none",
+    },
+    ...overrides,
   };
 }
 

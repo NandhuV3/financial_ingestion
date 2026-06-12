@@ -5,7 +5,7 @@ import { deduplicateSections } from "../processing/deduplicate-sections.js";
 import { deduplicateOverlap } from "../processing/deduplicate-overlap.js";
 import { normalizeSections } from "../processing/normalize-sections.js";
 import { chunkSections } from "../processing/chunk-sections.js";
-import { generateThemes } from "../ai/generate-themes.js";
+import { generateThemes } from "../themes/generate-themes.js";
 
 async function runCompanyPipeline(ticker: string): Promise<void> {
   const company = getCompanyConfig(ticker);

@@ -1,7 +1,8 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { load } from "cheerio";
 import { getCompanyConfig } from "../config/companies.js";
+import { writeJsonFile, writeTextFile } from "../shared/filesystem/file-writer.js";
 import { getFilingDirectory } from "../storage/filing-paths.js";
 import { resolveFilingDate } from "../storage/resolve-filing.js";
 import type { CompanyConfig } from "../types/company.types.js";
@@ -121,10 +122,9 @@ export async function extractBoundaries(company: CompanyConfig, filingDate?: str
     },
   ];
 
-  await mkdir(processedDir, { recursive: true });
-  await writeFile(managementOutputPath, `${managementText}\n`, "utf8");
-  await writeFile(riskOutputPath, `${riskFactorsText}\n`, "utf8");
-  await writeFile(diagnosticsOutputPath, `${JSON.stringify(diagnostics, null, 2)}\n`, "utf8");
+  await writeTextFile(managementOutputPath, `${managementText}\n`);
+  await writeTextFile(riskOutputPath, `${riskFactorsText}\n`);
+  await writeJsonFile(diagnosticsOutputPath, diagnostics);
 
   console.log(`Source file: ${rawFilingPath}`);
   console.log(`Text blocks scanned: ${blocks.length}`);

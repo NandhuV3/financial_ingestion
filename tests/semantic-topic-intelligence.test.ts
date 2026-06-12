@@ -1,5 +1,4 @@
-import { mkdtemp, readFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
@@ -16,10 +15,8 @@ import {
 } from "../src/topic-intelligence/generate-theme-embedding.js";
 import { normalizeConfidence, scoreToDecision } from "../src/topic-intelligence/confidence-scoring.js";
 import { cosineSimilarity, matchThemesToTopics } from "../src/topic-intelligence/semantic-match-engine.js";
-import { writeTopicAssignmentReviewQueue } from "../src/topic-intelligence/review-queue.js";
 import { createLogger } from "../src/shared/logger.js";
 import type {
-  SemanticTopicMatch,
   ThemeEmbeddingFile,
   TopicEmbeddingRegistry,
 } from "../src/topic-intelligence/semantic-topic.types.js";
@@ -62,7 +59,7 @@ describe("semantic topic intelligence", () => {
     assert.equal(cosineSimilarity([1, 0], [1, 0]), 1);
     assert.equal(normalizeConfidence(0.987654), 0.9877);
     assert.equal(scoreToDecision(0.95), "auto_assign");
-    assert.equal(scoreToDecision(0.9499), "pending_review");
+    assert.equal(scoreToDecision(0.9499), "low_confidence");
   });
 
   it("matches themes to best candidate topics", () => {
@@ -114,42 +111,6 @@ describe("semantic topic intelligence", () => {
     assert.equal(matches[0].selected_topic, "ai");
     assert.equal(matches[0].candidates[0].variant_bonus, 0.1);
     assert.equal(matches[0].candidates[1].variant_bonus, 0);
-  });
-
-  it("writes pending review queue items", async () => {
-    const cwd = process.cwd();
-    const tempDir = await mkdtemp(join(tmpdir(), "topic-review-"));
-    const pending: SemanticTopicMatch = {
-      theme: "Foreign Exchange Impact",
-      category: "macroeconomic",
-      selected_topic: "foreign_exchange",
-      candidate_topic_id: "foreign_exchange",
-      confidence: 0.88,
-      match_reason: "semantic_similarity",
-      candidates: [
-        {
-          topic_id: "foreign_exchange",
-          cosine_similarity: 0.88,
-          category_bonus: 0,
-          variant_bonus: 0,
-          final_score: 0.88,
-          rank: 1,
-        },
-      ],
-      decision: "pending_review",
-    };
-
-    process.chdir(tempDir);
-    try {
-      await writeTopicAssignmentReviewQueue([pending, { ...pending, decision: "auto_assign", confidence: 0.99 }]);
-      const rawQueue = await readFile(join(tempDir, "data", "review", "topic-assignment-review.json"), "utf8");
-      const queue = JSON.parse(rawQueue) as { items: SemanticTopicMatch[] };
-
-      assert.equal(queue.items.length, 1);
-      assert.equal(queue.items[0].decision, "pending_review");
-    } finally {
-      process.chdir(cwd);
-    }
   });
 
   it("logs structured semantic matching context", () => {

@@ -1,390 +1,413 @@
 # Business Signal Builder Design
 
-## 1. Purpose
+## Goal
 
-The Business Signal Builder creates Business Signal artifacts from structured intelligence.
+The future Business Signal Builder assembles Business Signal artifacts from upstream intelligence.
 
-Its responsibility is to identify observable business signals that deserve attention.
+Business Signal Intelligence is an observation layer. It owns movement, change detection, signal normalization, and prioritization. It does not own explanations, narratives, recommendations, owner questions, or company facts.
 
-It answers:
+Company Knowledge remains the source of truth for durable business understanding. Business Signals observe movement around Company Knowledge.
 
-* What changed?
-* What emerged?
-* What strengthened?
-* What weakened?
-* What deserves further understanding?
+## 1. Builder Inputs
 
-The builder does not:
+The builder may consume already-loaded structured inputs. It should not own file loading, repository access, or storage path construction.
 
-* Explain signals
-* Generate narratives
-* Generate recommendations
-* Generate owner questions
-* Modify Company Knowledge
+Allowed future inputs:
 
-Business Signal Builder is the final observation layer before interpretation begins.
+- Company Knowledge
+- Filing metadata
+- Quarter Change Engine outputs
+- Topic Evolution outputs
+- Theme Intelligence outputs
+- Topic Assignment outputs
+- Health evidence artifacts
+- Historical Business Signal artifacts
+- Deterministic structured intelligence artifacts
 
----
+Company Knowledge provides stable business context:
 
-## 2. Architectural Position
+- What the company does
+- How it makes money
+- Products
+- Customers
+- Competitive positioning
+- Operating model
+- Dependencies
 
-```text
-Source Filings
-    ↓
-Structured Intelligence
-    ↓
-Company Knowledge
-    ↓
-Business Signal Builder
-    ↓
-Business Signal Artifact
-    ↓
-Quarter Understanding Intelligence
-    ↓
-Owner Questions Intelligence
-```
+Structured intelligence provides movement context:
 
-Business Signal Builder consumes structured intelligence and Company Knowledge.
+- What changed this quarter
+- What intensified
+- What weakened
+- What emerged
+- What disappeared
+- What received more emphasis
 
-Business Signal Builder produces Business Signal artifacts.
+The builder must not consume frontend view models, portfolio data, journal data, owner questions, recommendations, or presentation narratives as signal sources.
 
-Quarter Understanding consumes Business Signals.
+## 2. Builder Outputs
 
-Quarter Understanding owns interpretation.
+The builder should produce a Business Signal artifact using the frozen Business Signal schema.
 
----
+The output should include:
 
-## 3. Inputs
+- Normalized signals
+- Signal category
+- Signal direction
+- Signal magnitude
+- Signal confidence
+- Attached evidence
+- Source lineage
+- Generation metadata
 
-Future Business Signal Builder may consume:
+The output should not include:
+
+- Explanations
+- Narratives
+- Recommendations
+- Owner questions
+- Modified Company Knowledge
+- Presentation-specific copy
+
+The artifact should be reproducible from its inputs and auditable through lineage.
+
+## 3. Signal-Contributing Intelligence Layers
+
+Multiple intelligence layers may contribute candidate signals.
 
 ### Company Knowledge
 
-Provides business context.
-
-Examples:
-
-* Business model
-* Products
-* Customers
-* Revenue drivers
-* Competitive positioning
-* Dependencies
-
-### Filing Intelligence
-
-Provides quarter-specific observations.
-
-Examples:
-
-* Revenue trends
-* Segment performance
-* Margin trends
-* Operational changes
-* Management commentary
-* Risk disclosures
-
-### Historical Artifacts
-
-Provides prior-period comparison context.
-
-Examples:
-
-* Prior quarter signals
-* Prior quarter extraction
-* Prior quarter understanding
-
-Historical inputs may be introduced in later phases.
-
----
-
-## 4. Builder Responsibilities
-
-Business Signal Builder is responsible for:
-
-### Signal Detection
-
-Detect potentially meaningful observations.
-
-Examples:
-
-```text
-Cloud growth accelerated.
-Margin pressure increased.
-Customer concentration increased.
-AI infrastructure investment increased.
-```
-
-### Signal Classification
-
-Assign signal categories.
-
-Examples:
-
-```text
-Revenue
-Margin
-Growth
-Customer
-Product
-Competitive
-Dependency
-Operational
-Capital Allocation
-Management Commentary
-```
-
-### Signal Prioritization
-
-Determine which signals deserve downstream attention.
-
-Not every observation becomes a signal.
-
-Builder should suppress noise where possible.
-
-### Signal Attribution
-
-Every signal should be traceable to supporting evidence.
-
-Signals must remain auditable.
-
----
-
-## 5. Builder Non-Responsibilities
-
-Business Signal Builder must not:
-
-### Explain Signals
-
-Example:
-
-Allowed:
-
-```text
-Cloud growth acceleration observed.
-```
-
-Not Allowed:
-
-```text
-Cloud growth accelerated because enterprise AI demand increased.
-```
-
-Explanation belongs to Quarter Understanding.
-
----
-
-### Recommend Actions
-
-Not Allowed:
-
-```text
-Buy because cloud demand accelerated.
-Sell because margin pressure increased.
-```
-
-Recommendations belong to separate future systems.
-
----
-
-### Generate Owner Questions
-
-Not Allowed:
-
-```text
-Should owners worry about margin pressure?
-```
-
-Owner Questions Intelligence owns this responsibility.
-
----
-
-### Create Narratives
-
-Not Allowed:
-
-```text
-The company appears well positioned for long-term growth.
-```
-
-Narratives belong to future presentation layers.
-
----
-
-## 6. Detection Philosophy
-
-Business Signal Builder should operate using evidence-first detection.
-
-Signals should emerge from:
-
-* Numeric movement
-* Disclosure emphasis
-* New disclosures
-* Removed disclosures
-* Repeated disclosures
-* Comparative changes
-* Dependency changes
-* Business focus changes
-
-Signals should not emerge solely from persuasive language.
-
-Evidence must exist.
-
----
-
-## 7. Relationship To Company Knowledge
-
-Company Knowledge owns facts.
-
-Business Signals own movement around facts.
+Company Knowledge contributes context, not signal movement by itself.
 
 Example:
 
 ```text
 Company Knowledge:
-Microsoft sells cloud services.
+  Cloud infrastructure is a revenue driver.
 
-Business Signal:
-Cloud demand accelerated.
+Candidate signal from quarter evidence:
+  Cloud revenue acceleration observed.
 ```
 
-The signal references a business fact.
+### Quarter Change Engine
 
-It does not redefine that fact.
+Quarter Change outputs can contribute category and topic movement.
 
-Business Signal Builder must never mutate Company Knowledge.
+Examples:
 
----
+- New category observed
+- Removed category observed
+- Evidence count increased
+- Importance increased
+- Topic intensified
+- Topic weakened
 
-## 8. Relationship To Quarter Understanding
+### Topic Evolution
 
-Business Signals identify observations.
+Topic Evolution can contribute longitudinal movement.
 
-Quarter Understanding explains observations.
+Examples:
+
+- Topic emerged
+- Topic persisted
+- Topic strengthened
+- Topic weakened
+- Topic disappeared
+
+### Theme Intelligence
+
+Theme Intelligence can contribute filing-specific observations.
+
+Examples:
+
+- Theme importance changed
+- Evidence concentration increased
+- New risk theme appeared
+- Product theme received more emphasis
+
+### Filing Metadata
+
+Filing metadata contributes time and filing context.
+
+Examples:
+
+- Ticker
+- Filing date
+- Form type
+- Accession number
+
+### Historical Business Signals
+
+Historical signal artifacts can support deduplication, persistence tracking, and signal lifecycle analysis in future phases.
+
+They should not be required for initial signal assembly.
+
+## 4. Builder Vs Future Enrichment
+
+The design must support both deterministic assembly and future LLM-powered enrichment without requiring schema rewrites.
+
+### Builder Responsibilities
+
+The builder owns deterministic signal assembly:
+
+- Consume upstream intelligence
+- Identify candidate signals
+- Normalize observations
+- Deduplicate signals
+- Attach evidence
+- Assign category
+- Assign direction
+- Assign magnitude
+- Assign confidence
+- Generate lineage
+- Generate metadata
+
+The builder must remain reproducible and auditable.
+
+### Future Enrichment Responsibilities
+
+Future enrichment may improve signal wording, grouping, or prioritization when deterministic evidence already exists.
+
+Allowed future enrichment:
+
+- Rewrite terse signal titles into clearer language
+- Group closely related candidate signals
+- Improve owner-readable signal summaries
+- Suggest prioritization when evidence is supplied
+- Identify overlapping signal intent across structured inputs
+
+Future enrichment may not:
+
+- Invent unsupported signals
+- Add facts not present in source evidence
+- Modify Company Knowledge
+- Explain why a signal matters
+- Generate recommendations
+- Generate owner questions
+- Produce narratives
+- Override deterministic lineage
+
+### Separation Rule
+
+Deterministic signal assembly creates the auditable signal record.
+
+Future enrichment may decorate or refine that record, but it must not become the source of truth for whether a signal exists.
+
+## 5. Signal Deduplication Design
+
+Signal deduplication should prevent duplicate observations from appearing when multiple upstream artifacts describe the same movement.
+
+Deduplication should consider:
+
+- Company
+- Filing period
+- Signal category
+- Direction
+- Referenced Company Knowledge concept
+- Source topic or category
+- Normalized signal title
+- Evidence overlap
+
+Example duplicate candidates:
+
+```text
+Topic Evolution:
+  Cloud strengthened.
+
+Quarter Change:
+  Cloud evidence increased.
+
+Business Signal:
+  Cloud activity strengthened.
+```
+
+The builder should preserve one signal with merged evidence rather than creating multiple duplicate signals.
+
+Deduplication should not merge unrelated signals simply because their labels are similar.
 
 Example:
 
 ```text
-Business Signal:
-Margin pressure increased.
+Cloud revenue acceleration observed.
+Cloud infrastructure cost pressure observed.
 ```
 
-Quarter Understanding:
+These are distinct signals because one is revenue-related and the other is margin or operational.
 
-```text
-Margin pressure increased because infrastructure investment grew faster than revenue contribution.
-```
+## 6. Evidence Attachment Design
 
-Business Signal Builder stops at observation.
+Every signal must be evidence-based.
 
-Quarter Understanding begins interpretation.
+Evidence should connect the signal to upstream structured intelligence. It should make the signal auditable without requiring the signal layer to read raw filings directly.
 
----
+Evidence may reference:
 
-## 9. Deterministic vs LLM Responsibilities
+- Filing metadata
+- Theme identifiers or theme names
+- Topic identifiers or topic names
+- Quarter change entries
+- Topic evolution entries
+- Source artifact names
+- Source filing dates
+- Structured evidence references already present upstream
 
-Business Signal Builder should remain primarily evidence-driven.
+Evidence attachment should preserve:
 
-LLMs may assist with:
+- Source artifact
+- Source period
+- Source observation
+- Signal contribution
 
-* signal normalization
-* signal grouping
-* signal deduplication
-* signal summarization
+Evidence should not become narrative explanation. It should show why the signal was detected, not why the signal matters.
 
-LLMs should not invent signals unsupported by evidence.
+## 7. Confidence Design
 
-Every generated signal must remain attributable to source evidence.
+Confidence should be deterministic first.
 
-Business Signal Intelligence remains an auditable layer.
+Conceptual confidence inputs:
 
-Future model upgrades should improve signal quality without changing ownership boundaries.
+- Evidence quality
+- Number of contributing sources
+- Source agreement
+- Historical consistency
+- Filing coverage
+- Signal specificity
+- Lineage completeness
 
----
+Confidence should be lower when:
 
-## 10. Output Characteristics
+- Only one weak source supports the signal
+- Evidence is vague
+- Source lineage is incomplete
+- Movement is ambiguous
+- Candidate signals conflict
 
-Every future Business Signal should conceptually support:
+Confidence should be higher when:
 
-* Identity
-* Category
-* Summary
-* Direction
-* Magnitude
-* Confidence
-* Evidence
-* Lineage
-* Time Awareness
+- Multiple structured artifacts agree
+- Evidence is specific
+- Filing coverage is complete
+- The signal maps cleanly to Company Knowledge context
+- Historical movement supports the observation
 
-This document does not define schema fields.
+Confidence must not be narrative-based. It should not depend on persuasive wording or frontend presentation.
 
-It defines required characteristics only.
+Future LLM enrichment may suggest confidence annotations, but deterministic confidence remains authoritative unless a later governed contract explicitly changes ownership.
 
----
+## 8. Lineage Generation Design
 
-## 11. Future Evolution
+Lineage should explain where each signal came from.
 
-Future versions may introduce:
+Builder-level lineage should include:
 
-* Historical signal comparison
-* Signal persistence tracking
-* Signal emergence detection
-* Signal disappearance detection
-* Cross-quarter signal evolution
-* Cross-company signal comparison
+- Source filings
+- Source artifacts
+- Derived-from artifact names
+- Pipeline version
+- Schema version
+- Generation timestamp
+- Input hash
 
-These capabilities should extend Business Signal Intelligence without changing ownership boundaries.
+Signal-level lineage should connect each signal to its contributing structured observations.
 
----
+Lineage generation should be deterministic:
 
-## 12. Design Principles
+- Sort source filings consistently
+- Deduplicate source artifact references
+- Preserve stable ordering
+- Never remove upstream provenance
 
-### Observation Before Interpretation
+Lineage should support future audit, regeneration, debugging, and replay-safe processing.
 
-Signals identify what happened.
+## 9. Deterministic Responsibilities
 
-Quarter Understanding explains why.
+The following should remain deterministic:
 
-### Evidence Before Narrative
+- Input normalization
+- Candidate signal extraction from structured fields
+- Signal category assignment from explicit source fields
+- Direction assignment from explicit source fields
+- Magnitude assignment from documented deterministic rules
+- Confidence calculation from documented factors
+- Evidence attachment
+- Deduplication
+- Lineage merge
+- Metadata generation
+- Input hashing
 
-Signals must be attributable.
+- Deterministic assignment when explicit.
+- LLM enrichment allowed when ambiguity exists.
+- Deterministic evidence remains authoritative.
 
-Narratives are downstream.
+Deterministic systems own the auditable basis for each signal.
 
-### Auditability Before Sophistication
+## 10. Future LLM-Powered Enrichment
 
-Every signal should be traceable.
+The builder design should support future LLM-powered enrichment as an optional offline layer.
 
-### Company Knowledge Remains Authoritative
+Allowed future LLM use:
 
-Signals reference facts.
+- Improve signal phrasing from supplied structured evidence
+- Cluster overlapping signal candidates for review
+- Suggest owner-readable signal summaries
+- Help classify ambiguous candidates into existing categories when evidence is provided
 
-Signals do not redefine facts.
+Disallowed future LLM use:
 
-### Intelligence Layers Remain Separate
+- Runtime signal generation
+- Frontend signal generation
+- API-time signal generation
+- Unsupported fact creation
+- Recommendation generation
+- Owner question generation inside the signal layer
+- Narrative generation inside the signal layer
+- Company Knowledge mutation
 
-Business Signal Intelligence observes.
+Future enrichment outputs must remain cached, persisted, and attributable to deterministic signal evidence.
 
-Quarter Understanding interprets.
+## 11. Failure Modes
 
-Owner Questions challenges.
+The future builder should handle missing or incomplete inputs without throwing when reasonable.
 
-Narratives communicate.
+Expected behavior:
 
----
+- Missing Company Knowledge: emit low-confidence or no signals depending on available evidence.
+- Missing quarter changes: rely on other structured intelligence if available.
+- Missing topic evolution: omit longitudinal signals.
+- Missing filing metadata: preserve signal detection only if period can still be attributed.
+- No candidate signals: return a valid empty signal artifact.
 
-## 13. Non Goals
+The builder should not fabricate signals to compensate for missing data.
 
-This phase does not define:
+## 12. Builder Non-Responsibilities
 
-* TypeScript contracts
-* Builders
-* Repositories
-* Storage
-* Commands
-* Prompts
-* Enrichment pipelines
-* Runtime implementation
-* Generated artifacts
+The Business Signal Builder must not:
 
-This document defines builder architecture only.
+- Explain signals
+- Generate narratives
+- Generate recommendations
+- Generate owner questions
+- Modify Company Knowledge
+- Construct storage paths
+- Persist artifacts
+- Read raw SEC filings
+- Call OpenAI directly in the deterministic builder
+- Own frontend presentation wording
+
+## 13. Future Implementation Checklist
+
+Before implementation, future phases should define:
+
+- Exact TypeScript builder input contract
+- Candidate extraction rules by source artifact
+- Deduplication key strategy
+- Evidence reference shape
+- Confidence calculation rules
+- Lineage merge rules
+- Empty artifact behavior
+- Optional enrichment boundary
+- Repository and storage ownership
+- Command orchestration boundaries
+
+Implementation should begin only after these rules are frozen.
+

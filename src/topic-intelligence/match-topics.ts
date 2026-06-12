@@ -11,7 +11,6 @@ import {
   matchThemesToTopics,
 } from "./semantic-match-engine.js";
 import type { TopicEmbeddingRegistry } from "./semantic-topic.types.js";
-import { writeTopicAssignmentReviewQueue } from "./review-queue.js";
 
 const logger = createLogger("semantic-topic-match");
 const topicEmbeddingsPath = join(process.cwd(), "data", "registry", "topic-embeddings.json");
@@ -35,8 +34,6 @@ export async function matchTopicsForFiling(ticker: string, filingDate: string) {
     matches,
     generatedAt: getCurrentTimestamp(),
   });
-  const reviewQueue = await writeTopicAssignmentReviewQueue(matches);
-
   await writeJsonFile(outputPath, matchFile);
 
   logger.info("Semantic topic matching complete.", {
@@ -44,7 +41,6 @@ export async function matchTopicsForFiling(ticker: string, filingDate: string) {
     filing_date: filingDate,
     duration_ms: Date.now() - startedAt,
     matches: matches.length,
-    pending_review: reviewQueue.items.length,
   });
 
   for (const match of matches) {

@@ -1,3 +1,5 @@
+import type { PromptProvenance } from "../prompt-registry/prompt-provenance.types.js";
+
 export type ThemeImportance = "high" | "medium" | "low";
 
 export type Theme = {
@@ -12,6 +14,7 @@ export type ThemeOutput = {
   company: string;
   ticker: string;
   filing_date: string;
+  prompt_provenance: PromptProvenance;
   themes: Theme[];
 };
 
@@ -30,4 +33,6 @@ export type ThemeGenerationReport = {
   estimated_input_tokens: number;
   chunk_hash: string;
   generated_at: string;
+  model_version: string;
+  prompt_provenance: PromptProvenance;
 };

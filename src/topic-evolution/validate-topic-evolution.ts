@@ -1,9 +1,9 @@
-import type { TopicRegistry } from "../topic-layer/topic.types.js";
-import type { ApprovedTopicTheme, TopicEvolutionFilingInput } from "./topic-evolution.types.js";
+import type { TopicRegistry } from "../topic-intelligence/topic.types.js";
+import type { AssignedTopicTheme, TopicEvolutionFilingInput } from "./topic-evolution.types.js";
 
 const filingDatePattern = /^\d{4}-\d{2}-\d{2}$/;
 const allowedImportance = new Set(["low", "medium", "high"]);
-const allowedAssignmentStatuses = new Set(["approved", "pending_review", "rejected"]);
+const allowedAssignmentStatuses = new Set(["assigned", "low_confidence", "unassigned"]);
 
 export function validateTopicEvolutionInputs(filings: TopicEvolutionFilingInput[], registry: TopicRegistry): void {
   validateRegistry(registry);
@@ -51,7 +51,7 @@ function validateRegistry(registry: TopicRegistry): void {
   }
 }
 
-function validateTheme(theme: ApprovedTopicTheme, filingDate: string): void {
+function validateTheme(theme: AssignedTopicTheme, filingDate: string): void {
   if (!theme.theme.trim()) {
     throw new Error(`Theme is missing name for filing ${filingDate}`);
   }

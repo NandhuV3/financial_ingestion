@@ -4,18 +4,13 @@ import { removeFilingStyleLanguage } from "./business-language.js";
 import { isRiskTheme } from "./builder-utils.js";
 
 export function buildForensicsSignals(artifacts: PartnerSourceArtifacts): ForensicsSignal[] {
-  const riskItems = artifacts.insight?.risks ?? [];
+  
   const riskThemes = (artifacts.themes?.themes ?? []).filter((theme) => isRiskTheme(theme));
   const signals = [
-    ...artifacts.companyProfile.business_risks.slice(0, 4).map((risk) => ({
+    ...artifacts.companyKnowledge.risks.slice(0, 4).map((risk) => ({
       label: firstSentence(risk, 70),
       severity: "yellow" as const,
       explanation: risk,
-    })),
-    ...riskItems.slice(0, 4).map((risk) => ({
-      label: firstSentence(toPartnerRiskLanguage(risk), 70),
-      severity: "yellow" as const,
-      explanation: toPartnerRiskLanguage(risk),
     })),
     ...riskThemes.slice(0, 4).map((theme) => ({
       label: theme.theme,

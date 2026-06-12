@@ -22,6 +22,13 @@ export type PartnerCompanyViewModel = {
       status: string;
     }>;
   };
+  fiveQuestions?: {
+    business: OwnerQuestionCardViewModel;
+    growth: OwnerQuestionCardViewModel;
+    trust: OwnerQuestionCardViewModel;
+    valuation: OwnerQuestionCardViewModel;
+    holdThesis: OwnerQuestionCardViewModel;
+  };
   story: {
     whatTheySell: string;
     whoBuys: string;
@@ -49,4 +56,12 @@ export type PartnerCompanyViewModel = {
     status: string;
     description: string;
   }>;
+};
+
+export type OwnerQuestionCardViewModel = {
+  question: string;
+  answer: string;
+  confidence: "high" | "medium" | "low" | "";
+  evidence: string[];
+  status?: "answered" | "insufficient_data" | "";
 };

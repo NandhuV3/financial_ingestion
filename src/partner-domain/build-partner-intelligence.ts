@@ -1,29 +1,20 @@
 import { join } from "node:path";
-import { getCompanyConfig } from "../config/companies.js";
 import type { QuarterChangeReport } from "../change-engine/change.types.js";
-import type { InvestorInsight } from "../insights/insight.types.js";
-import type { InvestorNarrative } from "../narratives/narrative.types.js";
-import {
-  buildCompanyProfileIntelligence,
-  readCompanyProfileIntelligence,
-  type CompanyProfileSourceArtifacts,
-} from "../company-profile/build-company-profile-intelligence.js";
-import { readCompanyIdentityIntelligence } from "../company-identity/company-identity-accessors.js";
+import { FileCompanyKnowledgeRepository } from "../company-knowledge/company-knowledge.repository.js";
+import { getCompanyConfig } from "../config/companies.js";
 import { fileExists, readJsonFile } from "../shared/filesystem/file-reader.js";
 import { createLogger } from "../shared/logger.js";
 import { getCompanyDirectory, getFilingDirectory } from "../storage/filing-paths.js";
 import { resolveFilingDate } from "../storage/resolve-filing.js";
-import { getHealthDashboardEnrichedPath } from "../health-dashboard/health-dashboard-paths.js";
-import type { HealthDashboardEnriched } from "../health-dashboard/health-dashboard.types.js";
 import type { FilingMetadata } from "../types/pipeline.types.js";
 import type { ThemeOutput } from "../types/theme.types.js";
-import type { TopicAssignmentOutputV2 } from "../topic-assignment-v2/assignment.types.js";
 import { buildBusinessHealth } from "./builders/build-business-health.js";
-import { buildBusinessHealthDashboard } from "./builders/build-business-health-dashboard.js";
+import { buildBusinessHealthDashboard } from "./builders/build-owner-business-health.js";
 import { buildCompanyProfile } from "./builders/build-company-profile.js";
 import { buildCompanyStory } from "./builders/build-company-story.js";
 import { buildCustomerSegments } from "./builders/build-customer-segments.js";
 import { buildForensicsSignals } from "./builders/build-forensics-signals.js";
+import { buildFiveQuestions } from "./builders/build-five-questions.js";
 import { buildMoneyProfile } from "./builders/build-money-profile.js";
 import { buildPartnerSummary } from "./builders/build-partner-summary.js";
 import { buildTrustProfile } from "./builders/build-trust-profile.js";
@@ -49,6 +40,12 @@ export async function buildPartnerCompanyIntelligence(
   const money = buildMoneyProfile(artifacts, businessHealth);
   const trust = buildTrustProfile(artifacts);
   const forensics = buildForensicsSignals(artifacts);
+  const fiveQuestions = buildFiveQuestions({
+    artifacts,
+    businessHealth,
+    health,
+    forensics,
+  });
 
   logger.info("Partner intelligence aggregate built.", {
     ticker: company.ticker,
@@ -73,6 +70,7 @@ export async function buildPartnerCompanyIntelligence(
     trust,
     forensics,
     health,
+    fiveQuestions,
     sources: buildSources(artifacts),
   };
 }
@@ -80,32 +78,27 @@ export async function buildPartnerCompanyIntelligence(
 export async function loadPartnerSourceArtifacts(ticker: string, filingDate: string): Promise<PartnerSourceArtifacts> {
   const filingDir = getFilingDirectory(ticker, filingDate);
   const filing = await readJsonFile<FilingMetadata>(join(filingDir, "metadata", "filing.json"));
-  const artifactsWithoutProfile: CompanyProfileSourceArtifacts = {
+  const companyKnowledge = await readCompanyKnowledge(ticker);
+  return {
     filing,
+    companyKnowledge,
     themes: await readOptionalJson<ThemeOutput>(join(filingDir, "intelligence", "themes.json")),
-    topicAssignments: await readOptionalJson<TopicAssignmentOutputV2>(
-      join(filingDir, "intelligence", "themes.with-topics.json"),
-    ),
-    insight: await readOptionalJson<InvestorInsight>(join(filingDir, "insights", "investor-insight.json")),
-    narrative: await readOptionalJson<InvestorNarrative>(join(filingDir, "narratives", "investor-narrative.json")),
     quarterChange: await readOptionalJson<QuarterChangeReport>(join(filingDir, "comparison", "quarter-change-report.json")),
     topicEvolution: await readOptionalJson<PartnerTopicEvolutionSource>(
       join(getCompanyDirectory(ticker), "reports", "topic-evolution-report.json"),
     ),
   };
-  const companyProfile = await readCompanyProfileIntelligence(ticker)
-    ?? buildCompanyProfileIntelligence(artifactsWithoutProfile);
-  const companyIdentity = await readCompanyIdentityIntelligence(ticker);
-  const healthDashboardEnriched = await readOptionalJson<HealthDashboardEnriched>(
-    getHealthDashboardEnrichedPath(ticker, filingDate),
-  );
+}
 
-  return {
-    ...artifactsWithoutProfile,
-    companyProfile,
-    companyIdentity,
-    healthDashboardEnriched,
-  };
+async function readCompanyKnowledge(ticker: string) {
+  const repository = new FileCompanyKnowledgeRepository(process.env.PARTNER_WAREHOUSE_ROOT);
+  const companyKnowledge = await repository.loadCurrent(ticker);
+
+  if (!companyKnowledge) {
+    throw new Error(`Company Knowledge not found for ${ticker.trim().toUpperCase()}`);
+  }
+
+  return companyKnowledge;
 }
 
 async function readOptionalJson<T>(path: string): Promise<T | null> {
@@ -119,9 +112,7 @@ async function readOptionalJson<T>(path: string): Promise<T | null> {
 function buildSources(artifacts: PartnerSourceArtifacts): PartnerIntelligenceSource[] {
   const sources: PartnerIntelligenceSource[] = [];
 
-  if (artifacts.narrative) sources.push({ artifact: "investor_narrative" });
-  if (artifacts.insight) sources.push({ artifact: "investor_insight" });
-  sources.push({ artifact: "company_profile" });
+  sources.push({ artifact: "company_knowledge" });
   if (artifacts.topicEvolution) sources.push({ artifact: "topic_evolution", generatedAt: artifacts.topicEvolution.generated_at });
   if (artifacts.quarterChange) sources.push({ artifact: "quarter_change" });
   if (artifacts.themes) sources.push({ artifact: "themes" });

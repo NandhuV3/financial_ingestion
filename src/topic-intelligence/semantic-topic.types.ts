@@ -1,4 +1,4 @@
-import type { TopicDefinition } from "../topic-layer/topic.types.js";
+import type { TopicDefinition } from "./topic.types.js";
 
 export type EmbeddingVector = number[];
 
@@ -30,7 +30,7 @@ export type ThemeEmbeddingFile = {
   themes: ThemeEmbedding[];
 };
 
-export type SemanticDecision = "auto_assign" | "pending_review";
+export type SemanticDecision = "auto_assign" | "low_confidence";
 
 export type SemanticMatchReason =
   | "semantic_similarity"
@@ -65,9 +65,4 @@ export type SemanticTopicMatchFile = {
   generated_at: string;
   embedding_model: string;
   matches: SemanticTopicMatch[];
-};
-
-export type TopicAssignmentReviewQueue = {
-  generated_at: string;
-  items: SemanticTopicMatch[];
 };

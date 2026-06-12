@@ -45,7 +45,24 @@ export interface MockCompany {
     status: "green" | "yellow" | "red";
     description: string;
   }>;
+  fiveQuestions?: MockFiveQuestions;
 }
+
+type MockOwnerQuestionCard = {
+  question: string;
+  answer: string;
+  confidence: "high" | "medium" | "low";
+  evidence: string[];
+  status?: "answered" | "insufficient_data";
+};
+
+type MockFiveQuestions = {
+  business: MockOwnerQuestionCard;
+  growth: MockOwnerQuestionCard;
+  trust: MockOwnerQuestionCard;
+  valuation: MockOwnerQuestionCard;
+  holdThesis: MockOwnerQuestionCard;
+};
 
 export const companyCategories: CompanyCategory[] = [
   "Everyday Brands",
@@ -95,6 +112,43 @@ export const mockCompanies: MockCompany[] = [
       { title: "Customer concentration", status: "green", description: "Revenue comes from many types of customers instead of one buyer." },
       { title: "Security trust", status: "yellow", description: "Because customers rely on Microsoft deeply, security issues matter a lot." },
     ],
+    fiveQuestions: {
+      business: {
+        question: "What does this company actually sell?",
+        answer: "Microsoft sells software, cloud infrastructure, workplace tools, developer platforms, and AI capabilities to businesses, governments, schools, developers, and consumers.",
+        confidence: "high",
+        evidence: ["business_description", "products", "customers"],
+        status: "answered",
+      },
+      growth: {
+        question: "Where does the next rupee come from?",
+        answer: "The next rupee most likely comes from cloud usage, software subscriptions, security demand, and AI-related infrastructure adoption.",
+        confidence: "high",
+        evidence: ["revenue_drivers", "strategic_priorities", "topic_evolution"],
+        status: "answered",
+      },
+      trust: {
+        question: "Can the story be trusted?",
+        answer: "The story is credible while customers keep relying on Microsoft platforms, but owners should watch security trust, cloud competition, and AI infrastructure spending.",
+        confidence: "medium",
+        evidence: ["risks", "forensics", "business_health"],
+        status: "answered",
+      },
+      valuation: {
+        question: "Is the story already too expensive?",
+        answer: "Valuation analysis requires market-price data which is not currently available.",
+        confidence: "low",
+        evidence: [],
+        status: "insufficient_data",
+      },
+      holdThesis: {
+        question: "Why would I hold it and what would change that?",
+        answer: "An owner might hold Microsoft for its durable software base, cloud demand, and AI platform opportunity. Conviction would weaken if customer trust, cloud competitiveness, or cash generation deteriorated.",
+        confidence: "medium",
+        evidence: ["business_health", "strategic_priorities", "growth_question", "trust_question"],
+        status: "answered",
+      },
+    },
   },
   {
     id: "apple",
@@ -135,6 +189,43 @@ export const mockCompanies: MockCompany[] = [
       { title: "Regulatory pressure", status: "yellow", description: "Rules around app stores and digital services could change economics." },
       { title: "Supply dependence", status: "yellow", description: "Major products rely on complex global manufacturing." },
     ],
+    fiveQuestions: {
+      business: {
+        question: "What does this company actually sell?",
+        answer: "Apple sells consumer devices, software, accessories, and digital services to consumers, creators, students, families, and businesses.",
+        confidence: "high",
+        evidence: ["business_description", "products", "customers"],
+        status: "answered",
+      },
+      growth: {
+        question: "Where does the next rupee come from?",
+        answer: "The next rupee likely comes from device upgrades, services subscriptions, app ecosystem activity, and deeper customer use across Apple products.",
+        confidence: "medium",
+        evidence: ["revenue_drivers", "strategic_priorities"],
+        status: "answered",
+      },
+      trust: {
+        question: "Can the story be trusted?",
+        answer: "The story depends on customer loyalty and product execution, while owners should watch regulatory pressure, supply dependence, and device demand cycles.",
+        confidence: "medium",
+        evidence: ["risks", "forensics", "business_health"],
+        status: "answered",
+      },
+      valuation: {
+        question: "Is the story already too expensive?",
+        answer: "Valuation analysis requires market-price data which is not currently available.",
+        confidence: "low",
+        evidence: [],
+        status: "insufficient_data",
+      },
+      holdThesis: {
+        question: "Why would I hold it and what would change that?",
+        answer: "An owner might hold Apple for customer loyalty, ecosystem strength, and recurring services. Conviction would weaken if product relevance, regulatory economics, or supply reliability worsened.",
+        confidence: "medium",
+        evidence: ["business_health", "strategic_priorities", "growth_question", "trust_question"],
+        status: "answered",
+      },
+    },
   },
   {
     id: "costco",

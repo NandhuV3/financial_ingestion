@@ -8,6 +8,7 @@ import { CompanyHeader } from "./components/CompanyHeader";
 import { CompanyTabs, type CompanyTabId } from "./components/CompanyTabs";
 import { CustomersSection } from "./components/CustomersSection";
 import { ForensicsSection } from "./components/ForensicsSection";
+import { FiveQuestionsSection } from "./components/FiveQuestionsSection";
 import { MoneySection } from "./components/MoneySection";
 import { StorySection } from "./components/StorySection";
 import { TrustSection } from "./components/TrustSection";
@@ -44,6 +45,7 @@ function mapMockCompanyToViewModel(company: MockCompany): PartnerCompanyViewMode
     money: company.money,
     trust: company.trust,
     forensics: company.forensics,
+    fiveQuestions: company.fiveQuestions,
   };
 }
 
@@ -109,7 +111,9 @@ export function CompanyDetailContent({
           onAddToPortfolio={onAddToPortfolio}
           isInPortfolio={isInPortfolio}
         />
+        <FiveQuestionsSection fiveQuestions={company.fiveQuestions} />
         <CompanyTabs activeTab={activeTab} onChange={setActiveTab} />
+        
 
         {activeTab === "story" && <StorySection company={company} />}
         {activeTab === "customers" && <CustomersSection company={company} />}

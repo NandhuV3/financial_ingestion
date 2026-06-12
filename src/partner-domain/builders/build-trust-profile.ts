@@ -1,13 +1,12 @@
 import type { TrustProfile } from "../partner-domain.types.js";
 import type { PartnerSourceArtifacts } from "../partner-source.types.js";
-import {
-  getCompetitiveSignals,
-  getPrimaryCustomers,
-} from "../../company-identity/company-identity-accessors.js";
 
 export function buildTrustProfile(artifacts: PartnerSourceArtifacts): TrustProfile {
-  const customers = getPrimaryCustomers(artifacts.companyIdentity, artifacts.companyProfile).slice(0, 2).join(" and ") || "customers";
-  const advantages = getCompetitiveSignals(artifacts.companyIdentity).slice(0, 2).join(" and ") || "durable business strengths";
+  const customers = artifacts.companyKnowledge.customers.slice(0, 2).join(" and ") || "customers";
+  const advantages = artifacts.companyKnowledge.competitive_positioning
+    .map((item) => item.signal)
+    .slice(0, 2)
+    .join(" and ") || "durable business strengths";
 
   return {
     managementQuality: `Management quality is best judged by whether leaders keep the business useful to ${customers} over many years.`,

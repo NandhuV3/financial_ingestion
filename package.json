@@ -10,38 +10,42 @@
   "scripts": {
     "ingest:sec": "tsx src/ingestion/sec-ingestion.ts",
     "ingest:history": "tsx src/ingestion/historical-sec-ingestion.ts",
+
     "extract:sections": "tsx src/extraction/extract-sections.ts",
     "extract:boundaries": "tsx src/extraction/extract-boundaries.ts",
+
     "dedupe:sections": "tsx src/processing/deduplicate-sections.ts",
     "dedupe:overlap": "tsx src/processing/deduplicate-overlap.ts",
+
     "normalize:sections": "tsx src/processing/normalize-sections.ts",
     "chunk:sections": "tsx src/processing/chunk-sections.ts",
-    "generate:intelligence": "tsx src/ai/generate-intelligence.ts",
+
     "generate:themes": "tsx src/ai/generate-themes.ts",
+
+    "generate:structured-intelligence": "tsx src/structured-intelligence/generate-structured-intelligence.ts",
+    
+    "generate:company-knowledge": "tsx src/company-knowledge/generate-company-knowledge.ts",
+
+    "generate:business-signals": "tsx src/business-signals/generate-business-signals.ts",
+
+    "generate:partner-domain": "tsx src/partner-domain/build-partner-intelligence.ts",
+
+    "generate:topic-embeddings": "tsx src/topic-intelligence/generate-topic-embeddings.ts",
+    "generate:topic-matches": "tsx src/topic-intelligence/match-topics.ts",
+    "generate:topic-assignments": "tsx src/topic-assignment-v2/generate-topic-assignments.ts",
+    "generate:topic-evolution": "tsx src/topic-evolution/generate-topic-evolution-report.ts",
+
+    "harness": "tsx src/harness/run-harness.ts",
+
     "freshness:company": "tsx src/reporting/check-artifact-freshness.ts",
     "report:company": "tsx src/reporting/generate-company-report.ts",
     "pipeline": "tsx src/pipeline/run-company.ts",
     "pipeline:filing": "tsx src/pipeline/pipeline-filing.ts",
     "pipeline:pre-ai": "tsx src/pipeline/pipeline-pre-ai.ts",
     "pipeline:themes": "tsx src/pipeline/pipeline-themes.ts",
-    "analyze:quarters": "tsx src/analysis/msft-quarter-review.ts",
     "compare:changes": "tsx src/change-engine/generate-quarter-change-report.ts",
-    "topics:discover": "tsx src/topic-layer/generate-topic-report.ts",
-    "topics:assign": "tsx src/topic-layer/assign-topics.ts",
     "token:estimate": "tsx src/reporting/estimate-tokens.ts",
-    "generate:insights": "tsx src/insights/generate-investor-insights.ts",
-    "generate:narrative": "tsx src/narratives/generate-investor-narrative.ts",
-    "topics:embed": "tsx src/topic-intelligence/generate-topic-embeddings.ts",
-    "topics:match": "tsx src/topic-intelligence/match-topics.ts",
-    "topics:review-queue": "tsx src/topic-assignment-v2/build-review-queue.ts",
-    "topics:apply": "tsx src/topic-assignment-v2/generate-topic-assignments.ts",
-    "topics:evolution": "tsx src/topic-evolution/generate-topic-evolution-report.ts",
-    "identity:company": "tsx src/company-identity/build-company-identity.ts",
-    "identity:company:evidence": "tsx src/company-identity/build-company-identity.ts",
-    "identity:company:enrich": "tsx src/company-identity/enrichment/enrich-company-identity.ts",
-    "enrich:company-profile": "tsx src/company-profile/enrichment/enrich-company-profile.ts",
-    "health:evidence": "tsx src/health-dashboard/build-health-dashboard-evidence.ts",
-    "health:enrich": "tsx src/health-dashboard/enrichment/enrich-health-dashboard.ts",
+
     "api:partner": "tsx src/api/server.ts",
     "web:dev": "vite --config apps/partner-web/vite.config.ts",
     "web:build": "vite build --config apps/partner-web/vite.config.ts",

@@ -1,5 +1,4 @@
-import type { CompanyIdentityEnriched } from "../company-identity/company-identity.types.js";
-import type { CompanyProfileIntelligence } from "../company-profile/company-profile.types.js";
+import type { StructuredIntelligence } from "../structured-intelligence/types/structured-intelligence.types.js";
 import type { FilingMetadata } from "../types/pipeline.types.js";
 import {
   buildCompanyKnowledge,
@@ -10,10 +9,8 @@ import type { CompanyKnowledge } from "./types/company-knowledge.types.js";
 
 export type GenerateCompanyKnowledgeParams = {
   ticker: string;
-  companyIdentity?: CompanyIdentityEnriched | null;
-  companyProfile?: CompanyProfileIntelligence | null;
-  filingMetadata?: FilingMetadata | null;
-  derivedFrom?: string[];
+  structuredIntelligence: StructuredIntelligence;
+  filingMetadata: FilingMetadata;
   repository: CompanyKnowledgeRepository;
   builder?: (inputs: BuildCompanyKnowledgeInputs) => CompanyKnowledge;
 };
@@ -26,10 +23,8 @@ export async function generateCompanyKnowledge(
 
   try {
     knowledge = builder({
-      companyIdentity: params.companyIdentity,
-      companyProfile: params.companyProfile,
+      structuredIntelligence: params.structuredIntelligence,
       filingMetadata: params.filingMetadata,
-      derivedFrom: params.derivedFrom,
     });
   } catch (error) {
     throw new Error(`Failed to build Company Knowledge for ${normalizeTicker(params.ticker)}: ${errorMessage(error)}`);

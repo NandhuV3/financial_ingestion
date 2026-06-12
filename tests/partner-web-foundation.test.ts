@@ -337,6 +337,7 @@ describe("partner web foundation", () => {
         money: {},
         trust: {},
         forensics: [],
+        fiveQuestions: testFiveQuestions(),
         sources: [],
       }), {
         status: 200,
@@ -517,6 +518,7 @@ describe("partner web company story experience", () => {
         explanation: "API cash signal explanation.",
       },
     ],
+    fiveQuestions: testFiveQuestions(),
     sources: [],
   };
 
@@ -535,6 +537,11 @@ describe("partner web company story experience", () => {
 
       assert.ok(rendered.text().includes("API tagline for Microsoft."));
       assert.ok(rendered.text().includes("API story sells software"));
+      assert.ok(rendered.text().includes("Five Questions"));
+      assert.ok(rendered.text().includes("What does this company actually sell?"));
+      assert.ok(rendered.text().includes("It sells software and cloud services to businesses."));
+      assert.ok(rendered.text().includes("Insufficient data"));
+      assert.ok(rendered.text().includes("Valuation analysis requires market-price data"));
     } finally {
       rendered.unmount();
       globalThis.fetch = previousFetch;
@@ -571,10 +578,30 @@ describe("partner web company story experience", () => {
 
       assert.ok(rendered.text().includes("Builds software and cloud infrastructure used by businesses worldwide."));
       assert.ok(rendered.text().includes("If this were a shop in your neighbourhood"));
+      assert.ok(rendered.text().includes("Five Questions"));
+      assert.ok(rendered.text().includes("The next rupee most likely comes from cloud usage"));
+      assert.ok(rendered.text().includes("Valuation analysis requires market-price data"));
     } finally {
       rendered.unmount();
       globalThis.fetch = previousFetch;
     }
+  });
+
+  it("does not crash when fiveQuestions is missing", () => {
+    const company = {
+      ...mapPartnerCompanyToViewModel(apiCompanyResponse),
+      fiveQuestions: undefined,
+    };
+    const markup = renderToStaticMarkup(
+      React.createElement(
+        MemoryRouter,
+        null,
+        React.createElement(CompanyDetailContent, { company }),
+      ),
+    );
+
+    assert.ok(markup.includes("Microsoft API"));
+    assert.equal(markup.includes("Five Questions"), false);
   });
 
   it("shows a generic error when the API fails and no mock data exists", async () => {
@@ -993,6 +1020,7 @@ describe("partner intelligence feature api", () => {
     money: {},
     trust: {},
     forensics: [],
+    fiveQuestions: testFiveQuestions(),
     sources: [],
   };
 
@@ -1188,6 +1216,7 @@ describe("partner company adapter", () => {
         explanation: "The business regularly turns sales into cash.",
       },
     ],
+    fiveQuestions: testFiveQuestions(),
     sources: [],
   };
 
@@ -1314,6 +1343,7 @@ describe("usePartnerIntelligence", () => {
         explanation: "The business regularly turns sales into cash.",
       },
     ],
+    fiveQuestions: testFiveQuestions(),
     sources: [],
   };
 
@@ -1431,3 +1461,43 @@ describe("usePartnerIntelligence", () => {
     }
   });
 });
+
+function testFiveQuestions() {
+  return {
+    business: {
+      question: "What does this company actually sell?",
+      answer: "It sells software and cloud services to businesses.",
+      confidence: "high" as const,
+      evidence: ["business_description", "products", "customers"],
+      status: "answered" as const,
+    },
+    growth: {
+      question: "Where does the next rupee come from?",
+      answer: "Growth comes from cloud usage and software subscriptions.",
+      confidence: "medium" as const,
+      evidence: ["revenue_drivers", "strategic_priorities"],
+      status: "answered" as const,
+    },
+    trust: {
+      question: "Can the story be trusted?",
+      answer: "The story depends on execution and risk signals.",
+      confidence: "medium" as const,
+      evidence: ["risks", "forensics", "business_health"],
+      status: "answered" as const,
+    },
+    valuation: {
+      question: "Is the story already too expensive?",
+      answer: "Valuation analysis requires market-price data which is not currently available.",
+      confidence: "low" as const,
+      evidence: [],
+      status: "insufficient_data" as const,
+    },
+    holdThesis: {
+      question: "Why would I hold it and what would change that?",
+      answer: "An owner might hold while the business remains healthy and would revisit if risks weaken conviction.",
+      confidence: "medium" as const,
+      evidence: ["business_health", "growth_question", "trust_question"],
+      status: "answered" as const,
+    },
+  };
+}

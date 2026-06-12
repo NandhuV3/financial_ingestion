@@ -1,7 +1,8 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { load } from "cheerio";
 import { getCompanyConfig } from "../config/companies.js";
+import { writeJsonFile } from "../shared/filesystem/file-writer.js";
 import { getFilingDirectory } from "../storage/filing-paths.js";
 import { resolveFilingDate } from "../storage/resolve-filing.js";
 import type { CompanyConfig } from "../types/company.types.js";
@@ -131,8 +132,7 @@ export async function exploreSections(company: CompanyConfig, filingDate?: strin
     importantMatches,
   };
 
-  await mkdir(dirname(outputPath), { recursive: true });
-  await writeFile(outputPath, `${JSON.stringify(output, null, 2)}\n`, "utf8");
+  await writeJsonFile(outputPath, output);
 
   console.log(`Source file: ${rawFilingPath}`);
   console.log(`Text blocks scanned: ${textBlocks.length}`);

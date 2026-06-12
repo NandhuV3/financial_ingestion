@@ -14,19 +14,19 @@ export type FilingMetadataForEvolution = {
   accession_number?: string;
 };
 
-export type ApprovedTopicTheme = {
+export type AssignedTopicTheme = {
   theme: string;
   category: string;
   importance: ThemeImportance;
   summary: string;
   evidence: string[];
   topic_id?: string | null;
-  assignment_status?: "approved" | "pending_review" | "rejected";
+  assignment_status?: "assigned" | "low_confidence" | "unassigned";
 };
 
 export type TopicEvolutionFilingInput = {
   metadata: FilingMetadataForEvolution;
-  themes: ApprovedTopicTheme[];
+  themes: AssignedTopicTheme[];
   themes_with_topics_file_exists: boolean;
 };
 
@@ -75,12 +75,11 @@ export type TopicEvolutionSummary = {
 };
 
 export type TopicEvolutionDiagnostics = {
-  approved_assignments_used: number;
-  pending_assignments_ignored: number;
-  rejected_assignments_ignored: number;
+  assigned_topics_used: number;
+  unassigned_topics_ignored: number;
   themes_without_topic_ignored: number;
   missing_themes_with_topics_files: string[];
-  filings_with_no_approved_topics: string[];
+  filings_with_no_assigned_topics: string[];
   duration_ms: number;
 };
 
@@ -95,8 +94,8 @@ export type TopicEvolutionReport = {
   topic_registry_version: string;
   topic_registry_hash: string;
   assignment_policy: {
-    included_statuses: ["approved"];
-    excluded_statuses: ["pending_review", "rejected", "missing"];
+    included_statuses: ["assigned", "low_confidence"];
+    excluded_statuses: ["unassigned", "missing"];
   };
   summary: TopicEvolutionSummary;
   topics: TopicEvolution[];

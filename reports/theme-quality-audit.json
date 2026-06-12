@@ -1,0 +1,320 @@
+{
+  "generated_at": "2026-06-11T15:16:25.387Z",
+  "audit_type": "theme_quality_audit",
+  "methodology": {
+    "scoring": "Each dimension counts themes whose title, category, or summary contains dimension-specific business indicators. Score is matched_theme_count / expected_minimum_theme_count capped at 1.0.",
+    "status_thresholds": {
+      "pass": "score >= 1.0",
+      "partial": "0.5 <= score < 1.0",
+      "weak": "score < 0.5"
+    },
+    "dimensions": {
+      "product_coverage": {
+        "indicators": [
+          "product",
+          "products",
+          "device",
+          "devices",
+          "windows",
+          "mac",
+          "iphone",
+          "cloud",
+          "ai",
+          "artificial intelligence",
+          "software",
+          "services",
+          "platform",
+          "infrastructure",
+          "oem"
+        ],
+        "expected_minimum_theme_count": 2
+      },
+      "customer_coverage": {
+        "indicators": [
+          "customer",
+          "customers",
+          "consumer",
+          "consumers",
+          "business",
+          "businesses",
+          "enterprise",
+          "enterprises",
+          "developer",
+          "developers",
+          "demand",
+          "adoption"
+        ],
+        "expected_minimum_theme_count": 2
+      },
+      "revenue_coverage": {
+        "indicators": [
+          "revenue",
+          "sales",
+          "margin",
+          "margins",
+          "pricing",
+          "expenses",
+          "costs",
+          "cash",
+          "tax",
+          "financial results",
+          "operating expenses",
+          "gross margin"
+        ],
+        "expected_minimum_theme_count": 2
+      },
+      "risk_coverage": {
+        "indicators": [
+          "risk",
+          "risks",
+          "adversely",
+          "regulatory",
+          "legal",
+          "competition",
+          "competitive",
+          "cybersecurity",
+          "supply chain",
+          "tariff",
+          "tax",
+          "liabilities",
+          "scrutiny",
+          "constraints",
+          "vulnerabilities",
+          "investigations"
+        ],
+        "expected_minimum_theme_count": 3
+      },
+      "business_coverage": {
+        "indicators": [
+          "growth",
+          "margin",
+          "margins",
+          "revenue",
+          "sales",
+          "product",
+          "products",
+          "services",
+          "cloud",
+          "ai",
+          "supply chain",
+          "competition",
+          "regulation",
+          "investment",
+          "research and development",
+          "tax",
+          "cybersecurity",
+          "business performance",
+          "operations"
+        ],
+        "expected_minimum_theme_count": 5
+      }
+    }
+  },
+  "companies": [
+    {
+      "company": "Microsoft",
+      "ticker": "MSFT",
+      "filing_date": "2026-04-29",
+      "source_path": "data/MSFT/filings/2026-04-29/intelligence/themes.json",
+      "theme_count": 10,
+      "category_counts": {
+        "competition": 1,
+        "cybersecurity": 1,
+        "growth": 2,
+        "investments": 1,
+        "macroeconomic": 1,
+        "regulation": 2,
+        "supply_chain": 1,
+        "taxation": 1
+      },
+      "evidence_reference_count": 22,
+      "coverage": {
+        "product_coverage": {
+          "score": 1,
+          "status": "pass",
+          "matched_theme_count": 8,
+          "expected_minimum_theme_count": 2,
+          "matched_themes": [
+            "Strong Growth in Cloud Services",
+            "Investments in AI Infrastructure",
+            "Competitive Pressure in Technology Sector",
+            "Challenges in Product and Device Sales",
+            "Foreign Currency Impact",
+            "Supply Chain Vulnerabilities",
+            "Cybersecurity Risks",
+            "Environmental and Social Governance Goals"
+          ],
+          "evidence_reference_count": 18
+        },
+        "customer_coverage": {
+          "score": 1,
+          "status": "pass",
+          "matched_theme_count": 2,
+          "expected_minimum_theme_count": 2,
+          "matched_themes": [
+            "Strong Growth in Cloud Services",
+            "Challenges in Product and Device Sales"
+          ],
+          "evidence_reference_count": 6
+        },
+        "revenue_coverage": {
+          "score": 1,
+          "status": "pass",
+          "matched_theme_count": 9,
+          "expected_minimum_theme_count": 2,
+          "matched_themes": [
+            "Strong Growth in Cloud Services",
+            "Investments in AI Infrastructure",
+            "Challenges in Product and Device Sales",
+            "Foreign Currency Impact",
+            "Legal and Regulatory Challenges",
+            "Supply Chain Vulnerabilities",
+            "Cybersecurity Risks",
+            "Tax Liabilities and Regulatory Scrutiny",
+            "Environmental and Social Governance Goals"
+          ],
+          "evidence_reference_count": 19
+        },
+        "risk_coverage": {
+          "score": 1,
+          "status": "pass",
+          "matched_theme_count": 7,
+          "expected_minimum_theme_count": 3,
+          "matched_themes": [
+            "Competitive Pressure in Technology Sector",
+            "Challenges in Product and Device Sales",
+            "Foreign Currency Impact",
+            "Legal and Regulatory Challenges",
+            "Supply Chain Vulnerabilities",
+            "Cybersecurity Risks",
+            "Tax Liabilities and Regulatory Scrutiny"
+          ],
+          "evidence_reference_count": 16
+        },
+        "business_coverage": {
+          "score": 1,
+          "status": "pass",
+          "matched_theme_count": 10,
+          "expected_minimum_theme_count": 5,
+          "matched_themes": [
+            "Strong Growth in Cloud Services",
+            "Investments in AI Infrastructure",
+            "Competitive Pressure in Technology Sector",
+            "Challenges in Product and Device Sales",
+            "Foreign Currency Impact",
+            "Legal and Regulatory Challenges",
+            "Supply Chain Vulnerabilities",
+            "Cybersecurity Risks",
+            "Tax Liabilities and Regulatory Scrutiny",
+            "Environmental and Social Governance Goals"
+          ],
+          "evidence_reference_count": 22
+        }
+      },
+      "gaps": []
+    },
+    {
+      "company": "Apple",
+      "ticker": "AAPL",
+      "filing_date": "2026-05-01",
+      "source_path": "data/AAPL/filings/2026-05-01/intelligence/themes.json",
+      "theme_count": 9,
+      "category_counts": {
+        "artificial_intelligence": 1,
+        "cybersecurity": 1,
+        "growth": 1,
+        "investments": 1,
+        "macroeconomic": 1,
+        "margins": 1,
+        "regulation": 1,
+        "supply_chain": 1,
+        "taxation": 1
+      },
+      "evidence_reference_count": 13,
+      "coverage": {
+        "product_coverage": {
+          "score": 1,
+          "status": "pass",
+          "matched_theme_count": 6,
+          "expected_minimum_theme_count": 2,
+          "matched_themes": [
+            "Macroeconomic Pressures",
+            "Product Introduction Impact",
+            "Supply Chain and Tariff Effects",
+            "Gross Margin Variability",
+            "Legal and Regulatory Challenges",
+            "Artificial Intelligence Risks"
+          ],
+          "evidence_reference_count": 9
+        },
+        "customer_coverage": {
+          "score": 1,
+          "status": "pass",
+          "matched_theme_count": 4,
+          "expected_minimum_theme_count": 2,
+          "matched_themes": [
+            "Product Introduction Impact",
+            "Supply Chain and Tariff Effects",
+            "Cybersecurity Risks",
+            "Artificial Intelligence Risks"
+          ],
+          "evidence_reference_count": 7
+        },
+        "revenue_coverage": {
+          "score": 1,
+          "status": "pass",
+          "matched_theme_count": 6,
+          "expected_minimum_theme_count": 2,
+          "matched_themes": [
+            "Macroeconomic Pressures",
+            "Product Introduction Impact",
+            "Supply Chain and Tariff Effects",
+            "Gross Margin Variability",
+            "Tax Compliance and Liabilities",
+            "Investment in Research and Development"
+          ],
+          "evidence_reference_count": 7
+        },
+        "risk_coverage": {
+          "score": 1,
+          "status": "pass",
+          "matched_theme_count": 6,
+          "expected_minimum_theme_count": 3,
+          "matched_themes": [
+            "Macroeconomic Pressures",
+            "Supply Chain and Tariff Effects",
+            "Legal and Regulatory Challenges",
+            "Cybersecurity Risks",
+            "Artificial Intelligence Risks",
+            "Tax Compliance and Liabilities"
+          ],
+          "evidence_reference_count": 11
+        },
+        "business_coverage": {
+          "score": 1,
+          "status": "pass",
+          "matched_theme_count": 9,
+          "expected_minimum_theme_count": 5,
+          "matched_themes": [
+            "Macroeconomic Pressures",
+            "Product Introduction Impact",
+            "Supply Chain and Tariff Effects",
+            "Gross Margin Variability",
+            "Legal and Regulatory Challenges",
+            "Cybersecurity Risks",
+            "Artificial Intelligence Risks",
+            "Tax Compliance and Liabilities",
+            "Investment in Research and Development"
+          ],
+          "evidence_reference_count": 13
+        }
+      },
+      "gaps": []
+    }
+  ],
+  "summary": {
+    "companies_audited": 2,
+    "weak_dimensions": [],
+    "partial_dimensions": []
+  }
+}

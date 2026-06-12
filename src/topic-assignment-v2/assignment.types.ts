@@ -3,40 +3,9 @@ import type { SemanticMatchReason, SemanticTopicMatch } from "../topic-intellige
 
 export type TopicRecommendationMethod = "semantic" | "variant_match";
 
-export type TopicAssignmentMethod = "manual" | "automatic";
+export type TopicAssignmentMethod = "automatic";
 
-export type TopicAssignmentStatus = "approved" | "pending_review" | "rejected";
-
-export type TopicApprovalDecision = "approved" | "rejected";
-
-export interface TopicApproval {
-  theme: string;
-  topic_id: string;
-  decision: TopicApprovalDecision;
-  reviewed_at: string;
-  ticker?: string;
-  filing_date?: string;
-}
-
-export type TopicApprovalFile = {
-  approvals: TopicApproval[];
-};
-
-export type TopicReviewCandidate = SemanticTopicMatch & {
-  ticker: string;
-  filing_date: string;
-  reviewed_topic_id: string;
-  review_status: "pending_review";
-  recommendation_method: TopicRecommendationMethod;
-  recommendation_reason: SemanticMatchReason;
-};
-
-export type TopicReviewQueue = {
-  generated_at: string;
-  ticker: string;
-  filing_date: string;
-  candidates: TopicReviewCandidate[];
-};
+export type TopicAssignmentStatus = "assigned" | "low_confidence" | "unassigned";
 
 export type TopicAssignedThemeV2 = Theme & {
   topic_id: string | null;
@@ -47,12 +16,12 @@ export type TopicAssignedThemeV2 = Theme & {
   assignment_status: TopicAssignmentStatus;
 };
 
-export type TopicAssignmentOutputV2 = Omit<ThemeOutput, "themes"> & {
+export type TopicAssignmentOutputV2 = Omit<ThemeOutput, "themes" | "prompt_provenance"> & {
   themes: TopicAssignedThemeV2[];
 };
 
 export type TopicAssignmentSummary = {
-  approved_count: number;
-  pending_count: number;
-  rejected_count: number;
+  assigned_count: number;
+  low_confidence_count: number;
+  unassigned_count: number;
 };

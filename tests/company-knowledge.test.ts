@@ -5,9 +5,11 @@ import {
   calculateCompanyKnowledgeInputHash,
   type BuildCompanyKnowledgeInputs,
 } from "../src/company-knowledge/build-company-knowledge.js";
+import type { StructuredIntelligence } from "../src/structured-intelligence/types/structured-intelligence.types.js";
+import type { FilingMetadata } from "../src/types/pipeline.types.js";
 
 describe("company knowledge builder", () => {
-  it("assembles Company Knowledge from Company Identity first", () => {
+  it("normalizes Structured Intelligence into durable Company Knowledge", () => {
     const knowledge = buildCompanyKnowledge(inputs());
 
     assert.equal(knowledge.company, "Microsoft");
@@ -25,222 +27,111 @@ describe("company knowledge builder", () => {
       },
     ]);
     assert.deepEqual(knowledge.operating_model, ["cloud infrastructure"]);
-    assert.deepEqual(knowledge.key_dependencies, []);
-  });
-
-  it("falls back to Company Profile when Company Identity is missing", () => {
-    const knowledge = buildCompanyKnowledge({
-      ...inputs(),
-      companyIdentity: null,
-    });
-
-    assert.equal(knowledge.business_description, "Legacy profile business model.");
-    assert.deepEqual(knowledge.products, ["legacy product"]);
-    assert.deepEqual(knowledge.customers, ["legacy customer"]);
-    assert.deepEqual(knowledge.competitive_positioning, [
+    assert.deepEqual(knowledge.key_dependencies, [
       {
-        signal: "legacy advantage",
-        source_type: "claimed",
+        description: "data center capacity",
+        type: "technology",
       },
     ]);
+    assert.deepEqual(knowledge.strategic_priorities, ["AI infrastructure"]);
+    assert.deepEqual(knowledge.risks, ["competition"]);
+    assert.deepEqual(knowledge.opportunities, ["cloud adoption"]);
   });
 
-  it("uses filing metadata and empty fallback when identity and profile are missing", () => {
-    const knowledge = buildCompanyKnowledge({
-      filingMetadata: inputs().filingMetadata,
-      generatedAt: "2026-06-08T00:00:00.000Z",
-    });
-
-    assert.equal(knowledge.company, "Microsoft");
-    assert.equal(knowledge.business_description, "");
-    assert.equal(knowledge.business_model.value_creation, "");
-    assert.equal(knowledge.business_model.monetization, "");
-    assert.equal(knowledge.business_model.revenue_structure, "mixed");
-    assert.deepEqual(knowledge.products, []);
-    assert.deepEqual(knowledge.customers, []);
-  });
-
-  it("calculates deterministic confidence and lineage", () => {
+  it("uses Structured Intelligence confidence and calculates field coverage", () => {
     const knowledge = buildCompanyKnowledge(inputs());
 
-    assert.equal(knowledge.confidence.overall, 0.96);
-    assert.equal(knowledge.confidence.filing_depth, 1);
-    assert.equal(knowledge.confidence.field_coverage, 0.86);
+    assert.equal(knowledge.confidence.overall, 0.9);
+    assert.equal(knowledge.confidence.filing_depth, 0.83);
+    assert.equal(knowledge.confidence.field_coverage, 1);
+    assertValidConfidence(knowledge.confidence);
+  });
+
+  it("calculates partial field coverage from Company Knowledge source fields", () => {
+    const source = structuredIntelligence({
+      products: [],
+      customers: [],
+      revenue_drivers: [],
+      competitive_positioning: [],
+      operating_model: [],
+      key_dependencies: [],
+      strategic_priorities: [],
+      risks: [],
+      opportunities: [],
+    });
+    const knowledge = buildCompanyKnowledge({
+      structuredIntelligence: source,
+      filingMetadata: filingMetadata(),
+    });
+
+    assert.equal(knowledge.confidence.field_coverage, 0.1);
+  });
+
+  it("builds deterministic lineage from Structured Intelligence and filing metadata", () => {
+    const knowledge = buildCompanyKnowledge(inputs());
+
     assert.deepEqual(knowledge.lineage.source_filings, [
       {
         id: "0000000000-00-000000",
         period: "2026-04-29",
         type: "10-Q",
       },
-      {
-        id: "2026-04-29",
-        period: "2026-04-29",
-        type: "unknown",
-      },
     ]);
     assert.deepEqual(knowledge.lineage.derived_from, [
-      "company-identity",
-      "company-profile.enriched",
+      "structured-intelligence",
       "filing-metadata",
-      "themes",
     ]);
     assert.equal(knowledge.lineage.model_version, "deterministic-v1");
     assert.equal(knowledge.lineage.prompt_version, "none");
   });
 
-  it("hashes normalized inputs without volatile generated timestamps", () => {
+  it("hashes normalized inputs without volatile Structured Intelligence generated timestamps", () => {
     const first = inputs();
-    const second = inputs();
-
-    second.companyIdentity = {
-      ...second.companyIdentity!,
-      enrichment: {
-        ...second.companyIdentity!.enrichment,
-        generated_at: "2099-01-01T00:00:00.000Z",
-      },
+    const second = {
+      ...inputs(),
+      structuredIntelligence: structuredIntelligence({
+        metadata: {
+          ...structuredIntelligence().metadata,
+          generated_at: "2099-01-01T00:00:00.000Z",
+        },
+      }),
     };
 
     assert.equal(calculateCompanyKnowledgeInputHash(first), calculateCompanyKnowledgeInputHash(second));
   });
 
-  it("does not convert business risks into key dependencies", () => {
-    const knowledge = buildCompanyKnowledge({
-      ...inputs(),
-      companyIdentity: null,
-    });
-
-    assert.deepEqual(knowledge.key_dependencies, []);
-  });
-
-  it("applies field-level source precedence from identity before profile and metadata", () => {
-    const knowledge = buildCompanyKnowledge({
-      ...inputs(),
-      companyIdentity: {
-        ...inputs().companyIdentity!,
-        business_description: "Identity description wins.",
-        primary_products: ["identity product"],
-        primary_customers: ["identity customer"],
-        revenue_drivers: ["identity revenue driver"],
-        competitive_signals: ["identity competitive signal"],
-      },
-      companyProfile: {
-        ...inputs().companyProfile!,
-        business_model: "Profile description loses.",
-        products: ["profile product"],
-        customers: ["profile customer"],
-        competitive_advantages: ["profile advantage"],
-      },
-      filingMetadata: {
-        ...inputs().filingMetadata!,
-        company: "Metadata Company",
-      },
-    });
-
-    assert.equal(knowledge.company, "Microsoft");
-    assert.equal(knowledge.business_description, "Identity description wins.");
-    assert.deepEqual(knowledge.products, ["identity product"]);
-    assert.deepEqual(knowledge.customers, ["identity customer"]);
-    assert.deepEqual(knowledge.revenue_drivers, ["identity revenue driver"]);
-    assert.deepEqual(knowledge.competitive_positioning, [{
-      signal: "identity competitive signal",
-      source_type: "observed",
-    }]);
-  });
-
-  it("uses profile field fallbacks independently when identity fields are missing", () => {
-    const source = inputs();
-    const knowledge = buildCompanyKnowledge({
-      ...source,
-      companyIdentity: {
-        ...source.companyIdentity!,
-        business_description: "",
-        primary_products: [],
-        primary_customers: [],
-        revenue_drivers: [],
-        competitive_signals: [],
-      },
-    });
-
-    assert.equal(knowledge.business_description, "Legacy profile business model.");
-    assert.deepEqual(knowledge.products, ["legacy product"]);
-    assert.deepEqual(knowledge.customers, ["legacy customer"]);
-    assert.deepEqual(knowledge.revenue_drivers, []);
-    assert.deepEqual(knowledge.competitive_positioning, [{
-      signal: "legacy advantage",
-      source_type: "claimed",
-    }]);
-  });
-
-  it("returns a valid empty CompanyKnowledge object for empty inputs", () => {
-    const knowledge = buildCompanyKnowledge({});
-
-    assert.equal(knowledge.company, "");
-    assert.equal(knowledge.business_description, "");
-    assert.equal(knowledge.business_model.value_creation, "");
-    assert.equal(knowledge.business_model.monetization, "");
-    assert.equal(knowledge.business_model.revenue_structure, "mixed");
-    assert.deepEqual(knowledge.products, []);
-    assert.deepEqual(knowledge.customers, []);
-    assert.deepEqual(knowledge.revenue_drivers, []);
-    assert.deepEqual(knowledge.competitive_positioning, []);
-    assert.deepEqual(knowledge.operating_model, []);
-    assert.deepEqual(knowledge.key_dependencies, []);
-    assertValidConfidence(knowledge.confidence);
-    assert.equal(knowledge.confidence.overall, 0);
-    assert.equal(knowledge.metadata.schema_version, "1.0.0");
-    assert.equal(knowledge.metadata.pipeline_version, "company-knowledge-builder-v1");
-    assert.equal(knowledge.metadata.knowledge_version, 1);
-    assert.ok(knowledge.metadata.generated_at);
-    assert.ok(knowledge.metadata.input_hash);
-    assert.deepEqual(knowledge.lineage.source_filings, []);
-    assert.deepEqual(knowledge.lineage.derived_from, []);
-    assert.equal(knowledge.lineage.model_version, "deterministic-v1");
-    assert.equal(knowledge.lineage.prompt_version, "none");
-    assertNoUndefined(knowledge);
-  });
-
-  it("keeps hashes stable for equivalent inputs and changed for real input changes", () => {
+  it("changes hashes when Structured Intelligence changes", () => {
     const first = inputs();
-    const same = {
-      ...inputs(),
-      derivedFrom: ["themes"],
-    };
-    const reordered = {
-      ...inputs(),
-      derivedFrom: ["extra", "themes"],
-    };
-    const reorderedSame = {
-      ...inputs(),
-      derivedFrom: ["themes", "extra"],
-    };
     const changed = {
       ...inputs(),
-      companyIdentity: {
-        ...inputs().companyIdentity!,
-        primary_products: ["different product"],
-      },
+      structuredIntelligence: structuredIntelligence({
+        products: ["different product"],
+      }),
     };
 
-    assert.equal(calculateCompanyKnowledgeInputHash(first), calculateCompanyKnowledgeInputHash(same));
-    assert.equal(calculateCompanyKnowledgeInputHash(reordered), calculateCompanyKnowledgeInputHash(reorderedSame));
     assert.notEqual(calculateCompanyKnowledgeInputHash(first), calculateCompanyKnowledgeInputHash(changed));
   });
 
-  it("deduplicates lineage and preserves stable ordering", () => {
+  it("deduplicates source filing lineage and preserves stable ordering", () => {
     const knowledge = buildCompanyKnowledge({
       ...inputs(),
-      companyProfile: {
-        ...inputs().companyProfile!,
-        source_filings: ["2026-04-29", "2025-10-29", "2026-04-29"],
-      },
-      derivedFrom: ["themes", "themes", "company-identity"],
+      structuredIntelligence: structuredIntelligence({
+        lineage: {
+          ...structuredIntelligence().lineage,
+          source_filings: [
+            { id: "2026-04-29", period: "2026-04-29", type: "10-Q" },
+            { id: "2025-10-29", period: "2025-10-29", type: "10-Q" },
+            { id: "2026-04-29", period: "2026-04-29", type: "10-Q" },
+          ],
+        },
+      }),
     });
 
     assert.deepEqual(knowledge.lineage.source_filings, [
       {
         id: "2025-10-29",
         period: "2025-10-29",
-        type: "unknown",
+        type: "10-Q",
       },
       {
         id: "0000000000-00-000000",
@@ -250,43 +141,9 @@ describe("company knowledge builder", () => {
       {
         id: "2026-04-29",
         period: "2026-04-29",
-        type: "unknown",
+        type: "10-Q",
       },
     ]);
-    assert.deepEqual(knowledge.lineage.derived_from, [
-      "company-identity",
-      "company-profile.enriched",
-      "filing-metadata",
-      "themes",
-    ]);
-  });
-
-  it("scores more complete inputs higher than incomplete inputs", () => {
-    const complete = buildCompanyKnowledge(inputs());
-    const missingIdentity = buildCompanyKnowledge({
-      ...inputs(),
-      companyIdentity: null,
-    });
-    const missingLineage = buildCompanyKnowledge({
-      companyIdentity: inputs().companyIdentity,
-      companyProfile: null,
-      filingMetadata: null,
-      derivedFrom: [],
-    });
-    const empty = buildCompanyKnowledge({});
-
-    assert.ok(complete.confidence.overall > missingIdentity.confidence.overall);
-    assert.ok(missingIdentity.confidence.overall > empty.confidence.overall);
-    assert.ok(complete.confidence.overall > missingLineage.confidence.overall);
-
-    for (const confidence of [
-      complete.confidence,
-      missingIdentity.confidence,
-      missingLineage.confidence,
-      empty.confidence,
-    ]) {
-      assertValidConfidence(confidence);
-    }
   });
 
   it("is deterministic for repeated executions with the same generated_at", () => {
@@ -312,66 +169,67 @@ describe("company knowledge builder", () => {
     );
   });
 
-  it("does not throw for documented missing-input failure modes", () => {
-    const cases: BuildCompanyKnowledgeInputs[] = [
-      { ...inputs(), companyIdentity: null },
-      { ...inputs(), companyProfile: null },
-      { ...inputs(), filingMetadata: null },
-      { ...inputs(), derivedFrom: [] },
-      {},
-    ];
-
-    for (const params of cases) {
-      assert.doesNotThrow(() => buildCompanyKnowledge(params));
-      assertNoUndefined(buildCompanyKnowledge(params));
-    }
+  it("preserves the expected artifact structure without undefined values", () => {
+    assertNoUndefined(buildCompanyKnowledge(inputs()));
   });
 });
 
 function inputs(): BuildCompanyKnowledgeInputs {
   return {
-    companyIdentity: {
-      company: "Microsoft",
-      business_description: "Microsoft provides cloud services and software subscriptions to businesses.",
-      primary_products: ["cloud services", "software products"],
-      primary_customers: ["businesses", "developers"],
-      revenue_drivers: ["software subscriptions", "cloud consumption"],
-      business_model_signals: ["recurring revenue"],
-      competitive_signals: ["developer ecosystem"],
-      operating_signals: ["cloud infrastructure"],
-      enrichment: {
-        model: "test",
-        generated_at: "2026-06-08T00:00:00.000Z",
-        input_hash: "identity-hash",
-      },
-    },
-    companyProfile: {
-      company: "Microsoft",
-      products: ["legacy product"],
-      customers: ["legacy customer"],
-      business_risks: ["supplier concentration"],
-      themes: [],
-      topics: [],
-      source_filings: ["2026-04-29", "2026-04-29"],
-      business_model: "Legacy profile business model.",
-      competitive_advantages: ["legacy advantage"],
-      customer_value_proposition: "Legacy customer value.",
-      profile_quality: "enriched",
-      enrichment: {
-        model: "test",
-        generated_at: "2026-06-08T00:00:00.000Z",
-        input_hash: "profile-hash",
-      },
-    },
-    filingMetadata: {
-      company: "Microsoft",
-      ticker: "MSFT",
-      filing_date: "2026-04-29",
-      form_type: "10-Q",
-      accession_number: "0000000000-00-000000",
-    },
-    derivedFrom: ["themes"],
+    structuredIntelligence: structuredIntelligence(),
+    filingMetadata: filingMetadata(),
     generatedAt: "2026-06-08T00:00:00.000Z",
+  };
+}
+
+function structuredIntelligence(
+  overrides: Partial<StructuredIntelligence> = {},
+): StructuredIntelligence {
+  return {
+    company: "Microsoft",
+    business_description: "Microsoft provides cloud services and software subscriptions to businesses.",
+    products: ["cloud services", "software products"],
+    customers: ["businesses", "developers"],
+    revenue_drivers: ["software subscriptions", "cloud consumption"],
+    competitive_positioning: ["developer ecosystem"],
+    operating_model: ["cloud infrastructure"],
+    key_dependencies: ["data center capacity"],
+    strategic_priorities: ["AI infrastructure"],
+    risks: ["competition"],
+    opportunities: ["cloud adoption"],
+    confidence: {
+      overall: 0.9,
+      source_coverage: 0.83,
+    },
+    metadata: {
+      schema_version: "1.0.0",
+      pipeline_version: "structured-intelligence-v1",
+      generated_at: "2026-06-08T00:00:00.000Z",
+      input_hash: "structured-intelligence-hash",
+    },
+    lineage: {
+      source_filings: [
+        {
+          id: "0000000000-00-000000",
+          period: "2026-04-29",
+          type: "10-Q",
+        },
+      ],
+      derived_from: ["themes", "topics"],
+      model_version: "gpt-4o-mini",
+      prompt_version: "structured-intelligence-v1",
+    },
+    ...overrides,
+  };
+}
+
+function filingMetadata(): FilingMetadata {
+  return {
+    company: "Microsoft",
+    ticker: "MSFT",
+    filing_date: "2026-04-29",
+    form_type: "10-Q",
+    accession_number: "0000000000-00-000000",
   };
 }
 

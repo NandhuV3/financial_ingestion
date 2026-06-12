@@ -496,7 +496,7 @@ function companyKnowledge(): CompanyKnowledge {
           type: "10-Q",
         },
       ],
-      derived_from: ["company-identity"],
+      derived_from: ["structured-intelligence", "filing-metadata"],
       model_version: "deterministic-v1",
       prompt_version: "none",
     },

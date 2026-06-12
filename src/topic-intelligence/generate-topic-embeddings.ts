@@ -5,13 +5,14 @@ import { fileExists, readJsonFile } from "../shared/filesystem/file-reader.js";
 import { writeJsonFile } from "../shared/filesystem/file-writer.js";
 import { calculateStringHash } from "../shared/hashing/hash-file.js";
 import { createLogger } from "../shared/logger.js";
-import type { TopicDefinition, TopicRegistry } from "../topic-layer/topic.types.js";
+import type { TopicDefinition, TopicRegistry } from "./topic.types.js";
 import type { EmbeddingVector, TopicEmbeddingRegistry } from "./semantic-topic.types.js";
+import { loadEnv } from "../shared/config/load.env.js";
 
 const logger = createLogger("topic-embeddings");
 const registryPath = join(process.cwd(), "data", "registry", "topics.json");
 const embeddingRegistryPath = join(process.cwd(), "data", "registry", "topic-embeddings.json");
-loadDotEnv();
+loadEnv();
 export const embeddingModel = process.env.OPENAI_EMBEDDING_MODEL ?? "text-embedding-3-small";
 const openAIEmbeddingsUrl = "https://api.openai.com/v1/embeddings";
 
@@ -140,35 +141,6 @@ function buildTopicEmbeddingRegistry(
       embedding: embeddings[index] ?? [],
     })),
   };
-}
-
-function loadDotEnv(): void {
-  const envPath = join(process.cwd(), ".env");
-
-  if (!existsSync(envPath)) {
-    return;
-  }
-
-  for (const line of readFileSync(envPath, "utf8").split(/\r?\n/)) {
-    const trimmed = line.trim();
-
-    if (!trimmed || trimmed.startsWith("#")) {
-      continue;
-    }
-
-    const separatorIndex = trimmed.indexOf("=");
-
-    if (separatorIndex === -1) {
-      continue;
-    }
-
-    const key = trimmed.slice(0, separatorIndex).trim();
-    const value = trimmed.slice(separatorIndex + 1).trim().replace(/^["']|["']$/g, "");
-
-    if (!process.env[key]) {
-      process.env[key] = value;
-    }
-  }
 }
 
 if (require.main === module) {

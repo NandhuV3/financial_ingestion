@@ -35,6 +35,9 @@ export type CompanyKnowledge = {
   competitive_positioning: CompanyKnowledgeCompetitivePositioning[];
   operating_model: string[];
   key_dependencies: CompanyKnowledgeDependency[];
+  strategic_priorities: string[];
+  risks: string[];
+  opportunities: string[];
   // confidence_score: number;
   confidence: {
     overall: number;

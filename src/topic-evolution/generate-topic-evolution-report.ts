@@ -7,11 +7,11 @@ import { calculateFileHash } from "../shared/hashing/hash-file.js";
 import { createLogger } from "../shared/logger.js";
 import { getCompanyDirectory, getFilingSubdirectory } from "../storage/filing-paths.js";
 import { listAvailableFilings } from "../storage/list-filings.js";
-import type { TopicRegistry } from "../topic-layer/topic.types.js";
+import type { TopicRegistry } from "../topic-intelligence/topic.types.js";
 import type { ThemeOutput } from "../types/theme.types.js";
 import { buildTopicEvolutionMarkdown } from "./build-topic-evolution-markdown.js";
 import { buildTopicEvolutionReport } from "./build-topic-evolution-report.js";
-import type { ApprovedTopicTheme, FilingMetadataForEvolution, TopicEvolutionFilingInput } from "./topic-evolution.types.js";
+import type { AssignedTopicTheme, FilingMetadataForEvolution, TopicEvolutionFilingInput } from "./topic-evolution.types.js";
 
 const logger = createLogger("topic-evolution");
 
@@ -36,12 +36,12 @@ export async function generateTopicEvolutionReport(ticker: string): Promise<void
   await writeTextFile(join(reportDirectory, "topic-evolution-report.md"), buildTopicEvolutionMarkdown(report));
 
   if (report.summary.topics_analyzed === 0) {
-    logger.warn("Topic evolution report generated with no approved topics", {
+    logger.warn("Topic evolution report generated with no assigned topics", {
       ticker: company.ticker,
       filings_analyzed: report.filings_analyzed,
       topics_analyzed: report.summary.topics_analyzed,
-      approved_assignments_used: report.diagnostics.approved_assignments_used,
-      pending_assignments_ignored: report.diagnostics.pending_assignments_ignored,
+      assigned_topics_used: report.diagnostics.assigned_topics_used,
+      unassigned_topics_ignored: report.diagnostics.unassigned_topics_ignored,
       strengthening_topics: report.summary.strengthening_topics,
       weakening_topics: report.summary.weakening_topics,
       stable_topics: report.summary.stable_topics,
@@ -63,8 +63,8 @@ export async function generateTopicEvolutionReport(ticker: string): Promise<void
     stable_topics: report.summary.stable_topics,
     mixed_topics: report.summary.mixed_topics,
     unknown_trend_topics: report.summary.unknown_trend_topics,
-    approved_assignments_used: report.diagnostics.approved_assignments_used,
-    pending_assignments_ignored: report.diagnostics.pending_assignments_ignored,
+    assigned_topics_used: report.diagnostics.assigned_topics_used,
+    unassigned_topics_ignored: report.diagnostics.unassigned_topics_ignored,
     missing_topic_files: report.diagnostics.missing_themes_with_topics_files.length,
     duration_ms: report.diagnostics.duration_ms,
   });
@@ -86,7 +86,7 @@ async function loadTopicEvolutionInputs(ticker: string): Promise<TopicEvolutionF
     const metadata = await readJsonFile<FilingMetadataForEvolution>(metadataPath);
     const themesWithTopicsExists = fileExists(themesPath);
     const themes = themesWithTopicsExists
-      ? (await readJsonFile<ThemeOutput & { themes: ApprovedTopicTheme[] }>(themesPath)).themes
+      ? (await readJsonFile<ThemeOutput & { themes: AssignedTopicTheme[] }>(themesPath)).themes
       : [];
 
     inputs.push({

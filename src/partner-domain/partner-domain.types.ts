@@ -83,8 +83,24 @@ export type BusinessHealthDashboard = {
   timeline: BusinessHealthTimelinePoint[];
 };
 
+export type OwnerQuestionCard = {
+  question: string;
+  answer: string;
+  confidence: "high" | "medium" | "low";
+  evidence: string[];
+  status?: "answered" | "insufficient_data";
+};
+
+export type FiveQuestions = {
+  business: OwnerQuestionCard;
+  growth: OwnerQuestionCard;
+  trust: OwnerQuestionCard;
+  valuation: OwnerQuestionCard;
+  holdThesis: OwnerQuestionCard;
+};
+
 export type PartnerIntelligenceSource = {
-  artifact: "company_profile" | "investor_narrative" | "investor_insight" | "topic_evolution" | "quarter_change" | "themes";
+  artifact: "company_knowledge" | "topic_evolution" | "quarter_change" | "themes";
   path?: string;
   generatedAt?: string;
 };
@@ -101,5 +117,6 @@ export type PartnerCompanyIntelligence = {
   trust: TrustProfile;
   forensics: ForensicsSignal[];
   health: BusinessHealthDashboard;
+  fiveQuestions: FiveQuestions;
   sources: PartnerIntelligenceSource[];
 };

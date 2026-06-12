@@ -1,5 +1,5 @@
 import { createLogger } from "../shared/logger.js";
-import { applyApprovedTopics } from "./apply-approved-topics.js";
+import { buildTopicAssignments } from "./build-topic-assignments.js";
 
 const logger = createLogger("topic-assignment-v2");
 const ticker = process.argv[2];
@@ -10,8 +10,8 @@ if (require.main === module) {
     logger.error("Usage: npm run topics:apply -- <ticker> <filing-date>", {});
     process.exitCode = 1;
   } else {
-    applyApprovedTopics(ticker, filingDate).catch((error) => {
-      logger.error("Failed to apply approved topic assignments.", {
+    buildTopicAssignments(ticker, filingDate).catch((error) => {
+      logger.error("Failed to build topic assignments.", {
         ticker,
         filing_date: filingDate,
         error: error instanceof Error ? error.message : String(error),

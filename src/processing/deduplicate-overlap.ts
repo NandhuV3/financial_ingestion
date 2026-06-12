@@ -1,7 +1,8 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { getCompanyConfig } from "../config/companies.js";
-import { readTextFile } from "../shared/filesystem/file-reader.js";
+import { shouldPersistProcessedArtifacts } from "../shared/config/storage-mode.js";
+import { fileExists, readTextFile } from "../shared/filesystem/file-reader.js";
 import { ensureDirectory, writeJsonFile, writeTextFile } from "../shared/filesystem/file-writer.js";
 import { getFilingDirectory } from "../storage/filing-paths.js";
 import { resolveFilingDate } from "../storage/resolve-filing.js";
@@ -23,22 +24,19 @@ const minimumComparableWords = 20;
 export async function deduplicateOverlap(company: CompanyConfig, filingDate?: string): Promise<OverlapDeduplicationReport> {
   const resolvedFilingDate = await resolveFilingDate(company.ticker, filingDate);
   const processedDir = join(getFilingDirectory(company.ticker, resolvedFilingDate), "processed");
-  const processedFileNames = await readdir(processedDir);
-  const processedFileNameSet = new Set(processedFileNames);
-  const fileNames = processedFileNames
-    .filter((fileName) => fileName.endsWith(".txt"))
-    .filter((fileName) => !fileName.endsWith(".overlap-deduped.txt"))
-    .filter(
-      (fileName) =>
-        fileName.endsWith(".deduped.txt") ||
-        !processedFileNameSet.has(fileName.replace(/\.txt$/, ".deduped.txt")),
-    )
+  const fileNames = shouldPersistProcessedArtifacts()
+    ? await persistedOverlapInputFileNames(processedDir)
+    : [
+      preferredOverlapInputFileName(processedDir, "management-discussion.txt"),
+      preferredOverlapInputFileName(processedDir, "risk-factors.txt"),
+    ].filter((fileName): fileName is string => Boolean(fileName));
+  const sortedFileNames = fileNames
     .sort();
   const sections: SectionOverlapDeduplicationReport[] = [];
 
   await ensureDirectory(processedDir);
 
-  for (const fileName of fileNames) {
+  for (const fileName of sortedFileNames) {
     const inputPath = join(processedDir, fileName);
     const outputPath = join(processedDir, fileName.replace(/(?:\.deduped)?\.txt$/, ".overlap-deduped.txt"));
     const originalText = await readTextFile(inputPath);
@@ -95,6 +93,34 @@ export async function deduplicateOverlap(company: CompanyConfig, filingDate?: st
   }
 
   return report;
+}
+
+async function persistedOverlapInputFileNames(processedDir: string): Promise<string[]> {
+  const processedFileNames = await readdir(processedDir);
+  const processedFileNameSet = new Set(processedFileNames);
+
+  return processedFileNames
+    .filter((fileName) => fileName.endsWith(".txt"))
+    .filter((fileName) => !fileName.endsWith(".overlap-deduped.txt"))
+    .filter(
+      (fileName) =>
+        fileName.endsWith(".deduped.txt") ||
+        !processedFileNameSet.has(fileName.replace(/\.txt$/, ".deduped.txt")),
+    );
+}
+
+function preferredOverlapInputFileName(processedDir: string, baseFileName: string): string | null {
+  const dedupedFileName = baseFileName.replace(/\.txt$/, ".deduped.txt");
+
+  if (fileExists(join(processedDir, dedupedFileName))) {
+    return dedupedFileName;
+  }
+
+  if (fileExists(join(processedDir, baseFileName))) {
+    return baseFileName;
+  }
+
+  return null;
 }
 
 export function deduplicateOverlapText(text: string): {

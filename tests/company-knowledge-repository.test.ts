@@ -129,7 +129,7 @@ function artifact(version: number, inputHash: string): CompanyKnowledge {
           type: "10-Q",
         },
       ],
-      derived_from: ["company-identity"],
+      derived_from: ["structured-intelligence", "filing-metadata"],
       model_version: `model-v${version}`,
       prompt_version: "none",
     },

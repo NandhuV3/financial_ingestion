@@ -33,6 +33,7 @@ function isPartnerCompanyIntelligence(value: unknown): value is PartnerCompanyIn
     && isRecord(value.money)
     && isRecord(value.trust)
     && Array.isArray(value.forensics)
+    && isRecord(value.fiveQuestions)
     && Array.isArray(value.sources);
 }
 
