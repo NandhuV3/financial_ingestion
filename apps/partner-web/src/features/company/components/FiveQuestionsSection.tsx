@@ -9,12 +9,13 @@ interface FiveQuestionsSectionProps {
 
 const questionOrder: Array<{
   key: keyof NonNullable<PartnerCompanyViewModel["fiveQuestions"]>;
+  label: string;
 }> = [
-  { key: "business" },
-  { key: "growth" },
-  { key: "trust" },
-  { key: "valuation" },
-  { key: "holdThesis" },
+  { key: "business", label: "The Business" },
+  { key: "growth", label: "Growth" },
+  { key: "trust", label: "Trust" },
+  { key: "valuation", label: "Valuation" },
+  { key: "holdThesis", label: "Hold Thesis" },
 ];
 
 const confidenceClasses: Record<string, string> = {
@@ -28,46 +29,114 @@ export function FiveQuestionsSection({ fiveQuestions }: FiveQuestionsSectionProp
     return null;
   }
 
-  const cards = questionOrder
-    .map(({ key }) => fiveQuestions[key])
-    .filter((card) => card.question.trim() && card.answer.trim());
+  const sections = questionOrder
+    .map(({ key, label }) => ({ key, label, card: fiveQuestions[key] }))
+    .filter(({ card }) => card.question.trim() && card.answer.trim());
 
-  if (cards.length === 0) {
+  if (sections.length === 0) {
     return null;
   }
 
+  const reportSections = sections.filter(({ key }) => key !== "holdThesis");
+  const holdThesis = sections.find(({ key }) => key === "holdThesis");
+
   return (
-    <section className="space-y-4" aria-label="Five Questions">
+    <section className="space-y-8" aria-label="Owner Thesis">
       <div>
-        <h2 className="text-2xl font-semibold text-partner-ink">Five Questions</h2>
+        <p className="text-xs font-semibold uppercase tracking-wider text-partner-muted">
+          Owner Thesis
+        </p>
+        <h2 className="mt-2 text-2xl font-semibold text-partner-ink">Five Questions</h2>
       </div>
 
-      <div className="grid gap-3">
-        {cards.map((card) => (
-          <QuestionCard key={card.question} card={card} />
+      <div className="space-y-8">
+        {reportSections.map(({ label, card }, index) => (
+          <React.Fragment key={card.question}>
+            {index > 0 && <div className="border-t border-partner-line" />}
+            <QuestionReportSection label={label} card={card} />
+          </React.Fragment>
         ))}
       </div>
+
+      {holdThesis && <HoldThesisCard label={holdThesis.label} card={holdThesis.card} />}
     </section>
   );
 }
 
-function QuestionCard({ card }: { card: OwnerQuestionCardViewModel }) {
+function QuestionReportSection({
+  label,
+  card,
+}: {
+  label: string;
+  card: OwnerQuestionCardViewModel;
+}) {
+  const isValuationUnavailable = card.status === "insufficient_data";
+
   return (
-    <Card>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <h3 className="text-lg font-semibold text-partner-ink">{card.question}</h3>
-        <div className="flex flex-wrap gap-2">
-          {card.status === "insufficient_data" && (
-            <Badge className="border-partner-line bg-partner-paper text-partner-muted">Insufficient data</Badge>
-          )}
-          {card.confidence && (
-            <Badge className={confidenceClasses[card.confidence] ?? "border-partner-line text-partner-muted"}>
-              Confidence: {card.confidence}
-            </Badge>
-          )}
+    <article className="space-y-3">
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-partner-muted">{label}</p>
+          <QuestionBadges card={card} />
         </div>
+        <h3 className="text-xl font-semibold text-partner-ink">{card.question}</h3>
       </div>
-      <p className="mt-3 text-base leading-7 text-partner-muted">{card.answer}</p>
+      <p className="text-base leading-8 text-partner-muted">
+        {isValuationUnavailable ? valuationUnavailableMessage : card.answer}
+      </p>
+    </article>
+  );
+}
+
+function HoldThesisCard({
+  label,
+  card,
+}: {
+  label: string;
+  card: OwnerQuestionCardViewModel;
+}) {
+  return (
+    <Card className="p-5">
+      <article className="space-y-3">
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-xs font-semibold uppercase tracking-wider text-partner-muted">{label}</p>
+            <QuestionBadges card={card} />
+          </div>
+          <h3 className="text-xl font-semibold text-partner-ink">{card.question}</h3>
+        </div>
+        <p className="text-base leading-8 text-partner-muted">{card.answer}</p>
+      </article>
     </Card>
   );
 }
+
+function QuestionBadges({ card }: { card: OwnerQuestionCardViewModel }) {
+  return (
+    <>
+      {card.status === "insufficient_data" && (
+        <Badge className="border-partner-line bg-partner-paper text-partner-muted">
+          Market Data Required
+        </Badge>
+      )}
+      {card.confidence && (
+        <Badge className={confidenceClasses[card.confidence] ?? "border-partner-line text-partner-muted"}>
+          {formatConfidence(card.confidence)}
+        </Badge>
+      )}
+    </>
+  );
+}
+
+function formatConfidence(value: OwnerQuestionCardViewModel["confidence"]): string {
+  const normalized = value.trim();
+
+  if (!normalized) {
+    return "";
+  }
+
+  return `${normalized.charAt(0).toUpperCase()}${normalized.slice(1).toLowerCase()} Conviction`;
+}
+
+const valuationUnavailableMessage =
+  "Valuation analysis is unavailable because market-price data is not currently part of the research system.";

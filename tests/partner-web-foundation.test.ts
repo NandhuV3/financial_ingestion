@@ -540,8 +540,11 @@ describe("partner web company story experience", () => {
       assert.ok(rendered.text().includes("Five Questions"));
       assert.ok(rendered.text().includes("What does this company actually sell?"));
       assert.ok(rendered.text().includes("It sells software and cloud services to businesses."));
-      assert.ok(rendered.text().includes("Insufficient data"));
-      assert.ok(rendered.text().includes("Valuation analysis requires market-price data"));
+      assert.ok(rendered.text().includes("Owner Thesis"));
+      assert.ok(rendered.text().includes("Market Data Required"));
+      assert.ok(rendered.text().includes(
+        "Valuation analysis is unavailable because market-price data is not currently part of the research system.",
+      ));
     } finally {
       rendered.unmount();
       globalThis.fetch = previousFetch;
@@ -580,7 +583,10 @@ describe("partner web company story experience", () => {
       assert.ok(rendered.text().includes("If this were a shop in your neighbourhood"));
       assert.ok(rendered.text().includes("Five Questions"));
       assert.ok(rendered.text().includes("The next rupee most likely comes from cloud usage"));
-      assert.ok(rendered.text().includes("Valuation analysis requires market-price data"));
+      assert.ok(rendered.text().includes("Market Data Required"));
+      assert.ok(rendered.text().includes(
+        "Valuation analysis is unavailable because market-price data is not currently part of the research system.",
+      ));
     } finally {
       rendered.unmount();
       globalThis.fetch = previousFetch;
