@@ -17,21 +17,25 @@ export function TrustSection({ company }: TrustSectionProps) {
   return (
     <section
       id="company-panel-trust"
-      role="tabpanel"
-      aria-labelledby="company-tab-trust"
-      className="space-y-3"
+      aria-label="Trust assessment"
     >
-      <p className="text-base leading-7 text-partner-muted">
-        Would I trust these people to run my business?
-      </p>
-      <div className="grid gap-3">
+      <Card className="space-y-5 p-5">
+        <p className="text-base leading-7 text-partner-muted">
+          Would I trust these people to run my business?
+        </p>
         {trustItems.map(([label, field]) => (
-          <Card key={label}>
-            <h2 className="text-lg font-semibold text-partner-ink">{label}</h2>
-            <p className="mt-2 text-base leading-7 text-partner-muted">{company.trust[field]}</p>
-          </Card>
+          <TrustAssessmentRow key={label} label={label} value={company.trust[field]} />
         ))}
-      </div>
+      </Card>
     </section>
+  );
+}
+
+function TrustAssessmentRow({ label, value }: { label: string; value: string }) {
+  return (
+    <article className="border-t border-partner-line pt-4 first:border-t-0 first:pt-0">
+      <h3 className="text-sm font-semibold text-partner-ink">{label}</h3>
+      <p className="mt-1 text-base leading-7 text-partner-muted">{value}</p>
+    </article>
   );
 }

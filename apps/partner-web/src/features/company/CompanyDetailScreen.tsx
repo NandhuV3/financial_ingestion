@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { PageContainer } from "../../components/ui/PageContainer";
 import { EXPLORE_ROUTE } from "../../constants/routes";
 import { logger } from "../../lib/logger/logger";
 import { CompanyHeader } from "./components/CompanyHeader";
-import { CompanyTabs, type CompanyTabId } from "./components/CompanyTabs";
 import { CustomersSection } from "./components/CustomersSection";
 import { ForensicsSection } from "./components/ForensicsSection";
 import { FiveQuestionsSection } from "./components/FiveQuestionsSection";
@@ -25,7 +25,6 @@ import type { PortfolioHolding } from "../portfolio/types";
 
 interface CompanyDetailContentProps {
   company: PartnerCompanyViewModel;
-  initialTab?: CompanyTabId;
   onAddToPortfolio?: () => void;
   isInPortfolio?: boolean;
   journalEntries?: PartnerJournalEntry[];
@@ -95,14 +94,11 @@ function getPortfolioHealth(company: PartnerCompanyViewModel): PortfolioHolding[
 
 export function CompanyDetailContent({
   company,
-  initialTab = "story",
   onAddToPortfolio,
   isInPortfolio,
   journalEntries,
   onSaveJournalEntry,
 }: CompanyDetailContentProps) {
-  const [activeTab, setActiveTab] = useState<CompanyTabId>(initialTab);
-
   return (
     <PageContainer>
       <div className="space-y-6">
@@ -112,25 +108,93 @@ export function CompanyDetailContent({
           isInPortfolio={isInPortfolio}
         />
         <FiveQuestionsSection fiveQuestions={company.fiveQuestions} />
-        <CompanyTabs activeTab={activeTab} onChange={setActiveTab} />
-        
+        {hasMeaningfulBusinessHealth(company.health) && <BusinessHealthCard health={company.health} />}
 
-        {activeTab === "story" && <StorySection company={company} />}
-        {activeTab === "customers" && <CustomersSection company={company} />}
-        {activeTab === "money" && <MoneySection company={company} />}
-        {activeTab === "trust" && <TrustSection company={company} />}
-        {activeTab === "forensics" && <ForensicsSection company={company} />}
+        <DashboardGroup title="Business">
+          <StorySection company={company} />
+          <CustomersSection company={company} />
+        </DashboardGroup>
 
-        <BusinessHealthCard health={company.health} />
+        <DashboardGroup title="Economics">
+          <MoneySection company={company} />
+        </DashboardGroup>
+
+        <DashboardGroup title="Quality">
+          <TrustSection company={company} />
+          <ForensicsSection company={company} />
+        </DashboardGroup>
 
         {onSaveJournalEntry && journalEntries && (
-          <section className="space-y-4" aria-label="Partner Journal">
-            <JournalForm onSave={onSaveJournalEntry} />
-            <JournalHistory entries={journalEntries} />
-          </section>
+          <PartnerJournalSection
+            entries={journalEntries}
+            onSaveJournalEntry={onSaveJournalEntry}
+          />
         )}
       </div>
     </PageContainer>
+  );
+}
+
+function PartnerJournalSection({
+  entries,
+  onSaveJournalEntry,
+}: {
+  entries: PartnerJournalEntry[];
+  onSaveJournalEntry: (draft: PartnerJournalDraft) => void;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  return (
+    <section className="space-y-4" aria-label="Partner Journal">
+      <Card>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-2xl font-semibold text-partner-ink">Partner Journal</h2>
+            <p className="mt-2 text-sm leading-6 text-partner-muted">
+              Capture how your understanding of this business evolves over time.
+            </p>
+          </div>
+          <Button type="button" onClick={() => setIsExpanded((current) => !current)}>
+            {isExpanded ? "Hide Notes ▲" : "Add Notes ▼"}
+          </Button>
+        </div>
+      </Card>
+
+      {isExpanded && (
+        <>
+          <JournalForm onSave={onSaveJournalEntry} />
+          <JournalHistory entries={entries} />
+        </>
+      )}
+    </section>
+  );
+}
+
+function hasMeaningfulBusinessHealth(health?: PartnerCompanyViewModel["health"]): boolean {
+  if (!health) {
+    return false;
+  }
+
+  const hasExplanation = health.explanation.trim().length > 0
+    && health.explanation.trim() !== "Business health is not available yet.";
+  const hasStrengtheningArea = health.strengtheningAreas.some((area) =>
+    area.title.trim() || area.explanation.trim());
+  const hasWatchArea = health.watchAreas.some((area) =>
+    area.title.trim() || area.explanation.trim());
+  const hasTimeline = health.timeline.some((point) =>
+    point.label.trim() || point.filingDate.trim() || point.status.trim());
+
+  return hasExplanation || hasStrengtheningArea || hasWatchArea || hasTimeline;
+}
+
+function DashboardGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-4" aria-label={title}>
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-partner-muted">
+        {title.toUpperCase()}
+      </h2>
+      <div className="space-y-4">{children}</div>
+    </section>
   );
 }
 

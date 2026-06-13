@@ -22,29 +22,32 @@ export function CompanyHeader({ company, onAddToPortfolio, isInPortfolio = false
         Back to Explore
       </Link>
 
-      <Card className="space-y-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-partner-muted">{company.ticker}</p>
-            <h1 className="mt-1 text-3xl font-semibold tracking-normal text-partner-ink">{company.name}</h1>
+      <Card>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-3">
+            <div>
+              <h1 className="text-4xl font-semibold tracking-normal text-partner-ink">{company.name}</h1>
+              <p className="mt-2 max-w-2xl text-base leading-7 text-partner-muted">{company.tagline}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-semibold uppercase tracking-wide text-partner-muted">{company.ticker}</p>
+              {company.businessHealth && <Badge className="capitalize">{company.businessHealth}</Badge>}
+              {company.conviction && <Badge>Conviction: {company.conviction}</Badge>}
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {company.businessHealth && <Badge className="capitalize">{company.businessHealth}</Badge>}
-            {company.conviction && <Badge>Conviction: {company.conviction}</Badge>}
-          </div>
+
+          {onAddToPortfolio && (
+            <Button
+              type="button"
+              onClick={onAddToPortfolio}
+              disabled={isInPortfolio}
+              aria-label={isInPortfolio ? `${company.name} is already in your portfolio` : `Add ${company.name} to portfolio`}
+              className={`shrink-0 ${isInPortfolio ? "bg-partner-muted" : ""}`}
+            >
+              {isInPortfolio ? "Added To Portfolio" : "Add To Portfolio"}
+            </Button>
+          )}
         </div>
-        <p className="max-w-2xl text-base leading-7 text-partner-muted">{company.tagline}</p>
-        {onAddToPortfolio && (
-          <Button
-            type="button"
-            onClick={onAddToPortfolio}
-            disabled={isInPortfolio}
-            aria-label={isInPortfolio ? `${company.name} is already in your portfolio` : `Add ${company.name} to portfolio`}
-            className={isInPortfolio ? "bg-partner-muted" : ""}
-          >
-            {isInPortfolio ? "Added To Portfolio" : "Add To Portfolio"}
-          </Button>
-        )}
       </Card>
     </header>
   );

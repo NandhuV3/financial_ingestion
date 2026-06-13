@@ -7,37 +7,48 @@ interface StorySectionProps {
 }
 
 const storyItems = [
-  ["What they sell", "whatTheySell"],
-  ["Who buys", "whoBuys"],
-  ["Why they win", "whyTheyWin"],
-  ["What could go wrong", "whatCouldGoWrong"],
+  ["What They Sell", "whatTheySell"],
+  ["Who Buys", "whoBuys"],
+  ["Why They Win", "whyTheyWin"],
+  ["What Could Go Wrong", "whatCouldGoWrong"],
 ] as const;
 
 export function StorySection({ company }: StorySectionProps) {
   return (
     <section
       id="company-panel-story"
-      role="tabpanel"
-      aria-labelledby="company-tab-story"
+      aria-label="Business story"
       className="space-y-4"
     >
-      <Card className="bg-partner-paper">
-        <p className="text-sm font-semibold uppercase tracking-wide text-partner-muted">
-          If this were a shop in your neighbourhood...
-        </p>
-        <p className="mt-3 text-lg leading-7 text-partner-ink">
-          {company.neighbourhoodExplanation || company.story.whatTheySell}
-        </p>
-      </Card>
-
-      <div className="grid gap-3">
+      <Card className="space-y-5 p-5">
+        <NarrativeSubsection
+          label="Neighborhood Analogy"
+          text={company.neighbourhoodExplanation || company.story.whatTheySell}
+          emphasis
+        />
         {storyItems.map(([label, field]) => (
-          <Card key={label}>
-            <h2 className="text-lg font-semibold text-partner-ink">{label}</h2>
-            <p className="mt-2 text-base leading-7 text-partner-muted">{company.story[field]}</p>
-          </Card>
+          <NarrativeSubsection key={label} label={label} text={company.story[field]} />
         ))}
-      </div>
+      </Card>
     </section>
+  );
+}
+
+function NarrativeSubsection({
+  label,
+  text,
+  emphasis = false,
+}: {
+  label: string;
+  text: string;
+  emphasis?: boolean;
+}) {
+  return (
+    <article className="border-t border-partner-line pt-5 first:border-t-0 first:pt-0">
+      <p className="text-xs font-semibold uppercase tracking-wider text-partner-muted">{label}</p>
+      <p className={`mt-2 ${emphasis ? "text-lg leading-8 text-partner-ink" : "text-base leading-8 text-partner-muted"}`}>
+        {text}
+      </p>
+    </article>
   );
 }

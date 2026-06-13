@@ -10,16 +10,16 @@ export function CustomersSection({ company }: CustomersSectionProps) {
   return (
     <section
       id="company-panel-customers"
-      role="tabpanel"
-      aria-labelledby="company-tab-customers"
-      className="grid gap-3"
+      aria-label="Customers"
     >
-      {company.customers.map((customer) => (
-        <Card key={customer.segment}>
-          <h2 className="text-lg font-semibold text-partner-ink">{customer.segment}</h2>
-          <p className="mt-2 text-base leading-7 text-partner-muted">{customer.whyTheyBuy}</p>
-        </Card>
-      ))}
+      <Card className="divide-y divide-partner-line p-5">
+        {company.customers.map((customer) => (
+          <article key={customer.segment} className="py-4 first:pt-0 last:pb-0">
+            <h3 className="text-base font-semibold text-partner-ink">{customer.segment}</h3>
+            <p className="mt-2 text-base leading-7 text-partner-muted">{customer.whyTheyBuy}</p>
+          </article>
+        ))}
+      </Card>
     </section>
   );
 }

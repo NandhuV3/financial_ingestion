@@ -17,6 +17,11 @@ import {
 import { getPartnerCompany } from "../apps/partner-web/src/api/partner-api.ts";
 import { HomeScreen } from "../apps/partner-web/src/features/home/HomeScreen.tsx";
 import { CompanyList } from "../apps/partner-web/src/features/explore/components/CompanyList.tsx";
+import { CompactCompanyRow } from "../apps/partner-web/src/features/explore/components/CompactCompanyRow.tsx";
+import {
+  buildDiscoverySections,
+  mapMockCompanyToDiscoveryCard,
+} from "../apps/partner-web/src/features/explore/utils/build-discovery-sections.ts";
 import { PortfolioScreen } from "../apps/partner-web/src/features/portfolio/PortfolioScreen.tsx";
 import {
   findCompanyByTicker,
@@ -393,6 +398,13 @@ describe("partner web explore experience", () => {
     assert.equal(results[0]?.ticker, "V");
   });
 
+  it("searches Five Questions answers", () => {
+    const results = filterCompanies(mockCompanies, "AI-related infrastructure adoption", null);
+
+    assert.equal(results.length, 1);
+    assert.equal(results[0]?.ticker, "MSFT");
+  });
+
   it("filters companies by category", () => {
     const results = filterCompanies(mockCompanies, "", "Cash Machines");
 
@@ -404,17 +416,46 @@ describe("partner web explore experience", () => {
   });
 
   it("links company list items to company routes", () => {
-    const companies = mockCompanies.slice(0, 2);
+    const companies = mockCompanies.slice(0, 2).map(mapMockCompanyToDiscoveryCard);
     const markup = renderToStaticMarkup(
       React.createElement(MemoryRouter, null, React.createElement(CompanyList, { companies })),
     );
 
     for (const company of companies) {
       assert.ok(
-        markup.includes(`href="/company/${company.ticker}"`),
+        markup.includes(`href="${company.route}"`),
         `Expected ${company.name} list item to link to /company/${company.ticker}`,
       );
     }
+  });
+
+  it("renders compact company rows without repeated Five Questions content", () => {
+    const company = mapMockCompanyToDiscoveryCard(mockCompanies[0]!);
+    const markup = renderToStaticMarkup(
+      React.createElement(MemoryRouter, null, React.createElement(CompactCompanyRow, { company })),
+    );
+
+    assert.ok(markup.includes(company.name));
+    assert.ok(markup.includes(company.category));
+    assert.ok(markup.includes(company.tagline));
+    assert.ok(markup.includes("Improving"));
+    assert.ok(markup.includes("High Conviction"));
+    assert.ok(markup.includes(`href="${company.route}"`));
+    assert.ok(!markup.includes(company.primaryQuestion));
+    assert.ok(!markup.includes(company.primaryAnswer));
+  });
+
+  it("builds owner-focused discovery sections", () => {
+    const sections = buildDiscoverySections(mockCompanies);
+
+    assert.equal(sections.featured.length, 3);
+    assert.ok(sections.featured.every((company) => company.conviction === "High"));
+    assert.ok(sections.highConviction.every((company) => company.conviction === "High"));
+    assert.ok(sections.watchCarefully.length > 0);
+    assert.ok(sections.watchCarefully.every((company) => company.businessHealth === "stable"));
+    assert.equal(sections.allCompanies.length, mockCompanies.length);
+    assert.equal(sections.allCompanies[0]?.primaryQuestion, "What does this company actually sell?");
+    assert.match(sections.allCompanies[0]?.primaryAnswer ?? "", /Microsoft sells software/);
   });
 });
 
@@ -580,7 +621,8 @@ describe("partner web company story experience", () => {
       await waitForCondition(() => rendered.text().includes("Microsoft"));
 
       assert.ok(rendered.text().includes("Builds software and cloud infrastructure used by businesses worldwide."));
-      assert.ok(rendered.text().includes("If this were a shop in your neighbourhood"));
+      assert.ok(rendered.text().includes("Neighborhood Analogy"));
+      assert.ok(rendered.text().includes("If Microsoft were a shop in your neighbourhood"));
       assert.ok(rendered.text().includes("Five Questions"));
       assert.ok(rendered.text().includes("The next rupee most likely comes from cloud usage"));
       assert.ok(rendered.text().includes("Market Data Required"));
@@ -631,7 +673,7 @@ describe("partner web company story experience", () => {
     }
   });
 
-  it("renders tab content from an API-backed view model", async () => {
+  it("renders dashboard sections from an API-backed view model", async () => {
     const previousFetch = globalThis.fetch;
 
     globalThis.fetch = async () => new Response(JSON.stringify(apiCompanyResponse), {
@@ -643,10 +685,14 @@ describe("partner web company story experience", () => {
 
     try {
       await waitForCondition(() => rendered.text().includes("Microsoft API"));
-      rendered.clickButton("Customers");
 
+      assert.ok(rendered.text().includes("BUSINESS"));
       assert.ok(rendered.text().includes("API enterprise customers"));
       assert.ok(rendered.text().includes("Need dependable tools across many teams."));
+      assert.ok(rendered.text().includes("ECONOMICS"));
+      assert.ok(rendered.text().includes("Daily Sales"));
+      assert.ok(rendered.text().includes("QUALITY"));
+      assert.ok(rendered.text().includes("Decision Style"));
     } finally {
       rendered.unmount();
       globalThis.fetch = previousFetch;
@@ -676,10 +722,36 @@ describe("partner web company story experience", () => {
       assert.ok(rendered.text().includes("Higher investment costs"));
       assert.ok(rendered.text().includes("Business Direction Over Time"));
       assert.ok(rendered.text().includes("Previous Filing"));
+
+      assert.ok(
+        rendered.text().indexOf("Business Health") < rendered.text().indexOf("BUSINESS"),
+        "Expected Business Health to render before the BUSINESS group",
+      );
     } finally {
       rendered.unmount();
       globalThis.fetch = previousFetch;
     }
+  });
+
+  it("does not render promoted business health when health data is unavailable", () => {
+    const company = {
+      ...mockViewModel("MSFT"),
+      health: {
+        status: "",
+        explanation: "",
+        strengtheningAreas: [],
+        watchAreas: [],
+        timeline: [],
+      },
+    };
+
+    const markup = renderToStaticMarkup(
+      React.createElement(MemoryRouter, null, React.createElement(CompanyDetailContent, { company })),
+    );
+
+    assert.equal(markup.includes("Business Health"), false);
+    assert.equal(markup.includes("Business health is not available yet."), false);
+    assert.ok(markup.includes("BUSINESS"));
   });
 
   it("handles unknown ticker behavior without raw errors", async () => {
@@ -712,64 +784,53 @@ describe("partner web company story experience", () => {
     assert.ok(markup.includes('href="/explore"'));
   });
 
-  it("shows the Story tab by default", () => {
+  it("renders the business group by default", () => {
     const company = mockViewModel("MSFT");
 
     const markup = renderToStaticMarkup(
       React.createElement(MemoryRouter, null, React.createElement(CompanyDetailContent, { company })),
     );
 
-    assert.ok(markup.includes("If this were a shop in your neighbourhood"));
-    assert.ok(markup.includes("What they sell"));
-    assert.ok(markup.includes('aria-selected="true"'));
+    assert.ok(markup.includes("BUSINESS"));
+    assert.ok(markup.includes("Neighborhood Analogy"));
+    assert.ok(markup.includes("If Microsoft were a shop in your neighbourhood"));
+    assert.ok(markup.includes("What They Sell"));
   });
 
-  it("renders selected tab content", () => {
+  it("renders economics content in the stacked dashboard", () => {
     const company = mockViewModel("MSFT");
 
     const markup = renderToStaticMarkup(
       React.createElement(
         MemoryRouter,
         null,
-        React.createElement(CompanyDetailContent, { company, initialTab: "money" }),
+        React.createElement(CompanyDetailContent, { company }),
       ),
     );
 
+    assert.ok(markup.includes("ECONOMICS"));
     assert.ok(markup.includes("Daily Sales"));
     assert.ok(markup.includes("Money In The Drawer"));
   });
 
-  it("renders customers, trust, and forensics sections", () => {
+  it("renders customers, trust, and forensics in the stacked dashboard", () => {
     const company = mockViewModel("MSFT");
 
-    const customers = renderToStaticMarkup(
+    const markup = renderToStaticMarkup(
       React.createElement(
         MemoryRouter,
         null,
-        React.createElement(CompanyDetailContent, { company, initialTab: "customers" }),
-      ),
-    );
-    const trust = renderToStaticMarkup(
-      React.createElement(
-        MemoryRouter,
-        null,
-        React.createElement(CompanyDetailContent, { company, initialTab: "trust" }),
-      ),
-    );
-    const forensics = renderToStaticMarkup(
-      React.createElement(
-        MemoryRouter,
-        null,
-        React.createElement(CompanyDetailContent, { company, initialTab: "forensics" }),
+        React.createElement(CompanyDetailContent, { company }),
       ),
     );
 
-    assert.ok(customers.includes("Large companies"));
-    assert.ok(customers.includes("Developers"));
-    assert.ok(trust.includes("Would I trust these people"));
-    assert.ok(trust.includes("Decision Style"));
-    assert.ok(forensics.includes("Profits backed by cash"));
-    assert.ok(forensics.includes("Security trust"));
+    assert.ok(markup.includes("Large companies"));
+    assert.ok(markup.includes("Developers"));
+    assert.ok(markup.includes("QUALITY"));
+    assert.ok(markup.includes("Would I trust these people"));
+    assert.ok(markup.includes("Decision Style"));
+    assert.ok(markup.includes("Profits backed by cash"));
+    assert.ok(markup.includes("Security trust"));
   });
 
   it("adds API-backed companies to the local portfolio and prevents duplicates", async () => {
@@ -832,6 +893,55 @@ describe("partner web company story experience", () => {
     }
   });
 
+  it("collapses the partner journal by default", async () => {
+    const previousFetch = globalThis.fetch;
+
+    globalThis.fetch = async () => new Response(JSON.stringify(apiCompanyResponse), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+    const rendered = renderCompanyRoute("/company/MSFT");
+
+    try {
+      await waitForCondition(() => rendered.text().includes("Partner Journal"));
+
+      assert.ok(rendered.text().includes("Capture how your understanding of this business evolves over time."));
+      assert.ok(rendered.text().includes("Add Notes ▼"));
+      assert.equal(rendered.text().includes("My Understanding"), false);
+      assert.equal(rendered.text().includes("Save Journal Entry"), false);
+    } finally {
+      rendered.unmount();
+      globalThis.fetch = previousFetch;
+    }
+  });
+
+  it("expands the partner journal inline", async () => {
+    const previousFetch = globalThis.fetch;
+
+    globalThis.fetch = async () => new Response(JSON.stringify(apiCompanyResponse), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+    const rendered = renderCompanyRoute("/company/MSFT");
+
+    try {
+      await waitForCondition(() => rendered.text().includes("Partner Journal"));
+      rendered.clickButton("Add Notes ▼");
+
+      assert.ok(rendered.text().includes("Hide Notes ▲"));
+      assert.ok(rendered.text().includes("My Understanding"));
+      assert.ok(rendered.text().includes("Why I Have Conviction"));
+      assert.ok(rendered.text().includes("Concerns"));
+      assert.ok(rendered.text().includes("What I Want To Learn Next"));
+      assert.ok(rendered.text().includes("Save Journal Entry"));
+    } finally {
+      rendered.unmount();
+      globalThis.fetch = previousFetch;
+    }
+  });
+
   it("creates journal entries from the company page and shows most recent history first", async () => {
     const previousFetch = globalThis.fetch;
 
@@ -850,6 +960,7 @@ describe("partner web company story experience", () => {
 
     try {
       await waitForCondition(() => rendered.text().includes("Partner Journal"));
+      rendered.clickButton("Add Notes ▼");
 
       rendered.fillJournalField("My Understanding", "Microsoft makes money primarily through software subscriptions and cloud infrastructure.");
       rendered.fillJournalField("Why I Have Conviction", "Strong ecosystem and enterprise adoption.");

@@ -485,10 +485,16 @@ export function filterCompanies(
   const normalizedSearch = searchTerm.trim().toLowerCase();
 
   return companies.filter((company) => {
+    const searchableText = [
+      company.name,
+      company.ticker,
+      company.tagline,
+      company.fiveQuestions?.business.answer,
+      company.fiveQuestions?.growth.answer,
+      company.fiveQuestions?.trust.answer,
+    ].filter(Boolean).join(" ").toLowerCase();
     const matchesSearch = normalizedSearch.length === 0
-      || company.name.toLowerCase().includes(normalizedSearch)
-      || company.ticker.toLowerCase().includes(normalizedSearch)
-      || company.tagline.toLowerCase().includes(normalizedSearch);
+      || searchableText.includes(normalizedSearch);
 
     const matchesCategory = !selectedCategory || company.category === selectedCategory;
 
