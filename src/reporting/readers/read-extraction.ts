@@ -12,6 +12,8 @@ export async function readFileMetrics(companyDataDir: string): Promise<Record<st
     "processed/extraction-diagnostics.json",
     "processed/deduplication-report.json",
     "processed/overlap-deduplication-report.json",
+    "metadata/filing.json",
+    "metadata/pipeline.json",
     "intelligence/themes.json",
     ...reportSections.flatMap((section) => [
       `processed/${section.processed}`,
@@ -74,12 +76,14 @@ async function readFileMetric(path: string): Promise<FileMetric> {
     return { path, exists: false, characters: 0, bytes: 0 };
   }
 
-  const [text, fileStat] = await Promise.all([readTextFile(path), stat(path)]);
+  const text = await readTextFile(path);
+  const fileStat = await stat(path).catch(() => null);
+
   return {
     path,
     exists: true,
     characters: text.length,
-    bytes: fileStat.size,
+    bytes: fileStat?.size ?? Buffer.byteLength(text, "utf8"),
   };
 }
 

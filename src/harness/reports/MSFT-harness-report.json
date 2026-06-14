@@ -1,0 +1,342 @@
+{
+  "ticker": "MSFT",
+  "filing_date": "2026-04-29",
+  "overall_score": 0.92,
+  "artifacts": [
+    {
+      "artifact": "structured_intelligence",
+      "overall_score": 0.85,
+      "dimensions": [
+        {
+          "name": "schema_compliance",
+          "score": 1,
+          "notes": [
+            "Required fields and types are valid."
+          ]
+        },
+        {
+          "name": "field_coverage",
+          "score": 1,
+          "notes": [
+            "10/10 fields populated."
+          ]
+        },
+        {
+          "name": "empty_fields",
+          "score": 1,
+          "notes": []
+        },
+        {
+          "name": "duplicate_count",
+          "score": 1,
+          "notes": [
+            "Duplicate normalized values: 0"
+          ]
+        },
+        {
+          "name": "hallucination_risk",
+          "score": 0.42,
+          "notes": [
+            "Potentially unsupported values: 25"
+          ]
+        },
+        {
+          "name": "evidence_grounding",
+          "score": 0.42,
+          "notes": [
+            "Grounded output values: 18/43"
+          ]
+        },
+        {
+          "name": "theme_utilization",
+          "score": 0.4,
+          "notes": [
+            "Themes reflected in output: 4/10."
+          ]
+        },
+        {
+          "name": "evidence_utilization",
+          "score": 1,
+          "notes": [
+            "No evidence groups available."
+          ]
+        },
+        {
+          "name": "business_description_specificity",
+          "score": 1,
+          "notes": [
+            "No generic description language detected.",
+            "Business identity concepts detected."
+          ]
+        },
+        {
+          "name": "product_coverage",
+          "score": 1,
+          "notes": [
+            "Product coverage is acceptable for available evidence."
+          ]
+        },
+        {
+          "name": "customer_quality",
+          "score": 1,
+          "notes": [
+            "Geographic customer entries: 0/3.",
+            "Customer entries appear segment-oriented."
+          ]
+        },
+        {
+          "name": "operating_model_purity",
+          "score": 1,
+          "notes": [
+            "Risk-language operating model entries: 1/5.",
+            "Operating model entries are operationally oriented."
+          ]
+        }
+      ],
+      "warnings": [
+        "Potential unsupported output: Microsoft provides cloud-based services, Windows OEM licensing, and devices to consumers, organizations, and OEM partners globally.",
+        "Potential unsupported output: Windows OEM licensing",
+        "Potential unsupported output: Devices",
+        "Potential unsupported output: Consumers",
+        "Potential unsupported output: Windows OEM partners",
+        "Potential unsupported output: Licensing fees from Windows OEM",
+        "Potential unsupported output: Sales of Devices hardware",
+        "Potential unsupported output: AI-related services and capabilities enabled by investments in AI infrastructure and technology",
+        "Potential unsupported output: Competes intensely in cloud and AI markets, requiring continuous innovation",
+        "Potential unsupported output: Presence across cloud, OEM licensing, and devices supports relevance across multiple technology markets"
+      ],
+      "failures": []
+    },
+    {
+      "artifact": "company_knowledge",
+      "overall_score": 1,
+      "dimensions": [
+        {
+          "name": "business_description_quality",
+          "score": 1,
+          "notes": [
+            "Description length: 131"
+          ]
+        },
+        {
+          "name": "customer_coverage",
+          "score": 1,
+          "notes": [
+            "3/3 source values preserved."
+          ]
+        },
+        {
+          "name": "revenue_coverage",
+          "score": 1,
+          "notes": [
+            "4/4 source values preserved."
+          ]
+        },
+        {
+          "name": "dependency_coverage",
+          "score": 1,
+          "notes": [
+            "7/7 source values preserved."
+          ]
+        },
+        {
+          "name": "risk_coverage",
+          "score": 1,
+          "notes": [
+            "8/8 source values preserved."
+          ]
+        },
+        {
+          "name": "opportunity_coverage",
+          "score": 1,
+          "notes": [
+            "2/2 source values preserved."
+          ]
+        },
+        {
+          "name": "information_preservation",
+          "score": 1,
+          "notes": [
+            "Structured Intelligence fields are preserved in Company Knowledge."
+          ]
+        }
+      ],
+      "warnings": [],
+      "failures": []
+    },
+    {
+      "artifact": "partner_domain",
+      "overall_score": 0.77,
+      "dimensions": [
+        {
+          "name": "readability",
+          "score": 0.75,
+          "notes": [
+            "Average sentence length: 31 words.",
+            "Jargon terms found: 0."
+          ]
+        },
+        {
+          "name": "owner_friendliness",
+          "score": 0.85,
+          "notes": [
+            "Filing or trader-style phrases found: 1."
+          ]
+        },
+        {
+          "name": "consistency",
+          "score": 1,
+          "notes": [
+            "No obvious cross-section mismatch found."
+          ]
+        },
+        {
+          "name": "risk_signal_quality",
+          "score": 1,
+          "notes": [
+            "Forensics signals with explanations: 5/5."
+          ]
+        },
+        {
+          "name": "source_coverage",
+          "score": 0.5,
+          "notes": [
+            "Partner Domain sources present: company_knowledge, themes."
+          ]
+        },
+        {
+          "name": "source_traceability",
+          "score": 0.5,
+          "notes": [
+            "Missing source declarations: quarter change, topic evolution."
+          ]
+        }
+      ],
+      "warnings": [
+        "Filing-style language occurrences: 1"
+      ],
+      "failures": []
+    },
+    {
+      "artifact": "five_questions",
+      "overall_score": 1,
+      "dimensions": [
+        {
+          "name": "all_questions_present",
+          "score": 1,
+          "notes": [
+            "Question cards present: 5/5."
+          ]
+        },
+        {
+          "name": "non_empty_answers",
+          "score": 1,
+          "notes": [
+            "Non-empty answers: 5/5."
+          ]
+        },
+        {
+          "name": "valuation_insufficient_data",
+          "score": 1,
+          "notes": [
+            "Valuation status: insufficient_data."
+          ]
+        },
+        {
+          "name": "evidence_population",
+          "score": 1,
+          "notes": [
+            "Answered cards with evidence: 4/4."
+          ]
+        },
+        {
+          "name": "answer_specificity",
+          "score": 1,
+          "notes": [
+            "No generic Five Questions answers detected."
+          ]
+        }
+      ],
+      "warnings": [],
+      "failures": []
+    }
+  ],
+  "warnings": [
+    "Potential unsupported output: Microsoft provides cloud-based services, Windows OEM licensing, and devices to consumers, organizations, and OEM partners globally.",
+    "Potential unsupported output: Windows OEM licensing",
+    "Potential unsupported output: Devices",
+    "Potential unsupported output: Consumers",
+    "Potential unsupported output: Windows OEM partners",
+    "Potential unsupported output: Licensing fees from Windows OEM",
+    "Potential unsupported output: Sales of Devices hardware",
+    "Potential unsupported output: AI-related services and capabilities enabled by investments in AI infrastructure and technology",
+    "Potential unsupported output: Competes intensely in cloud and AI markets, requiring continuous innovation",
+    "Potential unsupported output: Presence across cloud, OEM licensing, and devices supports relevance across multiple technology markets",
+    "Filing-style language occurrences: 1"
+  ],
+  "failures": [],
+  "architecture": {
+    "artifact": "architecture_contracts",
+    "overall_score": 1,
+    "dimensions": [
+      {
+        "name": "Themes",
+        "score": 1,
+        "notes": [
+          "Expected: LLM."
+        ]
+      },
+      {
+        "name": "Topic Assignment",
+        "score": 1,
+        "notes": [
+          "Expected: deterministic."
+        ]
+      },
+      {
+        "name": "Topic Evolution",
+        "score": 1,
+        "notes": [
+          "Expected: deterministic."
+        ]
+      },
+      {
+        "name": "Structured Intelligence",
+        "score": 1,
+        "notes": [
+          "Expected: LLM."
+        ]
+      },
+      {
+        "name": "Company Knowledge",
+        "score": 1,
+        "notes": [
+          "Expected: deterministic."
+        ]
+      },
+      {
+        "name": "Partner Domain",
+        "score": 1,
+        "notes": [
+          "Expected: deterministic."
+        ]
+      },
+      {
+        "name": "forbidden_imports",
+        "score": 1,
+        "notes": [
+          "No forbidden deterministic-layer imports found."
+        ]
+      },
+      {
+        "name": "forbidden_fetch_calls",
+        "score": 1,
+        "notes": [
+          "No forbidden deterministic-layer fetch calls found."
+        ]
+      }
+    ],
+    "warnings": [],
+    "failures": []
+  }
+}

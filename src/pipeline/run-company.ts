@@ -5,7 +5,7 @@ import { deduplicateSections } from "../processing/deduplicate-sections.js";
 import { deduplicateOverlap } from "../processing/deduplicate-overlap.js";
 import { normalizeSections } from "../processing/normalize-sections.js";
 import { chunkSections } from "../processing/chunk-sections.js";
-import { generateThemes } from "../ai/generate-themes.js";
+import { generateThemes } from "../themes/generate-themes.js";
 
 async function runCompanyPipeline(ticker: string): Promise<void> {
   const company = getCompanyConfig(ticker);
@@ -18,12 +18,12 @@ async function runCompanyPipeline(ticker: string): Promise<void> {
     throw new Error(`No latest 10-Q filing found for ${company.ticker}`);
   }
 
-  await extractBoundaries(company);
-  await deduplicateSections(company);
-  await deduplicateOverlap(company);
-  await normalizeSections(company);
+  await extractBoundaries(company, ingestionResult.filingDate);
+  await deduplicateSections(company, ingestionResult.filingDate);
+  await deduplicateOverlap(company, ingestionResult.filingDate);
+  await normalizeSections(company, ingestionResult.filingDate);
   await chunkSections(company, ingestionResult.filingDate);
-  await generateThemes(company);
+  await generateThemes(company, ingestionResult.filingDate);
 
   console.log(`Pipeline complete for ${company.company} (${company.ticker})`);
 }

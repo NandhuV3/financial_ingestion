@@ -1,0 +1,103 @@
+{
+  "company": "Microsoft",
+  "business_description": "Microsoft provides cloud services, AI infrastructure, and devices to customers, with growth led by Azure and other Microsoft Cloud solutions.",
+  "business_model": {
+    "value_creation": "Microsoft provides cloud services, AI infrastructure, and devices to customers, with growth led by Azure and other Microsoft Cloud solutions.",
+    "monetization": "Growth in Microsoft Cloud revenue driven by strong performance in Azure and other cloud solutions",
+    "revenue_structure": "mixed"
+  },
+  "products": [
+    "Azure",
+    "Microsoft Cloud",
+    "Devices"
+  ],
+  "customers": [],
+  "revenue_drivers": [
+    "Growth in Microsoft Cloud revenue driven by strong performance in Azure and other cloud solutions"
+  ],
+  "competitive_positioning": [
+    {
+      "signal": "Significant revenue growth in Microsoft Cloud, led by Azure and other cloud solutions",
+      "source_type": "observed"
+    },
+    {
+      "signal": "Active investment and partnerships in AI, including with OpenAI",
+      "source_type": "observed"
+    },
+    {
+      "signal": "Operates in markets with intense competition across product lines",
+      "source_type": "observed"
+    }
+  ],
+  "operating_model": [
+    "Operates datacenter infrastructure to deliver cloud services",
+    "Invests substantially in AI infrastructure and partnerships (notably with OpenAI)",
+    "Manufactures devices and depends on key component availability",
+    "Subject to increasing regulatory and compliance obligations, especially for data protection and AI",
+    "Must manage significant cybersecurity risks to protect customer and company data"
+  ],
+  "key_dependencies": [
+    {
+      "description": "Partnership with OpenAI",
+      "type": "technology"
+    },
+    {
+      "description": "Suppliers of key hardware components for devices and datacenter operations",
+      "type": "technology"
+    },
+    {
+      "description": "Regulatory and compliance frameworks related to data protection and AI",
+      "type": "technology"
+    },
+    {
+      "description": "Macroeconomic conditions that influence IT spending",
+      "type": "technology"
+    }
+  ],
+  "strategic_priorities": [
+    "Expand Microsoft Cloud with continued growth in Azure and other cloud solutions",
+    "Accelerate AI capabilities through investment in infrastructure and partnerships with OpenAI",
+    "Strengthen regulatory compliance practices for data protection and AI",
+    "Mitigate supply chain vulnerabilities for devices and datacenter components",
+    "Enhance cybersecurity posture to address increasing threats"
+  ],
+  "risks": [
+    "Increasing legal scrutiny and regulatory obligations, particularly for data protection and AI",
+    "Limited suppliers for key components affecting device manufacturing and datacenter operations",
+    "Intense competition from established and emerging technology companies",
+    "Growing cybersecurity threats and past incidents impacting protection of customer and company data",
+    "Macroeconomic factors such as inflation and geopolitical tensions affecting IT spending and results",
+    "Challenges in protecting intellectual property that could impact operations and market position"
+  ],
+  "opportunities": [
+    "Sustained growth in Microsoft Cloud revenue driven by Azure and other cloud solutions",
+    "Leverage substantial AI investments and the OpenAI partnership to enhance offerings and adoption"
+  ],
+  "confidence": {
+    "overall": 0.93,
+    "filing_depth": 1,
+    "field_coverage": 0.9
+  },
+  "metadata": {
+    "schema_version": "1.0.0",
+    "pipeline_version": "company-knowledge-builder-v1",
+    "knowledge_version": 1,
+    "generated_at": "2026-06-14T06:11:18.241Z",
+    "input_hash": "df4313c381ff8121df9aa1457fd3274d4280b78e870c500332646f6e3c22964b"
+  },
+  "lineage": {
+    "source_filings": [
+      {
+        "id": "0001193125-26-191507",
+        "period": "2026-04-29",
+        "type": "10-Q"
+      }
+    ],
+    "derived_from": [
+      "structured-intelligence",
+      "filing-metadata"
+    ],
+    "model_version": "deterministic-v1",
+    "prompt_version": "none"
+  }
+}

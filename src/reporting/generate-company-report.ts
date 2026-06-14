@@ -1,7 +1,9 @@
 import { join } from "node:path";
-import { getCompanyConfig, getCompanyDataDir } from "../config/companies.js";
+import { getCompanyConfig } from "../config/companies.js";
 import { getCurrentTimestamp } from "../shared/dates/timestamps.js";
 import { ensureDirectory, writeJsonFile, writeTextFile } from "../shared/filesystem/file-writer.js";
+import { getFilingDirectory } from "../storage/filing-paths.js";
+import { resolveFilingDate } from "../storage/resolve-filing.js";
 import type { CompanyConfig } from "../types/company.types.js";
 import type { CompanyPipelineReport } from "../types/report.types.js";
 import { buildJsonReport } from "./formatters/build-json-report.js";
@@ -17,20 +19,21 @@ import { readThemes } from "./readers/read-themes.js";
 import { validatePipelineHealth } from "./validators/validate-pipeline-health.js";
 import { summarizeHealth } from "./validators/validate-report.js";
 
-export async function generateCompanyReport(company: CompanyConfig): Promise<CompanyPipelineReport> {
-  const companyDataDir = join(process.cwd(), "data", getCompanyDataDir(company));
-  const reportsDir = join(companyDataDir, "reports");
+export async function generateCompanyReport(company: CompanyConfig, filingDate?: string): Promise<CompanyPipelineReport> {
+  const resolvedFilingDate = await resolveFilingDate(company.ticker, filingDate);
+  const filingDir = getFilingDirectory(company.ticker, resolvedFilingDate);
+  const reportsDir = join(filingDir, "reports");
   await ensureDirectory(reportsDir);
 
-  const fileMetrics = await readFileMetrics(companyDataDir);
-  const extraction = await readExtraction(companyDataDir);
-  const deduplicationMetrics = await readJsonArtifact(join(companyDataDir, "processed", "deduplication-report.json"));
-  const overlapDedupMetrics = await readJsonArtifact(join(companyDataDir, "processed", "overlap-deduplication-report.json"));
-  const normalizationMetrics = buildNormalizationMetrics(await readNormalization(companyDataDir));
-  const chunkMetrics = buildChunkMetrics(await readChunks(companyDataDir));
-  const themeArtifact = await readThemes(companyDataDir);
+  const fileMetrics = await readFileMetrics(filingDir);
+  const extraction = await readExtraction(filingDir);
+  const deduplicationMetrics = await readJsonArtifact(join(filingDir, "processed", "deduplication-report.json"));
+  const overlapDedupMetrics = await readJsonArtifact(join(filingDir, "processed", "overlap-deduplication-report.json"));
+  const normalizationMetrics = buildNormalizationMetrics(await readNormalization(filingDir));
+  const chunkMetrics = buildChunkMetrics(await readChunks(filingDir));
+  const themeArtifact = await readThemes(filingDir);
   const themeMetrics = buildThemeMetrics(themeArtifact, chunkMetrics.chunk_ids);
-  const artifactFreshness = await readFreshness(company);
+  const artifactFreshness = await readFreshness(company, resolvedFilingDate);
   const healthChecks = validatePipelineHealth({
     extractionDiagnosticsAvailable: extraction.diagnostics_available,
     normalizationMetrics,
@@ -74,14 +77,15 @@ export async function generateCompanyReport(company: CompanyConfig): Promise<Com
 
 if (require.main === module) {
   const ticker = process.argv[2];
+  const filingDate = process.argv[3];
 
   if (!ticker) {
-    console.error("Usage: npm run report:company -- <ticker>");
+    console.error("Usage: npm run report:company -- <ticker> [filing-date]");
     process.exitCode = 1;
   } else {
     const company = getCompanyConfig(ticker);
 
-    generateCompanyReport(company).catch((error) => {
+    generateCompanyReport(company, filingDate).catch((error) => {
       console.error(error);
       process.exitCode = 1;
     });

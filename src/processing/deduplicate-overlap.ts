@@ -1,8 +1,11 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { getCompanyConfig, getCompanyDataDir } from "../config/companies.js";
-import { readTextFile } from "../shared/filesystem/file-reader.js";
+import { getCompanyConfig } from "../config/companies.js";
+import { shouldPersistProcessedArtifacts } from "../shared/config/storage-mode.js";
+import { fileExists, readTextFile } from "../shared/filesystem/file-reader.js";
 import { ensureDirectory, writeJsonFile, writeTextFile } from "../shared/filesystem/file-writer.js";
+import { getFilingDirectory } from "../storage/filing-paths.js";
+import { resolveFilingDate } from "../storage/resolve-filing.js";
 import type { CompanyConfig } from "../types/company.types.js";
 import type { OverlapDeduplicationReport, SectionOverlapDeduplicationReport } from "../types/pipeline.types.js";
 
@@ -18,24 +21,22 @@ const nearbyParagraphWindow = 10;
 const highOverlapThreshold = 0.85;
 const minimumComparableWords = 20;
 
-export async function deduplicateOverlap(company: CompanyConfig): Promise<OverlapDeduplicationReport> {
-  const processedDir = join(process.cwd(), "data", getCompanyDataDir(company), "processed");
-  const processedFileNames = await readdir(processedDir);
-  const processedFileNameSet = new Set(processedFileNames);
-  const fileNames = processedFileNames
-    .filter((fileName) => fileName.endsWith(".txt"))
-    .filter((fileName) => !fileName.endsWith(".overlap-deduped.txt"))
-    .filter(
-      (fileName) =>
-        fileName.endsWith(".deduped.txt") ||
-        !processedFileNameSet.has(fileName.replace(/\.txt$/, ".deduped.txt")),
-    )
+export async function deduplicateOverlap(company: CompanyConfig, filingDate?: string): Promise<OverlapDeduplicationReport> {
+  const resolvedFilingDate = await resolveFilingDate(company.ticker, filingDate);
+  const processedDir = join(getFilingDirectory(company.ticker, resolvedFilingDate), "processed");
+  const fileNames = shouldPersistProcessedArtifacts()
+    ? await persistedOverlapInputFileNames(processedDir)
+    : [
+      preferredOverlapInputFileName(processedDir, "management-discussion.txt"),
+      preferredOverlapInputFileName(processedDir, "risk-factors.txt"),
+    ].filter((fileName): fileName is string => Boolean(fileName));
+  const sortedFileNames = fileNames
     .sort();
   const sections: SectionOverlapDeduplicationReport[] = [];
 
   await ensureDirectory(processedDir);
 
-  for (const fileName of fileNames) {
+  for (const fileName of sortedFileNames) {
     const inputPath = join(processedDir, fileName);
     const outputPath = join(processedDir, fileName.replace(/(?:\.deduped)?\.txt$/, ".overlap-deduped.txt"));
     const originalText = await readTextFile(inputPath);
@@ -92,6 +93,34 @@ export async function deduplicateOverlap(company: CompanyConfig): Promise<Overla
   }
 
   return report;
+}
+
+async function persistedOverlapInputFileNames(processedDir: string): Promise<string[]> {
+  const processedFileNames = await readdir(processedDir);
+  const processedFileNameSet = new Set(processedFileNames);
+
+  return processedFileNames
+    .filter((fileName) => fileName.endsWith(".txt"))
+    .filter((fileName) => !fileName.endsWith(".overlap-deduped.txt"))
+    .filter(
+      (fileName) =>
+        fileName.endsWith(".deduped.txt") ||
+        !processedFileNameSet.has(fileName.replace(/\.txt$/, ".deduped.txt")),
+    );
+}
+
+function preferredOverlapInputFileName(processedDir: string, baseFileName: string): string | null {
+  const dedupedFileName = baseFileName.replace(/\.txt$/, ".deduped.txt");
+
+  if (fileExists(join(processedDir, dedupedFileName))) {
+    return dedupedFileName;
+  }
+
+  if (fileExists(join(processedDir, baseFileName))) {
+    return baseFileName;
+  }
+
+  return null;
 }
 
 export function deduplicateOverlapText(text: string): {
@@ -244,14 +273,15 @@ function sum(values: number[]): number {
 
 if (require.main === module) {
   const ticker = process.argv[2];
+  const filingDate = process.argv[3];
 
   if (!ticker) {
-    console.error("Usage: npm run dedupe:overlap -- <ticker>");
+    console.error("Usage: npm run dedupe:overlap -- <ticker> [filing-date]");
     process.exitCode = 1;
   } else {
     const company = getCompanyConfig(ticker);
 
-    deduplicateOverlap(company).catch((error) => {
+    deduplicateOverlap(company, filingDate).catch((error) => {
       console.error(error);
       process.exitCode = 1;
     });

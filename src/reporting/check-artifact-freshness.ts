@@ -1,10 +1,12 @@
 import { stat } from "node:fs/promises";
 import { join, relative } from "node:path";
-import { getCompanyConfig, getCompanyDataDir } from "../config/companies.js";
+import { getCompanyConfig } from "../config/companies.js";
 import { formatTimestamp, getCurrentTimestamp } from "../shared/dates/timestamps.js";
 import { fileExists, readJsonFile, readTextFile } from "../shared/filesystem/file-reader.js";
 import { ensureDirectory, writeJsonFile } from "../shared/filesystem/file-writer.js";
 import { calculateStringHash } from "../shared/hashing/hash-file.js";
+import { getFilingDirectory } from "../storage/filing-paths.js";
+import { resolveFilingDate } from "../storage/resolve-filing.js";
 import type { CompanyConfig } from "../types/company.types.js";
 import type {
   ArtifactFreshnessReport,
@@ -68,13 +70,17 @@ const stageDefinitions: StageDefinition[] = [
   {
     stage: "themes",
     sourceFiles: ["chunks/management-discussion.chunks.json", "chunks/risk-factors.chunks.json"],
-    artifactFiles: ["intelligence/themes.json"],
+    artifactFiles: ["intelligence/themes.json", "metadata/chunk-hash.json", "reports/theme-generation-report.json"],
   },
 ];
 
-export async function checkArtifactFreshness(company: CompanyConfig): Promise<ArtifactFreshnessReport> {
-  const companyDataDir = join(process.cwd(), "data", getCompanyDataDir(company));
-  const reportsDir = join(companyDataDir, "reports");
+export async function checkArtifactFreshness(
+  company: CompanyConfig,
+  filingDate?: string,
+): Promise<ArtifactFreshnessReport> {
+  const resolvedFilingDate = await resolveFilingDate(company.ticker, filingDate);
+  const filingDir = getFilingDirectory(company.ticker, resolvedFilingDate);
+  const reportsDir = join(filingDir, "reports");
   const reportPath = join(reportsDir, "artifact-freshness.json");
   const previousReport = await readPreviousReport(reportPath);
   const stages = {} as Record<StageName, StageFreshness>;
@@ -82,7 +88,7 @@ export async function checkArtifactFreshness(company: CompanyConfig): Promise<Ar
   await ensureDirectory(reportsDir);
 
   for (const definition of stageDefinitions) {
-    stages[definition.stage] = await checkStage(companyDataDir, definition, previousReport?.stages[definition.stage]);
+    stages[definition.stage] = await checkStage(filingDir, definition, previousReport?.stages[definition.stage]);
   }
 
   const report: ArtifactFreshnessReport = {
@@ -254,14 +260,15 @@ function formatPaths(companyDataDir: string, paths: string[]): string {
 
 if (require.main === module) {
   const ticker = process.argv[2];
+  const filingDate = process.argv[3];
 
   if (!ticker) {
-    console.error("Usage: npm run freshness:company -- <ticker>");
+    console.error("Usage: npm run freshness:company -- <ticker> [filing-date]");
     process.exitCode = 1;
   } else {
     const company = getCompanyConfig(ticker);
 
-    checkArtifactFreshness(company).catch((error) => {
+    checkArtifactFreshness(company, filingDate).catch((error) => {
       console.error(error);
       process.exitCode = 1;
     });

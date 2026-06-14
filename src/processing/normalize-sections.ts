@@ -1,7 +1,9 @@
 import { join } from "node:path";
-import { getCompanyConfig, getCompanyDataDir } from "../config/companies.js";
+import { getCompanyConfig } from "../config/companies.js";
 import { fileExists, readTextFile } from "../shared/filesystem/file-reader.js";
 import { ensureDirectory, writeTextFile } from "../shared/filesystem/file-writer.js";
+import { getFilingDirectory } from "../storage/filing-paths.js";
+import { resolveFilingDate } from "../storage/resolve-filing.js";
 import type { CompanyConfig } from "../types/company.types.js";
 import type { NormalizationStats } from "../types/pipeline.types.js";
 
@@ -20,10 +22,11 @@ const sections = [
   },
 ];
 
-export async function normalizeSections(company: CompanyConfig): Promise<void> {
-  const companyDataDir = join(process.cwd(), "data", getCompanyDataDir(company));
-  const processedDir = join(companyDataDir, "processed");
-  const normalizedDir = join(companyDataDir, "normalized");
+export async function normalizeSections(company: CompanyConfig, filingDate?: string): Promise<void> {
+  const resolvedFilingDate = await resolveFilingDate(company.ticker, filingDate);
+  const filingDir = getFilingDirectory(company.ticker, resolvedFilingDate);
+  const processedDir = join(filingDir, "processed");
+  const normalizedDir = join(filingDir, "normalized");
   await ensureDirectory(normalizedDir);
 
   for (const section of sections) {
@@ -180,14 +183,15 @@ function isObviousArtifact(line: string, company: CompanyConfig): boolean {
 
 if (require.main === module) {
   const ticker = process.argv[2];
+  const filingDate = process.argv[3];
 
   if (!ticker) {
-    console.error("Usage: npm run normalize:sections -- <ticker>");
+    console.error("Usage: npm run normalize:sections -- <ticker> [filing-date]");
     process.exitCode = 1;
   } else {
     const company = getCompanyConfig(ticker);
 
-    normalizeSections(company).catch((error) => {
+    normalizeSections(company, filingDate).catch((error) => {
       console.error(error);
       process.exitCode = 1;
     });

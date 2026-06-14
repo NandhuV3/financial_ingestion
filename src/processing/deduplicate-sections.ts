@@ -1,14 +1,24 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { getCompanyConfig, getCompanyDataDir } from "../config/companies.js";
-import { readTextFile } from "../shared/filesystem/file-reader.js";
+import { getCompanyConfig } from "../config/companies.js";
+import { shouldPersistProcessedArtifacts } from "../shared/config/storage-mode.js";
+import { fileExists, readTextFile } from "../shared/filesystem/file-reader.js";
 import { ensureDirectory, writeJsonFile, writeTextFile } from "../shared/filesystem/file-writer.js";
+import { getFilingDirectory } from "../storage/filing-paths.js";
+import { resolveFilingDate } from "../storage/resolve-filing.js";
 import type { CompanyConfig } from "../types/company.types.js";
 import type { DeduplicationReport, SectionDeduplicationReport } from "../types/pipeline.types.js";
 
-export async function deduplicateSections(company: CompanyConfig): Promise<DeduplicationReport> {
-  const processedDir = join(process.cwd(), "data", getCompanyDataDir(company), "processed");
-  const fileNames = (await readdir(processedDir))
+export async function deduplicateSections(company: CompanyConfig, filingDate?: string): Promise<DeduplicationReport> {
+  const resolvedFilingDate = await resolveFilingDate(company.ticker, filingDate);
+  const processedDir = join(getFilingDirectory(company.ticker, resolvedFilingDate), "processed");
+  const sourceFileNames = shouldPersistProcessedArtifacts()
+    ? await readdir(processedDir)
+    : [
+      "management-discussion.txt",
+      "risk-factors.txt",
+    ].filter((fileName) => fileExists(join(processedDir, fileName)));
+  const fileNames = sourceFileNames
     .filter((fileName) => fileName.endsWith(".txt"))
     .filter((fileName) => !fileName.endsWith(".deduped.txt"))
     .sort();
@@ -130,14 +140,15 @@ function sum(values: number[]): number {
 
 if (require.main === module) {
   const ticker = process.argv[2];
+  const filingDate = process.argv[3];
 
   if (!ticker) {
-    console.error("Usage: npm run dedupe:sections -- <ticker>");
+    console.error("Usage: npm run dedupe:sections -- <ticker> [filing-date]");
     process.exitCode = 1;
   } else {
     const company = getCompanyConfig(ticker);
 
-    deduplicateSections(company).catch((error) => {
+    deduplicateSections(company, filingDate).catch((error) => {
       console.error(error);
       process.exitCode = 1;
     });

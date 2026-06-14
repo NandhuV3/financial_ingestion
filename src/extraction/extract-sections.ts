@@ -1,7 +1,10 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { load } from "cheerio";
-import { getCompanyConfig, getCompanyDataDir } from "../config/companies.js";
+import { getCompanyConfig } from "../config/companies.js";
+import { writeJsonFile } from "../shared/filesystem/file-writer.js";
+import { getFilingDirectory } from "../storage/filing-paths.js";
+import { resolveFilingDate } from "../storage/resolve-filing.js";
 import type { CompanyConfig } from "../types/company.types.js";
 
 const importantPatterns = [
@@ -30,10 +33,11 @@ type ImportantMatch = HeadingCandidate & {
   previousHeading?: string;
 };
 
-export async function exploreSections(company: CompanyConfig): Promise<void> {
-  const companyDataDir = join(process.cwd(), "data", getCompanyDataDir(company));
-  const rawFilingPath = join(companyDataDir, "raw", "latest-10q.html");
-  const outputPath = join(companyDataDir, "processed", "section-headings.json");
+export async function exploreSections(company: CompanyConfig, filingDate?: string): Promise<void> {
+  const resolvedFilingDate = await resolveFilingDate(company.ticker, filingDate);
+  const filingDir = getFilingDirectory(company.ticker, resolvedFilingDate);
+  const rawFilingPath = join(filingDir, "raw", "latest-10q.html");
+  const outputPath = join(filingDir, "processed", "section-headings.json");
   const html = await readFile(rawFilingPath, "utf8");
   const $ = load(html);
 
@@ -128,8 +132,7 @@ export async function exploreSections(company: CompanyConfig): Promise<void> {
     importantMatches,
   };
 
-  await mkdir(dirname(outputPath), { recursive: true });
-  await writeFile(outputPath, `${JSON.stringify(output, null, 2)}\n`, "utf8");
+  await writeJsonFile(outputPath, output);
 
   console.log(`Source file: ${rawFilingPath}`);
   console.log(`Text blocks scanned: ${textBlocks.length}`);
@@ -151,14 +154,15 @@ function normalizeText(text: string): string {
 
 if (require.main === module) {
   const ticker = process.argv[2];
+  const filingDate = process.argv[3];
 
   if (!ticker) {
-    console.error("Usage: npm run extract:sections -- <ticker>");
+    console.error("Usage: npm run extract:sections -- <ticker> [filing-date]");
     process.exitCode = 1;
   } else {
     const company = getCompanyConfig(ticker);
 
-    exploreSections(company).catch((error) => {
+    exploreSections(company, filingDate).catch((error) => {
       console.error(error);
       process.exitCode = 1;
     });

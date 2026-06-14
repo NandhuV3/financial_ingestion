@@ -1,21 +1,28 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
-import { getCompanyConfig, getCompanyDataDir } from "../config/companies.js";
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { getCompanyConfig } from "../config/companies.js";
+import { getCurrentTimestamp } from "../shared/dates/timestamps.js";
+import { ensureDirectory, writeJsonFile } from "../shared/filesystem/file-writer.js";
+import { getFilingSubdirectory } from "../storage/filing-paths.js";
 import type { CompanyConfig } from "../types/company.types.js";
-import type { SecIngestionResult, SecSubmissionResponse } from "../types/pipeline.types.js";
+import type {
+  FilingMetadata,
+  PipelineMetadata,
+  SecIngestionResult,
+  SecSubmissionResponse,
+} from "../types/pipeline.types.js";
 
-const USER_AGENT = "FinancialIngestion dev@example.com";
+export const SEC_USER_AGENT = "FinancialIngestion dev@example.com";
+const FORM_TYPE = "10-Q";
+export const PIPELINE_VERSION = "0.5.0";
+export const THEME_MODEL = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
 
 export async function ingestSecFilings(company: CompanyConfig): Promise<SecIngestionResult | undefined> {
   const secSubmissionsUrl = `https://data.sec.gov/submissions/CIK${company.cik}.json`;
-  const rawDir = join(process.cwd(), "data", getCompanyDataDir(company), "raw");
-  const rawMetadataPath = join(rawDir, "filings.json");
-  const rawIndexPath = join(rawDir, "latest-10q-index.html");
-  const rawFilingPath = join(rawDir, "latest-10q.html");
 
   const metadataResponse = await fetch(secSubmissionsUrl, {
     headers: {
-      "User-Agent": USER_AGENT,
+      "User-Agent": SEC_USER_AGENT,
     },
   });
 
@@ -26,13 +33,10 @@ export async function ingestSecFilings(company: CompanyConfig): Promise<SecInges
   }
 
   const rawMetadata = await metadataResponse.text();
-  await mkdir(dirname(rawMetadataPath), { recursive: true });
-  await writeFile(rawMetadataPath, rawMetadata, "utf8");
-
   const submission = JSON.parse(rawMetadata) as SecSubmissionResponse;
   const recent = submission.filings.recent;
 
-  const latestTenQIndex = recent.form.findIndex((form) => form === "10-Q");
+  const latestTenQIndex = recent.form.findIndex((form) => form === FORM_TYPE);
 
   if (latestTenQIndex === -1) {
     console.log(`Company: ${submission.name}`);
@@ -42,14 +46,25 @@ export async function ingestSecFilings(company: CompanyConfig): Promise<SecInges
 
   const filingDate = recent.filingDate[latestTenQIndex];
   const accessionNumber = recent.accessionNumber[latestTenQIndex];
+  const rawDir = getFilingSubdirectory(company.ticker, filingDate, "raw");
+  const metadataDir = getFilingSubdirectory(company.ticker, filingDate, "metadata");
+  const rawMetadataPath = join(rawDir, "filings.json");
+  const rawIndexPath = join(rawDir, "latest-10q-index.html");
+  const rawFilingPath = join(rawDir, "latest-10q.html");
+  const filingMetadataPath = join(metadataDir, "filing.json");
+  const pipelineMetadataPath = join(metadataDir, "pipeline.json");
   const cikWithoutLeadingZeros = company.cik.replace(/^0+/, "");
   const accessionWithoutDashes = accessionNumber.replaceAll("-", "");
   const filingDirectoryUrl = `https://www.sec.gov/Archives/edgar/data/${cikWithoutLeadingZeros}/${accessionWithoutDashes}/`;
   const filingIndexUrl = `${filingDirectoryUrl}${accessionNumber}-index.html`;
 
+  await ensureDirectory(rawDir);
+  await ensureDirectory(metadataDir);
+  await writeFile(rawMetadataPath, rawMetadata, "utf8");
+
   const indexResponse = await fetch(filingIndexUrl, {
     headers: {
-      "User-Agent": USER_AGENT,
+      "User-Agent": SEC_USER_AGENT,
     },
   });
 
@@ -62,14 +77,14 @@ export async function ingestSecFilings(company: CompanyConfig): Promise<SecInges
   const filingIndexHtml = await indexResponse.text();
   await writeFile(rawIndexPath, filingIndexHtml, "utf8");
 
-  const filingDocumentPath = findPrimaryTenQDocumentPath(filingIndexHtml);
+  const filingDocumentPath = findPrimaryFilingDocumentPath(filingIndexHtml, FORM_TYPE);
   const filingHtmlUrl = filingDocumentPath.startsWith("/")
     ? `https://www.sec.gov${filingDocumentPath}`
     : `${filingDirectoryUrl}${filingDocumentPath}`;
 
   const filingResponse = await fetch(filingHtmlUrl, {
     headers: {
-      "User-Agent": USER_AGENT,
+      "User-Agent": SEC_USER_AGENT,
     },
   });
 
@@ -81,6 +96,21 @@ export async function ingestSecFilings(company: CompanyConfig): Promise<SecInges
 
   const filingHtml = await filingResponse.text();
   await writeFile(rawFilingPath, filingHtml, "utf8");
+  const filingMetadata: FilingMetadata = {
+    company: company.company,
+    ticker: company.ticker,
+    filing_date: filingDate,
+    form_type: FORM_TYPE,
+    accession_number: accessionNumber,
+  };
+  const pipelineMetadata: PipelineMetadata = {
+    pipeline_version: PIPELINE_VERSION,
+    generated_at: getCurrentTimestamp(),
+    theme_model: THEME_MODEL,
+  };
+
+  await writeJsonFile(filingMetadataPath, filingMetadata);
+  await writeJsonFile(pipelineMetadataPath, pipelineMetadata);
 
   console.log(`Company: ${submission.name}`);
   console.log(`Filing date: ${filingDate}`);
@@ -90,6 +120,8 @@ export async function ingestSecFilings(company: CompanyConfig): Promise<SecInges
   console.log(`Raw metadata saved to: ${rawMetadataPath}`);
   console.log(`Raw filing index saved to: ${rawIndexPath}`);
   console.log(`Raw filing HTML saved to: ${rawFilingPath}`);
+  console.log(`Filing metadata saved to: ${filingMetadataPath}`);
+  console.log(`Pipeline metadata saved to: ${pipelineMetadataPath}`);
 
   return {
     filingDate,
@@ -99,14 +131,16 @@ export async function ingestSecFilings(company: CompanyConfig): Promise<SecInges
   };
 }
 
-function findPrimaryTenQDocumentPath(indexHtml: string): string {
+export function findPrimaryFilingDocumentPath(indexHtml: string, formType: string): string {
   const rows = indexHtml.match(/<tr[\s\S]*?<\/tr>/gi) ?? [];
+  const escapedFormType = formType.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const formPattern = new RegExp(`<td[^>]*>\\s*${escapedFormType}\\s*<\\/td>`, "i");
 
   for (const row of rows) {
-    const isTenQRow = /<td[^>]*>\s*10-Q\s*<\/td>/i.test(row);
+    const isTargetFormRow = formPattern.test(row);
     const hrefMatch = row.match(/href="([^"]+\.(?:htm|html))"/i);
 
-    if (isTenQRow && hrefMatch) {
+    if (isTargetFormRow && hrefMatch) {
       const href = hrefMatch[1].replaceAll("&amp;", "&");
 
       if (href.startsWith("/ix?")) {
@@ -123,7 +157,7 @@ function findPrimaryTenQDocumentPath(indexHtml: string): string {
   }
 
   throw new Error(
-    "Could not find primary 10-Q document link in SEC filing index page.",
+    `Could not find primary ${formType} document link in SEC filing index page.`,
   );
 }
 

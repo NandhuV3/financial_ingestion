@@ -1,0 +1,577 @@
+{
+  "company": "Microsoft",
+  "period": "2026-Q2",
+  "understandings": [
+    {
+      "understanding_id": "understanding_2e8f21bbde917e03",
+      "semantic_anchor_key": "ai_investment_and_dependency",
+      "business_key": {
+        "company": "Microsoft",
+        "category": "growth",
+        "topic": "ai_investment_and_dependency"
+      },
+      "category": "growth",
+      "summary": "Ai Investment And Dependency remains a material business theme, supported by Leverage substantial AI investments and the OpenAI partnership to enhance offerings and adoption, while increasing legal scrutiny and regulatory obligations, particularly for data protection and AI.",
+      "importance": "high",
+      "confidence": {
+        "score": 0.6,
+        "evidence_count": 5,
+        "source_reliability": "high",
+        "signal_agreement": "mixed",
+        "company_knowledge_alignment": "consistent"
+      },
+      "evidence": {
+        "signal_refs": [
+          {
+            "signal_id": "signal_acb40498bb298880",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          },
+          {
+            "signal_id": "signal_5e1a9d97278cca95",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          },
+          {
+            "signal_id": "signal_a2493a62e81bc3f2",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          },
+          {
+            "signal_id": "signal_2b52053d0d33d02c",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          },
+          {
+            "signal_id": "signal_da383adca05ac601",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          },
+          {
+            "signal_id": "signal_4f675949b042b4ef",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          }
+        ],
+        "company_knowledge_ref": {
+          "artifact_path": "company-knowledge/current.json",
+          "version": 1,
+          "input_hash": "df4313c381ff8121df9aa1457fd3274d4280b78e870c500332646f6e3c22964b"
+        },
+        "evidence_context": "Topic persisted across quarters: artificial intelligence. Competitive position remains relevant: Active investment and partnerships in AI, including with OpenAI. Topic is recurring across filings: Artificial Intelligence. Opportunity identified in Company Knowledge: Leverage substantial AI investments and the OpenAI partnership to enhance offerings and adoption. Competitive signal observed: Active investment and partnerships in AI, including with OpenAI Risk identified in Company Knowledge: Increasing legal scrutiny and regulatory obligations, particularly for data protection and AI. Dependency observed: Partnership with OpenAI Dependency observed: Regulatory and compliance frameworks related to data protection and AI Operating dependency observed: Invests substantially in AI infrastructure and partnerships (notably with OpenAI) Operating dependency observed: Subject to increasing regulatory and compliance obligations, especially for data protection and AI Topic evolved this quarter: artificial intelligence. Topic intensified this quarter: artificial intelligence. Topic intensified: artificial intelligence Dependency requires monitoring: Partnership with OpenAI. Dependency requires monitoring: Regulatory and compliance frameworks related to data protection and AI."
+      }
+    },
+    {
+      "understanding_id": "understanding_17a9165469e35443",
+      "semantic_anchor_key": "cloud_platform_growth",
+      "business_key": {
+        "company": "Microsoft",
+        "category": "revenue",
+        "topic": "cloud_platform_growth"
+      },
+      "category": "revenue",
+      "summary": "Cloud Platform Growth remains a material business theme, supported by Growth in Microsoft Cloud revenue driven by strong performance in Azure and other cloud solutions, while operates datacenter infrastructure to deliver cloud services.",
+      "importance": "high",
+      "confidence": {
+        "score": 0.6,
+        "evidence_count": 5,
+        "source_reliability": "high",
+        "signal_agreement": "mixed",
+        "company_knowledge_alignment": "consistent"
+      },
+      "evidence": {
+        "signal_refs": [
+          {
+            "signal_id": "signal_a02906e4b808378c",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          },
+          {
+            "signal_id": "signal_de05a51dfcff03f2",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          },
+          {
+            "signal_id": "signal_6a0f48b36b656faa",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          },
+          {
+            "signal_id": "signal_7bdaf8cc5a2f7e98",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          },
+          {
+            "signal_id": "signal_aa99f07973729598",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          }
+        ],
+        "company_knowledge_ref": {
+          "artifact_path": "company-knowledge/current.json",
+          "version": 1,
+          "input_hash": "df4313c381ff8121df9aa1457fd3274d4280b78e870c500332646f6e3c22964b"
+        },
+        "evidence_context": "Topic persisted across quarters: cloud. Topic has persisted across filings: Cloud. Revenue driver remains central: Growth in Microsoft Cloud revenue driven by strong performance in Azure and other cloud solutions. Competitive position remains relevant: Significant revenue growth in Microsoft Cloud, led by Azure and other cloud solutions. Opportunity identified in Company Knowledge: Sustained growth in Microsoft Cloud revenue driven by Azure and other cloud solutions. Competitive signal observed: Significant revenue growth in Microsoft Cloud, led by Azure and other cloud solutions Persistent topic observed: Cloud Revenue driver observed: Growth in Microsoft Cloud revenue driven by strong performance in Azure and other cloud solutions Operating dependency observed: Operates datacenter infrastructure to deliver cloud services Topic evolved this quarter: cloud. Topic intensified this quarter: cloud. Topic intensified: cloud"
+      }
+    },
+    {
+      "understanding_id": "understanding_0fcf622e8b811f17",
+      "semantic_anchor_key": "competitive_pressure",
+      "business_key": {
+        "company": "Microsoft",
+        "category": "competitive",
+        "topic": "competitive_pressure"
+      },
+      "category": "competitive",
+      "summary": "Competitive Pressure remains a material business theme, supported by Operates in markets with intense competition across product lines, while intense competition from established and emerging technology companies.",
+      "importance": "high",
+      "confidence": {
+        "score": 0.6,
+        "evidence_count": 3,
+        "source_reliability": "high",
+        "signal_agreement": "mixed",
+        "company_knowledge_alignment": "consistent"
+      },
+      "evidence": {
+        "signal_refs": [
+          {
+            "signal_id": "signal_3492b838025d6808",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          }
+        ],
+        "company_knowledge_ref": {
+          "artifact_path": "company-knowledge/current.json",
+          "version": 1,
+          "input_hash": "df4313c381ff8121df9aa1457fd3274d4280b78e870c500332646f6e3c22964b"
+        },
+        "evidence_context": "Competitive position remains relevant: Operates in markets with intense competition across product lines. Competitive signal observed: Operates in markets with intense competition across product lines Risk identified in Company Knowledge: Intense competition from established and emerging technology companies. Topic needs monitoring: Competition."
+      }
+    },
+    {
+      "understanding_id": "understanding_85688652b256a894",
+      "semantic_anchor_key": "cybersecurity",
+      "business_key": {
+        "company": "Microsoft",
+        "category": "growth",
+        "topic": "cybersecurity"
+      },
+      "category": "growth",
+      "summary": "Cybersecurity remains a material business theme, supported by persistent topic observed around Cybersecurity, while growing cybersecurity threats and past incidents impacting protection of customer and company data.",
+      "importance": "high",
+      "confidence": {
+        "score": 0.6,
+        "evidence_count": 4,
+        "source_reliability": "high",
+        "signal_agreement": "mixed",
+        "company_knowledge_alignment": "consistent"
+      },
+      "evidence": {
+        "signal_refs": [
+          {
+            "signal_id": "signal_98831c51fc99bcc3",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          },
+          {
+            "signal_id": "signal_d952d2f175256a70",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          }
+        ],
+        "company_knowledge_ref": {
+          "artifact_path": "company-knowledge/current.json",
+          "version": 1,
+          "input_hash": "df4313c381ff8121df9aa1457fd3274d4280b78e870c500332646f6e3c22964b"
+        },
+        "evidence_context": "Topic persisted across quarters: cybersecurity. Topic has persisted across filings: Cybersecurity. Persistent topic observed: Cybersecurity Risk identified in Company Knowledge: Growing cybersecurity threats and past incidents impacting protection of customer and company data. Operating dependency observed: Must manage significant cybersecurity risks to protect customer and company data Topic evolved this quarter: cybersecurity."
+      }
+    },
+    {
+      "understanding_id": "understanding_cd4fb06e451831bc",
+      "semantic_anchor_key": "infrastructure_supply_dependency",
+      "business_key": {
+        "company": "Microsoft",
+        "category": "growth",
+        "topic": "infrastructure_supply_dependency"
+      },
+      "category": "growth",
+      "summary": "Infrastructure Supply Dependency remains a material business theme, supported by topic intensified around supply chain, while limited suppliers for key components affecting device manufacturing and datacenter operations.",
+      "importance": "high",
+      "confidence": {
+        "score": 0.6,
+        "evidence_count": 5,
+        "source_reliability": "high",
+        "signal_agreement": "mixed",
+        "company_knowledge_alignment": "consistent"
+      },
+      "evidence": {
+        "signal_refs": [
+          {
+            "signal_id": "signal_062fc9b75339981a",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          },
+          {
+            "signal_id": "signal_6bf3cb2943fb264e",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          },
+          {
+            "signal_id": "signal_4d2d910b970421d2",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          },
+          {
+            "signal_id": "signal_e1f54c424cce233c",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          }
+        ],
+        "company_knowledge_ref": {
+          "artifact_path": "company-knowledge/current.json",
+          "version": 1,
+          "input_hash": "df4313c381ff8121df9aa1457fd3274d4280b78e870c500332646f6e3c22964b"
+        },
+        "evidence_context": "Topic persisted across quarters: supply chain. Topic has persisted across filings: Supply Chain. Persistent topic observed: Supply Chain Risk identified in Company Knowledge: Limited suppliers for key components affecting device manufacturing and datacenter operations. Dependency observed: Suppliers of key hardware components for devices and datacenter operations Operating dependency observed: Manufactures devices and depends on key component availability Category strengthened this quarter: supply_chain. Topic evolved this quarter: supply chain. Topic intensified this quarter: supply chain. Topic intensified: supply chain Dependency requires monitoring: Suppliers of key hardware components for devices and datacenter operations."
+      }
+    },
+    {
+      "understanding_id": "understanding_668d086fa972f9ec",
+      "semantic_anchor_key": "macroeconomic_exposure",
+      "business_key": {
+        "company": "Microsoft",
+        "category": "dependency",
+        "topic": "macroeconomic_exposure"
+      },
+      "category": "dependency",
+      "summary": "Macroeconomic Exposure remains a material business theme, supported by New filing category observed: macroeconomic, while macroeconomic factors such as inflation and geopolitical tensions affecting IT spending and results.",
+      "importance": "high",
+      "confidence": {
+        "score": 0.6,
+        "evidence_count": 4,
+        "source_reliability": "high",
+        "signal_agreement": "mixed",
+        "company_knowledge_alignment": "consistent"
+      },
+      "evidence": {
+        "signal_refs": [
+          {
+            "signal_id": "signal_e05dd70aa0769800",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          }
+        ],
+        "company_knowledge_ref": {
+          "artifact_path": "company-knowledge/current.json",
+          "version": 1,
+          "input_hash": "df4313c381ff8121df9aa1457fd3274d4280b78e870c500332646f6e3c22964b"
+        },
+        "evidence_context": "Topic is recurring across filings: Macroeconomic. Risk identified in Company Knowledge: Macroeconomic factors such as inflation and geopolitical tensions affecting IT spending and results. Dependency observed: Macroeconomic conditions that influence IT spending New filing category observed: macroeconomic. Dependency requires monitoring: Macroeconomic conditions that influence IT spending."
+      }
+    },
+    {
+      "understanding_id": "understanding_8fe5c74b22fa1247",
+      "semantic_anchor_key": "regulatory_pressure",
+      "business_key": {
+        "company": "Microsoft",
+        "category": "growth",
+        "topic": "regulatory_pressure"
+      },
+      "category": "growth",
+      "summary": "Regulatory Pressure remains a material business theme, supported by topic intensified around regulation.",
+      "importance": "high",
+      "confidence": {
+        "score": 0.9,
+        "evidence_count": 4,
+        "source_reliability": "high",
+        "signal_agreement": "corroborating",
+        "company_knowledge_alignment": "consistent"
+      },
+      "evidence": {
+        "signal_refs": [
+          {
+            "signal_id": "signal_56960732fe3e7354",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          },
+          {
+            "signal_id": "signal_868d86aeb6a5ba9a",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          }
+        ],
+        "company_knowledge_ref": {
+          "artifact_path": "company-knowledge/current.json",
+          "version": 1,
+          "input_hash": "df4313c381ff8121df9aa1457fd3274d4280b78e870c500332646f6e3c22964b"
+        },
+        "evidence_context": "Topic is strengthening over time: Regulation. Topic persisted across quarters: regulation. Strengthening topic observed: Regulation Category strengthened this quarter: regulation. Topic evolved this quarter: regulation. Topic intensified this quarter: regulation. Topic intensified: regulation"
+      }
+    },
+    {
+      "understanding_id": "understanding_b781329ed36b901c",
+      "semantic_anchor_key": "taxation",
+      "business_key": {
+        "company": "Microsoft",
+        "category": "operational",
+        "topic": "taxation"
+      },
+      "category": "operational",
+      "summary": "Taxation requires monitoring because dormant topic observed around Taxation.",
+      "importance": "high",
+      "confidence": {
+        "score": 0.45,
+        "evidence_count": 3,
+        "source_reliability": "high",
+        "signal_agreement": "conflicting",
+        "company_knowledge_alignment": "consistent"
+      },
+      "evidence": {
+        "signal_refs": [
+          {
+            "signal_id": "signal_bdacd22b7960f5c1",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          }
+        ],
+        "company_knowledge_ref": {
+          "artifact_path": "company-knowledge/current.json",
+          "version": 1,
+          "input_hash": "df4313c381ff8121df9aa1457fd3274d4280b78e870c500332646f6e3c22964b"
+        },
+        "evidence_context": "Dormant topic observed: Taxation Filing category removed this quarter: taxation. Topic needs monitoring: Taxation."
+      }
+    },
+    {
+      "understanding_id": "understanding_add452664ae1f6b5",
+      "semantic_anchor_key": "growth_momentum",
+      "business_key": {
+        "company": "Microsoft",
+        "category": "growth",
+        "topic": "growth_momentum"
+      },
+      "category": "growth",
+      "summary": "Growth Momentum requires monitoring because category weakened this quarter: growth.",
+      "importance": "medium",
+      "confidence": {
+        "score": 0.45,
+        "evidence_count": 2,
+        "source_reliability": "medium",
+        "signal_agreement": "conflicting",
+        "company_knowledge_alignment": "consistent"
+      },
+      "evidence": {
+        "signal_refs": [
+          {
+            "signal_id": "signal_a02906e4b808378c",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          },
+          {
+            "signal_id": "signal_de05a51dfcff03f2",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          },
+          {
+            "signal_id": "signal_4f675949b042b4ef",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          },
+          {
+            "signal_id": "signal_7bdaf8cc5a2f7e98",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          },
+          {
+            "signal_id": "signal_56960732fe3e7354",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          },
+          {
+            "signal_id": "signal_4d2d910b970421d2",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          },
+          {
+            "signal_id": "signal_aa99f07973729598",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          },
+          {
+            "signal_id": "signal_d952d2f175256a70",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          },
+          {
+            "signal_id": "signal_868d86aeb6a5ba9a",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          },
+          {
+            "signal_id": "signal_e1f54c424cce233c",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          }
+        ],
+        "company_knowledge_ref": {
+          "artifact_path": "company-knowledge/current.json",
+          "version": 1,
+          "input_hash": "df4313c381ff8121df9aa1457fd3274d4280b78e870c500332646f6e3c22964b"
+        },
+        "evidence_context": "Category weakened this quarter: growth."
+      }
+    },
+    {
+      "understanding_id": "understanding_a598808276338f3c",
+      "semantic_anchor_key": "intellectual_property",
+      "business_key": {
+        "company": "Microsoft",
+        "category": "operational",
+        "topic": "intellectual_property"
+      },
+      "category": "operational",
+      "summary": "Intellectual Property remains a material business theme, supported by New filing category observed: intellectual_property, while challenges in protecting intellectual property that could impact operations and market position.",
+      "importance": "medium",
+      "confidence": {
+        "score": 0.6,
+        "evidence_count": 2,
+        "source_reliability": "medium",
+        "signal_agreement": "mixed",
+        "company_knowledge_alignment": "consistent"
+      },
+      "evidence": {
+        "signal_refs": [],
+        "company_knowledge_ref": {
+          "artifact_path": "company-knowledge/current.json",
+          "version": 1,
+          "input_hash": "df4313c381ff8121df9aa1457fd3274d4280b78e870c500332646f6e3c22964b"
+        },
+        "evidence_context": "Risk identified in Company Knowledge: Challenges in protecting intellectual property that could impact operations and market position. New filing category observed: intellectual_property."
+      }
+    },
+    {
+      "understanding_id": "understanding_e558a3f6ae907f64",
+      "semantic_anchor_key": "product_quality",
+      "business_key": {
+        "company": "Microsoft",
+        "category": "operational",
+        "topic": "product_quality"
+      },
+      "category": "operational",
+      "summary": "Product Quality requires monitoring because dormant topic observed around Product Quality.",
+      "importance": "medium",
+      "confidence": {
+        "score": 0.45,
+        "evidence_count": 2,
+        "source_reliability": "medium",
+        "signal_agreement": "conflicting",
+        "company_knowledge_alignment": "consistent"
+      },
+      "evidence": {
+        "signal_refs": [
+          {
+            "signal_id": "signal_6f5d55f67761f4f4",
+            "period": "2026-Q2",
+            "artifact_path": "business-signals/2026-Q2/current.json",
+            "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+          }
+        ],
+        "company_knowledge_ref": {
+          "artifact_path": "company-knowledge/current.json",
+          "version": 1,
+          "input_hash": "df4313c381ff8121df9aa1457fd3274d4280b78e870c500332646f6e3c22964b"
+        },
+        "evidence_context": "Dormant topic observed: Product Quality Topic needs monitoring: Product Quality."
+      }
+    }
+  ],
+  "metadata": {
+    "schema_version": "1.0.0",
+    "pipeline_version": "quarter-understanding-builder-v1",
+    "model_version": "deterministic-builder-v1",
+    "prompt_version": "none",
+    "generated_at": "2026-06-14T07:43:33.213Z",
+    "understanding_version": 1,
+    "input_hash": "1d21b41f8e5fcca04d725d5dd7b389c59881e683919efe24f0d375bfcc0858bd"
+  },
+  "lineage": {
+    "derived_from": [
+      {
+        "path": "business-signals/2026-Q2/current.json",
+        "version": 1,
+        "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+      },
+      {
+        "path": "company-knowledge/current.json",
+        "version": 1,
+        "input_hash": "df4313c381ff8121df9aa1457fd3274d4280b78e870c500332646f6e3c22964b"
+      },
+      {
+        "path": "comparison/2026-04-29/quarter-change-report.json",
+        "version": 1,
+        "input_hash": "dafcfbd6056f4686ec0d5b23156377f66123a9805a8f4ac5fbf17b9f0c7a81f2"
+      },
+      {
+        "path": "quarter-change/2026-04-29.json",
+        "version": 1,
+        "input_hash": "dafcfbd6056f4686ec0d5b23156377f66123a9805a8f4ac5fbf17b9f0c7a81f2"
+      },
+      {
+        "path": "reports/topic-evolution-report.json",
+        "version": 1,
+        "input_hash": "19f2e8ac96297da4a71767de785b4d2964aab25abd6f2a423a0c1d02e11a64c2"
+      },
+      {
+        "path": "topic-evolution/current.json",
+        "version": 1,
+        "input_hash": "76020913340fb7111b9bb29343022569fb17c232d2a08aece7c5632f0ba7585b"
+      }
+    ],
+    "source_filings": [
+      {
+        "id": "0001193125-26-027207",
+        "period": "2026-01-28",
+        "type": "10-Q"
+      },
+      {
+        "id": "0001193125-26-191507",
+        "period": "2026-04-29",
+        "type": "10-Q"
+      }
+    ]
+  }
+}

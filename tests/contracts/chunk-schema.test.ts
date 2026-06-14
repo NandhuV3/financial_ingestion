@@ -5,24 +5,37 @@ import { join } from "node:path";
 import type { Chunk } from "../../src/types/chunk.types.js";
 
 type ContractChunk = Partial<Record<keyof Chunk, unknown>>;
+type ChunkFileContext = {
+  ticker: string;
+  filingDate: string;
+  filePath: string;
+};
 
 const requiredFields = ["chunk_id", "company", "ticker", "filing_date", "form_type", "section", "text"] as const;
 
 describe("chunk schema contract", () => {
-  it("validates all data/{ticker}/chunks/*.json files", async () => {
+  it("validates all data/{ticker}/filings/{filingDate}/chunks/*.json files", async () => {
     const chunkFiles = await findChunkFiles();
 
-    assert.ok(chunkFiles.length > 0, "Expected at least one chunk JSON file in data/{ticker}/chunks");
+    assert.ok(
+      chunkFiles.length > 0,
+      "Expected at least one chunk JSON file in data/{ticker}/filings/{filingDate}/chunks",
+    );
 
-    for (const filePath of chunkFiles) {
+    const seenChunkIdsByFiling = new Map<string, Set<string>>();
+
+    for (const { ticker, filingDate, filePath } of chunkFiles) {
       const chunks = JSON.parse(await readFile(filePath, "utf8")) as ContractChunk[];
-      const seenChunkIds = new Set<string>();
+      const context = `ticker=${ticker} filingDate=${filingDate} file=${filePath}`;
+      const filingKey = `${ticker}:${filingDate}`;
+      const seenChunkIds = seenChunkIdsByFiling.get(filingKey) ?? new Set<string>();
+      seenChunkIdsByFiling.set(filingKey, seenChunkIds);
 
-      assert.ok(Array.isArray(chunks), `${filePath}: expected top-level JSON array`);
-      assert.ok(chunks.length > 0, `${filePath}: expected at least one chunk`);
+      assert.ok(Array.isArray(chunks), `${context}: expected top-level JSON array`);
+      assert.ok(chunks.length > 0, `${context}: expected at least one chunk`);
 
       chunks.forEach((chunk, index) => {
-        const location = `${filePath}[${index}]`;
+        const location = `${context} chunk[${index}]`;
 
         for (const field of requiredFields) {
           assert.ok(field in chunk, `${location}: missing required field "${field}"`);
@@ -39,25 +52,44 @@ describe("chunk schema contract", () => {
   });
 });
 
-async function findChunkFiles(): Promise<string[]> {
+async function findChunkFiles(): Promise<ChunkFileContext[]> {
   const dataDir = join(process.cwd(), "data");
   const entries = await readdir(dataDir, { withFileTypes: true });
-  const chunkFiles: string[] = [];
+  const chunkFiles: ChunkFileContext[] = [];
 
   for (const entry of entries) {
     if (!entry.isDirectory()) {
       continue;
     }
 
-    const chunksDir = join(dataDir, entry.name, "chunks");
+    const ticker = entry.name;
+    const companyDir = join(dataDir, entry.name);
 
     try {
-      const files = await readdir(chunksDir);
-      chunkFiles.push(...files.filter((fileName) => fileName.endsWith(".json")).map((fileName) => join(chunksDir, fileName)));
+      const filings = await readdir(join(companyDir, "filings"), { withFileTypes: true });
+
+      for (const filing of filings) {
+        if (!filing.isDirectory()) {
+          continue;
+        }
+
+        const filingDate = filing.name;
+        const filingChunksDir = join(companyDir, "filings", filing.name, "chunks");
+        const files = await readdir(filingChunksDir);
+        chunkFiles.push(
+          ...files
+            .filter((fileName) => fileName.endsWith(".json"))
+            .map((fileName) => ({
+              ticker,
+              filingDate,
+              filePath: join(filingChunksDir, fileName),
+            })),
+        );
+      }
     } catch {
-      // Non-company data directories do not have chunk outputs.
+      // Non-company data directories do not have filing outputs.
     }
   }
 
-  return chunkFiles.sort();
+  return chunkFiles.sort((left, right) => left.filePath.localeCompare(right.filePath));
 }
