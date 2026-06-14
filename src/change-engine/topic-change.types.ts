@@ -1,6 +1,8 @@
 import type { Theme, ThemeImportance, ThemeOutput } from "../types/theme.types.js";
 
 export type TopicChangeType =
+  | "TOPIC_NEW"
+  | "TOPIC_DISAPPEARED"
   | "TOPIC_PERSISTED"
   | "TOPIC_EVOLVED"
   | "TOPIC_INTENSIFIED"

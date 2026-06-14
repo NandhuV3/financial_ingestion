@@ -5,25 +5,30 @@ import {
   type BuildBusinessSignalsInputs,
 } from "../src/business-signal-intelligence/build-business-signals.js";
 import type { BusinessSignalArtifact } from "../src/business-signal-intelligence/types/business-signal.types.js";
+import type { QuarterChangeReport } from "../src/change-engine/change.types.js";
 import type { CompanyKnowledge } from "../src/company-knowledge/types/company-knowledge.types.js";
+import type { TopicEvolutionReport } from "../src/topic-evolution/topic-evolution.types.js";
 
 describe("business signal builder", () => {
   it("generates signals from Company Knowledge fields", () => {
     const artifact = buildBusinessSignals(inputs());
 
     assert.deepEqual(
+      artifact.signals.map((signal) => signal.signal_type),
+      ["revenue_driver", "customer_dependency", "competitive_advantage", "operating_dependency", "operating_dependency"],
+    );
+    assert.deepEqual(
       artifact.signals.map((signal) => signal.category),
-      ["revenue", "competitive", "dependency", "operational", "product", "customer"],
+      ["revenue", "customer", "competitive", "dependency", "dependency"],
     );
     assert.deepEqual(
       artifact.signals.map((signal) => signal.summary),
       [
         "Revenue driver observed: cloud subscriptions",
+        "Customer dependency observed: enterprise customers",
         "Competitive signal observed: developer ecosystem",
         "Dependency observed: data center capacity",
-        "Operational signal observed: cloud infrastructure",
-        "Product signal observed: cloud services",
-        "Customer signal observed: enterprise customers",
+        "Operating dependency observed: cloud infrastructure",
       ],
     );
 
@@ -39,9 +44,44 @@ describe("business signal builder", () => {
     assert.equal(artifact.signals.find((signal) => signal.category === "revenue")?.confidence, 0.8);
     assert.equal(artifact.signals.find((signal) => signal.category === "competitive")?.confidence, 0.8);
     assert.equal(artifact.signals.find((signal) => signal.category === "dependency")?.confidence, 0.75);
-    assert.equal(artifact.signals.find((signal) => signal.category === "operational")?.confidence, 0.75);
-    assert.equal(artifact.signals.find((signal) => signal.category === "product")?.confidence, 0.7);
-    assert.equal(artifact.signals.find((signal) => signal.category === "customer")?.confidence, 0.7);
+    assert.equal(artifact.signals.find((signal) => signal.category === "customer")?.confidence, 0.75);
+  });
+
+  it("generates movement signals from Quarter Change topic changes", () => {
+    const artifact = buildBusinessSignals({
+      ...inputs(),
+      quarterChange: quarterChange(),
+    });
+
+    assert.ok(artifact.signals.find((signal) =>
+      signal.signal_type === "topic_new"
+      && signal.direction === "emerging"
+      && signal.evidence[0]?.source === "quarter-change"));
+    assert.ok(artifact.signals.find((signal) =>
+      signal.signal_type === "topic_intensified"
+      && signal.direction === "positive"
+      && signal.evidence[0]?.source === "quarter-change"));
+    assert.ok(artifact.signals.find((signal) =>
+      signal.signal_type === "topic_weakened"
+      && signal.direction === "weakening"
+      && signal.evidence[0]?.source === "quarter-change"));
+  });
+
+  it("generates trend signals from Topic Evolution", () => {
+    const artifact = buildBusinessSignals({
+      ...inputs(),
+      topicEvolution: topicEvolution(),
+    });
+
+    assert.ok(artifact.signals.find((signal) =>
+      signal.signal_type === "persistent_topic"
+      && signal.summary === "Persistent topic observed: Cloud"));
+    assert.ok(artifact.signals.find((signal) =>
+      signal.signal_type === "strengthening_topic"
+      && signal.summary === "Strengthening topic observed: Regulation"));
+    assert.ok(artifact.signals.find((signal) =>
+      signal.signal_type === "dormant_topic"
+      && signal.summary === "Dormant topic observed: Taxation"));
   });
 
   it("returns a valid empty artifact for empty inputs", () => {
@@ -114,12 +154,22 @@ describe("business signal builder", () => {
       ...inputs(),
       reportingPeriod: "2026-Q2",
     });
+    const quarterChangeChanged = buildBusinessSignals({
+      ...inputs(),
+      quarterChange: quarterChange(),
+    });
+    const topicEvolutionChanged = buildBusinessSignals({
+      ...inputs(),
+      topicEvolution: topicEvolution(),
+    });
 
     assert.equal(first.metadata.input_hash, generatedAtChanged.metadata.input_hash);
     assert.equal(first.metadata.input_hash, identical.metadata.input_hash);
     assert.notEqual(first.metadata.input_hash, productChanged.metadata.input_hash);
     assert.notEqual(first.metadata.input_hash, revenueChanged.metadata.input_hash);
     assert.notEqual(first.metadata.input_hash, reportingPeriodChanged.metadata.input_hash);
+    assert.notEqual(first.metadata.input_hash, quarterChangeChanged.metadata.input_hash);
+    assert.notEqual(first.metadata.input_hash, topicEvolutionChanged.metadata.input_hash);
   });
 
   it("is deterministic for repeated executions with identical inputs", () => {
@@ -151,8 +201,7 @@ describe("business signal builder", () => {
     });
 
     assert.equal(countBySummary(artifact, "Revenue driver observed: cloud subscriptions"), 1);
-    assert.equal(countBySummary(artifact, "Product signal observed: cloud services"), 1);
-    assert.equal(countBySummary(artifact, "Customer signal observed: enterprise customers"), 1);
+    assert.equal(countBySummary(artifact, "Customer dependency observed: enterprise customers"), 1);
     assert.equal(countBySummary(artifact, "Competitive signal observed: developer ecosystem"), 1);
 
     for (const signal of artifact.signals) {
@@ -172,11 +221,10 @@ describe("business signal builder", () => {
       first.signals.map((signal) => signal.summary),
       [
         "Revenue driver observed: cloud subscriptions",
+        "Customer dependency observed: enterprise customers",
         "Competitive signal observed: developer ecosystem",
         "Dependency observed: data center capacity",
-        "Operational signal observed: cloud infrastructure",
-        "Product signal observed: cloud services",
-        "Customer signal observed: enterprise customers",
+        "Operating dependency observed: cloud infrastructure",
       ],
     );
   });
@@ -233,6 +281,11 @@ describe("business signal builder", () => {
         input_hash: "hash-1",
       },
       {
+        path: "company-knowledge/current.json",
+        version: 1,
+        input_hash: "knowledge-input-hash",
+      },
+      {
         path: "topic-evolution/current.json",
         version: 2,
         input_hash: "hash-2",
@@ -278,6 +331,7 @@ describe("business signal builder", () => {
       { companyKnowledge: companyKnowledge(), generatedAt: "2026-06-08T00:00:00.000Z" },
       { companyKnowledge: companyKnowledge(), filingMetadata: inputs().filingMetadata, generatedAt: "2026-06-08T00:00:00.000Z" },
       { companyKnowledge: companyKnowledge(), filingMetadata: inputs().filingMetadata, derivedFrom: [], generatedAt: "2026-06-08T00:00:00.000Z" },
+      { quarterChange: quarterChange(), topicEvolution: topicEvolution(), generatedAt: "2026-06-08T00:00:00.000Z" },
       {},
     ];
 
@@ -307,6 +361,168 @@ function inputs(): BuildBusinessSignalsInputs {
       },
     ],
     generatedAt: "2026-06-08T00:00:00.000Z",
+  };
+}
+
+function quarterChange(): QuarterChangeReport {
+  return {
+    company: "Microsoft",
+    ticker: "MSFT",
+    previous_filing: filing("2026-01-28"),
+    current_filing: filing("2026-04-29"),
+    summary: {
+      new_categories: 1,
+      removed_categories: 0,
+      importance_increases: 1,
+      importance_decreases: 1,
+      evidence_increases: 1,
+      evidence_decreases: 1,
+    },
+    changes: [],
+    topic_summary: {
+      persisted_topics: 1,
+      evolved_topics: 0,
+      intensified_topics: 1,
+      weakened_topics: 1,
+    },
+    topic_changes: [
+      topicChange("TOPIC_NEW", "artificial_intelligence", null, "high", 0, 3),
+      topicChange("TOPIC_INTENSIFIED", "cloud", "medium", "high", 2, 4),
+      topicChange("TOPIC_WEAKENED", "margins", "high", "medium", 4, 2),
+      topicChange("TOPIC_DISAPPEARED", "competition", "high", null, 3, 0),
+    ],
+  };
+}
+
+function topicChange(
+  changeType: QuarterChangeReport["topic_changes"][number]["change_type"],
+  topicId: string,
+  previousImportance: QuarterChangeReport["topic_changes"][number]["previous_importance"],
+  currentImportance: QuarterChangeReport["topic_changes"][number]["current_importance"],
+  previousEvidenceCount: number,
+  currentEvidenceCount: number,
+): QuarterChangeReport["topic_changes"][number] {
+  return {
+    change_type: changeType,
+    topic_id: topicId,
+    previous_categories: previousImportance ? [topicId] : [],
+    current_categories: currentImportance ? [topicId] : [],
+    previous_theme_names: previousImportance ? [`Previous ${topicId}`] : [],
+    current_theme_names: currentImportance ? [`Current ${topicId}`] : [],
+    previous_importance: previousImportance,
+    current_importance: currentImportance,
+    previous_evidence_count: previousEvidenceCount,
+    current_evidence_count: currentEvidenceCount,
+  };
+}
+
+function topicEvolution(): TopicEvolutionReport {
+  return {
+    company: "Microsoft",
+    ticker: "MSFT",
+    generated_at: "2026-06-08T00:00:00.000Z",
+    history_start: "2026-01-28",
+    history_end: "2026-04-29",
+    filings_analyzed: 2,
+    filing_dates: ["2026-01-28", "2026-04-29"],
+    topic_registry_version: "test",
+    topic_registry_hash: "registry-hash",
+    assignment_policy: {
+      included_statuses: ["assigned", "low_confidence"],
+      excluded_statuses: ["unassigned", "missing"],
+    },
+    summary: {
+      topics_analyzed: 3,
+      topics_present_latest: 2,
+      new_topics: 0,
+      persistent_topics: 1,
+      recurring_topics: 1,
+      dormant_topics: 1,
+      disappeared_topics: 0,
+      strengthening_topics: 1,
+      weakening_topics: 0,
+      stable_topics: 1,
+      mixed_topics: 0,
+      unknown_trend_topics: 0,
+      insufficient_history_topics: 0,
+    },
+    topics: [
+      topicEvolutionItem("cloud", "Cloud", "persistent", "stable", "present"),
+      topicEvolutionItem("regulation", "Regulation", "recurring", "strengthening", "present"),
+      topicEvolutionItem("taxation", "Taxation", "dormant", "insufficient_history", "absent"),
+    ],
+    diagnostics: {
+      assigned_topics_used: 3,
+      unassigned_topics_ignored: 0,
+      themes_without_topic_ignored: 0,
+      missing_themes_with_topics_files: [],
+      filings_with_no_assigned_topics: [],
+      duration_ms: 12,
+    },
+  };
+}
+
+function topicEvolutionItem(
+  topicId: string,
+  topicName: string,
+  presenceState: TopicEvolutionReport["topics"][number]["presence_state"],
+  trendState: TopicEvolutionReport["topics"][number]["trend_state"],
+  currentStatus: TopicEvolutionReport["topics"][number]["current_status"],
+): TopicEvolutionReport["topics"][number] {
+  return {
+    topic_id: topicId,
+    topic_name: topicName,
+    presence_state: presenceState,
+    trend_state: trendState,
+    current_status: currentStatus,
+    first_seen: "2026-01-28",
+    last_seen: currentStatus === "present" ? "2026-04-29" : "2026-01-28",
+    quarters_present: currentStatus === "present" ? 2 : 1,
+    quarters_absent: currentStatus === "present" ? 0 : 1,
+    presence_ratio: currentStatus === "present" ? 1 : 0.5,
+    strength_history: currentStatus === "present" ? [20, 30] : [20],
+    history: [
+      {
+        filing_date: "2026-01-28",
+        form_type: "10-Q",
+        accession_number: "previous",
+        present: true,
+        importance: "medium",
+        importance_score: 2,
+        evidence_count: 2,
+        theme_count: 1,
+        topic_strength: 22,
+        theme_names: [`Previous ${topicName}`],
+        categories: [topicId],
+        assignment_statuses: ["assigned"],
+        confidence_scores: [0.8],
+      },
+      {
+        filing_date: "2026-04-29",
+        form_type: "10-Q",
+        accession_number: "current",
+        present: currentStatus === "present",
+        importance: currentStatus === "present" ? "high" : null,
+        importance_score: currentStatus === "present" ? 3 : 0,
+        evidence_count: currentStatus === "present" ? 3 : 0,
+        theme_count: currentStatus === "present" ? 1 : 0,
+        topic_strength: currentStatus === "present" ? 33 : 0,
+        theme_names: currentStatus === "present" ? [`Current ${topicName}`] : [],
+        categories: currentStatus === "present" ? [topicId] : [],
+        assignment_statuses: currentStatus === "present" ? ["assigned"] : [],
+        confidence_scores: currentStatus === "present" ? [0.85] : [],
+      },
+    ],
+  };
+}
+
+function filing(filingDate: string) {
+  return {
+    company: "Microsoft",
+    ticker: "MSFT",
+    filing_date: filingDate,
+    form_type: "10-Q",
+    accession_number: `accession-${filingDate}`,
   };
 }
 

@@ -1,4 +1,6 @@
 import type { CompanyKnowledge } from "../company-knowledge/types/company-knowledge.types.js";
+import type { QuarterChangeReport } from "../change-engine/change.types.js";
+import type { TopicEvolutionReport } from "../topic-evolution/topic-evolution.types.js";
 import type { FilingMetadata } from "../types/pipeline.types.js";
 import {
   buildBusinessSignals,
@@ -17,6 +19,8 @@ export type GenerateBusinessSignalsParams = {
   ticker: string;
   reportingPeriod: string;
   companyKnowledge?: CompanyKnowledge | null;
+  quarterChange?: QuarterChangeReport | null;
+  topicEvolution?: TopicEvolutionReport | null;
   filingMetadata?: FilingMetadata | null;
   derivedFrom?: DerivedFromArtifact[];
   repository: BusinessSignalRepository;
@@ -32,6 +36,8 @@ export async function generateBusinessSignals(
   try {
     artifact = builder({
       companyKnowledge: params.companyKnowledge,
+      quarterChange: params.quarterChange,
+      topicEvolution: params.topicEvolution,
       filingMetadata: params.filingMetadata,
       reportingPeriod: params.reportingPeriod,
       derivedFrom: params.derivedFrom,

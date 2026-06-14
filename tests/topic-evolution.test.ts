@@ -5,6 +5,7 @@ import { classifyPresenceState } from "../src/topic-evolution/classify-topic-evo
 import { calculateTopicStrength, buildStrengthHistory } from "../src/topic-evolution/calculate-topic-strength.js";
 import { classifyTopicTrend } from "../src/topic-evolution/classify-topic-trend.js";
 import { validateTopicEvolutionInputs } from "../src/topic-evolution/validate-topic-evolution.js";
+import { validateTopicEvolutionPreflight } from "../src/topic-evolution/generate-topic-evolution-report.js";
 import type { TopicEvolutionFilingInput, TopicObservation } from "../src/topic-evolution/topic-evolution.types.js";
 import type { TopicRegistry } from "../src/topic-layer/topic.types.js";
 import type { ThemeImportance } from "../src/types/theme.types.js";
@@ -163,6 +164,26 @@ describe("topic evolution", () => {
       ),
     );
   });
+
+  it("fails preflight when themes.with-topics is missing", () => {
+    assert.throws(
+      () => validateTopicEvolutionPreflight([
+        filing("2026-01-29", [], false),
+        filing("2026-04-29", [assignedTheme("Cloud", "cloud")]),
+      ]),
+      /themes\.with-topics\.json is missing.*2026-01-29/s,
+    );
+  });
+
+  it("fails preflight when all themes are unassigned", () => {
+    assert.throws(
+      () => validateTopicEvolutionPreflight([
+        filing("2026-01-29", [unassignedTheme("Cloud", "cloud")]),
+        filing("2026-04-29", [unassignedTheme("AI", "artificial_intelligence")]),
+      ]),
+      /no assigned or low_confidence topics were found.*generate:topic-matches/s,
+    );
+  });
 });
 
 function buildReport(filings: TopicEvolutionFilingInput[]) {
@@ -268,5 +289,8 @@ function observation(
       theme_count: themeCount,
     }),
     theme_names: present ? ["Theme"] : [],
+    categories: present ? ["growth"] : [],
+    assignment_statuses: present ? ["assigned"] : [],
+    confidence_scores: present ? [0.9] : [],
   };
 }

@@ -22,6 +22,18 @@ export type BusinessSignalMagnitude =
   | "medium"
   | "high";
 
+export type BusinessSignalType =
+  | "revenue_driver"
+  | "customer_dependency"
+  | "competitive_advantage"
+  | "operating_dependency"
+  | "topic_new"
+  | "topic_intensified"
+  | "topic_weakened"
+  | "persistent_topic"
+  | "strengthening_topic"
+  | "dormant_topic";
+
 export type BusinessSignalEvidence = {
   evidence_id: string;
   source: string;
@@ -31,6 +43,7 @@ export type BusinessSignalEvidence = {
 
 export type BusinessSignal = {
   signal_id: string;
+  signal_type: BusinessSignalType;
   category: BusinessSignalCategory;
   summary: string;
   direction: BusinessSignalDirection;

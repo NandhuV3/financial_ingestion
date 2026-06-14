@@ -19,7 +19,13 @@ export async function buildTopicAssignments(ticker: string, filingDate: string):
   const startedAt = Date.now();
   const normalizedTicker = ticker.trim().toUpperCase();
   const filingDir = getFilingDirectory(normalizedTicker, filingDate);
-  const themes = await readJsonFile<ThemeOutput>(join(filingDir, "intelligence", "themes.json"));
+  const themesPath = join(filingDir, "intelligence", "themes.json");
+
+  if (!fileExists(themesPath)) {
+    throw new Error(`Missing themes.json at ${themesPath}. Run theme generation before topic assignment.`);
+  }
+
+  const themes = await readJsonFile<ThemeOutput>(themesPath);
   const matches = await readSemanticMatches(filingDir);
   const output = assignTopicsByConfidence({
     themes,
@@ -33,6 +39,7 @@ export async function buildTopicAssignments(ticker: string, filingDate: string):
     ticker: normalizedTicker,
     filing_date: filingDate,
     duration_ms: Date.now() - startedAt,
+    semantic_matches_loaded: matches.length,
     assigned_count: summary.assigned_count,
     low_confidence_count: summary.low_confidence_count,
     unassigned_count: summary.unassigned_count,
@@ -106,10 +113,22 @@ async function readSemanticMatches(filingDir: string): Promise<SemanticTopicMatc
   const matchPath = join(filingDir, "intelligence", "semantic-topic-matches.json");
 
   if (!fileExists(matchPath)) {
-    return [];
+    throw new Error([
+      `Missing semantic-topic-matches.json at ${matchPath}.`,
+      "Topic matching has not been executed for this filing.",
+      "Run: npm run generate:topic-matches -- <ticker> <filing-date>",
+    ].join(" "));
   }
 
-  return (await readJsonFile<SemanticTopicMatchFile>(matchPath)).matches;
+  const matchFile = await readJsonFile<SemanticTopicMatchFile>(matchPath);
+  const matches = matchFile.matches ?? [];
+
+  logger.info("Semantic topic matches loaded.", {
+    match_path: matchPath,
+    semantic_matches_loaded: matches.length,
+  });
+
+  return matches;
 }
 
 function deriveRecommendationMethod(_match: SemanticTopicMatch): TopicRecommendationMethod {

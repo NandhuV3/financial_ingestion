@@ -22,6 +22,7 @@ export type AssignedTopicTheme = {
   evidence: string[];
   topic_id?: string | null;
   assignment_status?: "assigned" | "low_confidence" | "unassigned";
+  confidence?: number | null;
 };
 
 export type TopicEvolutionFilingInput = {
@@ -41,6 +42,9 @@ export type TopicObservation = {
   theme_count: number;
   topic_strength: number;
   theme_names: string[];
+  categories: string[];
+  assignment_statuses: string[];
+  confidence_scores: number[];
 };
 
 export type TopicEvolution = {

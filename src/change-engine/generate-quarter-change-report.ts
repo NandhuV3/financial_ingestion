@@ -2,25 +2,27 @@ import { join } from "node:path";
 import { loadComparisonInput } from "../comparison/load-filing-intelligence.js";
 import { fileExists, readJsonFile } from "../shared/filesystem/file-reader.js";
 import { writeJsonFile, writeTextFile } from "../shared/filesystem/file-writer.js";
-import { getFilingDirectory } from "../storage/filing-paths.js";
-import { getFilingSubdirectory } from "../storage/filing-paths.js";
+import { getCompanyDirectory, getFilingSubdirectory } from "../storage/filing-paths.js";
+import type { TopicEvolutionReport } from "../topic-evolution/topic-evolution.types.js";
 import type { ChangeType, QuarterChange, QuarterChangeReport } from "./change.types.js";
 import { compareFilings } from "./compare-filings.js";
-import { compareTopics } from "./compare-topics.js";
-import type { TopicAwareThemeOutput, TopicChangeType } from "./topic-change.types.js";
+import { deriveQuarterTopicChangesFromEvolution } from "./derive-quarter-topic-changes-from-evolution.js";
+import type { TopicChange, TopicChangeSummary, TopicChangeType } from "./topic-change.types.js";
 
 export async function generateQuarterChangeReport(ticker: string, filingDate: string): Promise<QuarterChangeReport> {
   const comparisonInput = await loadComparisonInput(ticker, filingDate);
   const report = compareFilings(comparisonInput);
-  const previousTopicThemes = comparisonInput.previousFiling
-    ? await loadTopicAwareThemes(ticker, comparisonInput.previousFiling.metadata.filing_date)
-    : null;
-  const currentTopicThemes = await loadTopicAwareThemes(ticker, comparisonInput.currentFiling.metadata.filing_date);
-  const topicComparison = compareTopics(previousTopicThemes, currentTopicThemes);
+  const topicChanges = comparisonInput.previousFiling
+    ? deriveQuarterTopicChangesFromEvolution(
+      await loadTopicEvolutionReport(ticker),
+      comparisonInput.previousFiling.metadata.filing_date,
+      comparisonInput.currentFiling.metadata.filing_date,
+    )
+    : [];
   const enhancedReport: QuarterChangeReport = {
     ...report,
-    topic_changes: topicComparison.topic_changes,
-    topic_summary: topicComparison.topic_summary,
+    topic_changes: topicChanges,
+    topic_summary: summarizeTopicChanges(topicChanges),
   };
   const comparisonDir = getFilingSubdirectory(enhancedReport.ticker, enhancedReport.current_filing.filing_date, "comparison");
   const jsonPath = join(comparisonDir, "quarter-change-report.json");
@@ -78,12 +80,14 @@ export function buildMarkdownReport(report: QuarterChangeReport): string {
   return `${lines.join("\n")}\n`;
 }
 
-async function loadTopicAwareThemes(ticker: string, filingDate: string): Promise<TopicAwareThemeOutput> {
-  const filingDir = getFilingDirectory(ticker, filingDate);
-  const topicPath = join(filingDir, "intelligence", "themes.with-topics.json");
-  const fallbackPath = join(filingDir, "intelligence", "themes.json");
+export async function loadTopicEvolutionReport(ticker: string): Promise<TopicEvolutionReport> {
+  const reportPath = join(getCompanyDirectory(ticker), "reports", "topic-evolution-report.json");
 
-  return readJsonFile<TopicAwareThemeOutput>(fileExists(topicPath) ? topicPath : fallbackPath);
+  if (!fileExists(reportPath)) {
+    throw new Error(`Missing topic-evolution-report.json at ${reportPath}. Run: npm run generate:topic-evolution -- <ticker>`);
+  }
+
+  return readJsonFile<TopicEvolutionReport>(reportPath);
 }
 
 function appendCategoryList(lines: string[], title: string, changes: QuarterChange[]): void {
@@ -142,6 +146,8 @@ function appendEvidenceList(lines: string[], changes: QuarterChange[]): void {
 function appendTopicEvolution(lines: string[], report: QuarterChangeReport): void {
   lines.push("## Topic Evolution");
   lines.push("");
+  appendTopicList(lines, "New Topics", filterTopicChanges(report, "TOPIC_NEW"));
+  appendTopicList(lines, "Disappeared Topics", filterTopicChanges(report, "TOPIC_DISAPPEARED"));
   appendTopicList(lines, "Persisted Topics", filterTopicChanges(report, "TOPIC_PERSISTED"));
   appendTopicList(lines, "Evolved Topics", filterTopicChanges(report, "TOPIC_EVOLVED"));
   appendTopicList(lines, "Intensified Topics", filterTopicChanges(report, "TOPIC_INTENSIFIED"));
@@ -178,6 +184,19 @@ function filterTopicChanges(report: QuarterChangeReport, changeType: TopicChange
   return report.topic_changes
     .filter((change) => change.change_type === changeType)
     .sort((left, right) => left.topic_id.localeCompare(right.topic_id));
+}
+
+function summarizeTopicChanges(topicChanges: TopicChange[]): TopicChangeSummary {
+  return {
+    persisted_topics: countTopicChanges(topicChanges, "TOPIC_PERSISTED"),
+    evolved_topics: countTopicChanges(topicChanges, "TOPIC_EVOLVED"),
+    intensified_topics: countTopicChanges(topicChanges, "TOPIC_INTENSIFIED"),
+    weakened_topics: countTopicChanges(topicChanges, "TOPIC_WEAKENED"),
+  };
+}
+
+function countTopicChanges(topicChanges: TopicChange[], changeType: TopicChangeType): number {
+  return topicChanges.filter((change) => change.change_type === changeType).length;
 }
 
 const ticker = process.argv[2];

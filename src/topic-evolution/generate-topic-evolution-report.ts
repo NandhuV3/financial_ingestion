@@ -19,6 +19,9 @@ export async function generateTopicEvolutionReport(ticker: string): Promise<void
   const startedAt = Date.now();
   const company = getCompanyConfig(ticker);
   const filings = await loadTopicEvolutionInputs(company.ticker);
+
+  validateTopicEvolutionPreflight(filings);
+
   const registryPath = join(process.cwd(), "data", "registry", "topics.json");
   const registry = await readJsonFile<TopicRegistry>(registryPath);
   const registryHash = await calculateFileHash(registryPath);
@@ -34,6 +37,16 @@ export async function generateTopicEvolutionReport(ticker: string): Promise<void
 
   await writeJsonFile(join(reportDirectory, "topic-evolution-report.json"), report);
   await writeTextFile(join(reportDirectory, "topic-evolution-report.md"), buildTopicEvolutionMarkdown(report));
+
+  logger.info("Topic evolution inputs processed", {
+    ticker: company.ticker,
+    filings_analyzed: report.filings_analyzed,
+    assigned_topics_discovered: report.diagnostics.assigned_topics_used,
+    unassigned_topics_ignored: report.diagnostics.unassigned_topics_ignored,
+    themes_without_topic_ignored: report.diagnostics.themes_without_topic_ignored,
+    missing_topic_files: report.diagnostics.missing_themes_with_topics_files.length,
+    filings_with_no_assigned_topics: report.diagnostics.filings_with_no_assigned_topics.join(", "),
+  });
 
   if (report.summary.topics_analyzed === 0) {
     logger.warn("Topic evolution report generated with no assigned topics", {
@@ -97,6 +110,35 @@ async function loadTopicEvolutionInputs(ticker: string): Promise<TopicEvolutionF
   }
 
   return inputs;
+}
+
+export function validateTopicEvolutionPreflight(inputs: TopicEvolutionFilingInput[]): void {
+  const missingThemesWithTopics = inputs
+    .filter((input) => !input.themes_with_topics_file_exists)
+    .map((input) => input.metadata.filing_date);
+
+  if (missingThemesWithTopics.length > 0) {
+    throw new Error([
+      "Cannot generate Topic Evolution because themes.with-topics.json is missing for one or more filings.",
+      `Missing filing dates: ${missingThemesWithTopics.join(", ")}.`,
+      "Run: npm run generate:topic-assignments -- <ticker> <filing-date>",
+    ].join(" "));
+  }
+
+  const assignedTopicCount = inputs.reduce((count, input) =>
+    count + input.themes.filter((theme) =>
+      (theme.assignment_status === "assigned" || theme.assignment_status === "low_confidence") && Boolean(theme.topic_id),
+    ).length, 0);
+
+  if (assignedTopicCount === 0) {
+    const filingDates = inputs.map((input) => input.metadata.filing_date).join(", ");
+
+    throw new Error([
+      "Cannot generate Topic Evolution because no assigned or low_confidence topics were found.",
+      `Filings checked: ${filingDates || "none"}.`,
+      "Run semantic topic matching before topic assignment: npm run generate:topic-matches -- <ticker> <filing-date>",
+    ].join(" "));
+  }
 }
 
 if (require.main === module) {

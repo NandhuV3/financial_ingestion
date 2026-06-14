@@ -24,9 +24,11 @@
 
     "generate:structured-intelligence": "tsx src/structured-intelligence/generate-structured-intelligence.ts",
     
-    "generate:company-knowledge": "tsx src/company-knowledge/generate-company-knowledge.ts",
+    "generate:company-knowledge": "tsx src/company-knowledge/generate-company-knowledge-command.ts",
 
-    "generate:business-signals": "tsx src/business-signals/generate-business-signals.ts",
+    "generate:business-signals": "tsx src/business-signal-intelligence/generate-business-signals-command.ts",
+
+    "generate:quarter-understanding": "tsx src/quarter-understanding-intelligence/generate-quarter-understanding-command.ts",
 
     "generate:partner-domain": "tsx src/partner-domain/build-partner-intelligence.ts",
 

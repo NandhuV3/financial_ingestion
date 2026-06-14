@@ -15,6 +15,9 @@ type TopicAggregate = {
   importance_score: number;
   evidence: Set<string>;
   theme_names: Set<string>;
+  categories: Set<string>;
+  assignment_statuses: Set<string>;
+  confidence_scores: Set<number>;
   theme_count: number;
 };
 
@@ -89,6 +92,12 @@ function aggregateAssignedThemes(
     aggregate.importance_score = Math.max(aggregate.importance_score, importanceScore(theme.importance));
     aggregate.theme_count += 1;
     aggregate.theme_names.add(theme.theme);
+    aggregate.categories.add(theme.category);
+    aggregate.assignment_statuses.add(theme.assignment_status);
+
+    if (typeof theme.confidence === "number") {
+      aggregate.confidence_scores.add(theme.confidence);
+    }
 
     for (const evidenceId of theme.evidence) {
       aggregate.evidence.add(evidenceId);
@@ -109,6 +118,9 @@ function getOrCreateAggregate(aggregates: Map<string, TopicAggregate>, topicId: 
     importance_score: 0,
     evidence: new Set<string>(),
     theme_names: new Set<string>(),
+    categories: new Set<string>(),
+    assignment_statuses: new Set<string>(),
+    confidence_scores: new Set<number>(),
     theme_count: 0,
   };
   aggregates.set(topicId, aggregate);
@@ -160,6 +172,9 @@ function buildObservation(metadata: FilingMetadataForEvolution, aggregate: Topic
       theme_count: 0,
       topic_strength: 0,
       theme_names: [],
+      categories: [],
+      assignment_statuses: [],
+      confidence_scores: [],
     };
   }
 
@@ -180,6 +195,9 @@ function buildObservation(metadata: FilingMetadataForEvolution, aggregate: Topic
     theme_count: aggregate.theme_count,
     topic_strength: topicStrength,
     theme_names: [...aggregate.theme_names].sort(),
+    categories: [...aggregate.categories].sort(),
+    assignment_statuses: [...aggregate.assignment_statuses].sort(),
+    confidence_scores: [...aggregate.confidence_scores].sort((left, right) => left - right),
   };
 }
 

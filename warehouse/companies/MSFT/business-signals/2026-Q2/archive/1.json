@@ -1,0 +1,414 @@
+{
+  "company": "Microsoft",
+  "period": "2026-Q2",
+  "signals": [
+    {
+      "signal_id": "signal_a02906e4b808378c",
+      "signal_type": "revenue_driver",
+      "category": "revenue",
+      "summary": "Revenue driver observed: Growth in Microsoft Cloud revenue driven by strong performance in Azure and other cloud solutions",
+      "direction": "neutral",
+      "magnitude": "low",
+      "confidence": 0.8,
+      "evidence": [
+        {
+          "evidence_id": "evidence_a02906e4b808378c",
+          "source": "company-knowledge",
+          "description": "Growth in Microsoft Cloud revenue driven by strong performance in Azure and other cloud solutions"
+        }
+      ]
+    },
+    {
+      "signal_id": "signal_de05a51dfcff03f2",
+      "signal_type": "competitive_advantage",
+      "category": "competitive",
+      "summary": "Competitive signal observed: Significant revenue growth in Microsoft Cloud, led by Azure and other cloud solutions",
+      "direction": "neutral",
+      "magnitude": "low",
+      "confidence": 0.8,
+      "evidence": [
+        {
+          "evidence_id": "evidence_de05a51dfcff03f2",
+          "source": "company-knowledge",
+          "description": "Significant revenue growth in Microsoft Cloud, led by Azure and other cloud solutions"
+        }
+      ]
+    },
+    {
+      "signal_id": "signal_acb40498bb298880",
+      "signal_type": "competitive_advantage",
+      "category": "competitive",
+      "summary": "Competitive signal observed: Active investment and partnerships in AI, including with OpenAI",
+      "direction": "neutral",
+      "magnitude": "low",
+      "confidence": 0.8,
+      "evidence": [
+        {
+          "evidence_id": "evidence_acb40498bb298880",
+          "source": "company-knowledge",
+          "description": "Active investment and partnerships in AI, including with OpenAI"
+        }
+      ]
+    },
+    {
+      "signal_id": "signal_3492b838025d6808",
+      "signal_type": "competitive_advantage",
+      "category": "competitive",
+      "summary": "Competitive signal observed: Operates in markets with intense competition across product lines",
+      "direction": "neutral",
+      "magnitude": "low",
+      "confidence": 0.8,
+      "evidence": [
+        {
+          "evidence_id": "evidence_3492b838025d6808",
+          "source": "company-knowledge",
+          "description": "Operates in markets with intense competition across product lines"
+        }
+      ]
+    },
+    {
+      "signal_id": "signal_5e1a9d97278cca95",
+      "signal_type": "operating_dependency",
+      "category": "dependency",
+      "summary": "Dependency observed: Partnership with OpenAI",
+      "direction": "neutral",
+      "magnitude": "low",
+      "confidence": 0.75,
+      "evidence": [
+        {
+          "evidence_id": "evidence_5e1a9d97278cca95",
+          "source": "company-knowledge",
+          "description": "Partnership with OpenAI"
+        }
+      ]
+    },
+    {
+      "signal_id": "signal_062fc9b75339981a",
+      "signal_type": "operating_dependency",
+      "category": "dependency",
+      "summary": "Dependency observed: Suppliers of key hardware components for devices and datacenter operations",
+      "direction": "neutral",
+      "magnitude": "low",
+      "confidence": 0.75,
+      "evidence": [
+        {
+          "evidence_id": "evidence_062fc9b75339981a",
+          "source": "company-knowledge",
+          "description": "Suppliers of key hardware components for devices and datacenter operations"
+        }
+      ]
+    },
+    {
+      "signal_id": "signal_a2493a62e81bc3f2",
+      "signal_type": "operating_dependency",
+      "category": "dependency",
+      "summary": "Dependency observed: Regulatory and compliance frameworks related to data protection and AI",
+      "direction": "neutral",
+      "magnitude": "low",
+      "confidence": 0.75,
+      "evidence": [
+        {
+          "evidence_id": "evidence_a2493a62e81bc3f2",
+          "source": "company-knowledge",
+          "description": "Regulatory and compliance frameworks related to data protection and AI"
+        }
+      ]
+    },
+    {
+      "signal_id": "signal_e05dd70aa0769800",
+      "signal_type": "operating_dependency",
+      "category": "dependency",
+      "summary": "Dependency observed: Macroeconomic conditions that influence IT spending",
+      "direction": "neutral",
+      "magnitude": "low",
+      "confidence": 0.75,
+      "evidence": [
+        {
+          "evidence_id": "evidence_e05dd70aa0769800",
+          "source": "company-knowledge",
+          "description": "Macroeconomic conditions that influence IT spending"
+        }
+      ]
+    },
+    {
+      "signal_id": "signal_6a0f48b36b656faa",
+      "signal_type": "operating_dependency",
+      "category": "dependency",
+      "summary": "Operating dependency observed: Operates datacenter infrastructure to deliver cloud services",
+      "direction": "neutral",
+      "magnitude": "low",
+      "confidence": 0.75,
+      "evidence": [
+        {
+          "evidence_id": "evidence_6a0f48b36b656faa",
+          "source": "company-knowledge",
+          "description": "Operates datacenter infrastructure to deliver cloud services"
+        }
+      ]
+    },
+    {
+      "signal_id": "signal_2b52053d0d33d02c",
+      "signal_type": "operating_dependency",
+      "category": "dependency",
+      "summary": "Operating dependency observed: Invests substantially in AI infrastructure and partnerships (notably with OpenAI)",
+      "direction": "neutral",
+      "magnitude": "low",
+      "confidence": 0.75,
+      "evidence": [
+        {
+          "evidence_id": "evidence_2b52053d0d33d02c",
+          "source": "company-knowledge",
+          "description": "Invests substantially in AI infrastructure and partnerships (notably with OpenAI)"
+        }
+      ]
+    },
+    {
+      "signal_id": "signal_6bf3cb2943fb264e",
+      "signal_type": "operating_dependency",
+      "category": "dependency",
+      "summary": "Operating dependency observed: Manufactures devices and depends on key component availability",
+      "direction": "neutral",
+      "magnitude": "low",
+      "confidence": 0.75,
+      "evidence": [
+        {
+          "evidence_id": "evidence_6bf3cb2943fb264e",
+          "source": "company-knowledge",
+          "description": "Manufactures devices and depends on key component availability"
+        }
+      ]
+    },
+    {
+      "signal_id": "signal_da383adca05ac601",
+      "signal_type": "operating_dependency",
+      "category": "dependency",
+      "summary": "Operating dependency observed: Subject to increasing regulatory and compliance obligations, especially for data protection and AI",
+      "direction": "neutral",
+      "magnitude": "low",
+      "confidence": 0.75,
+      "evidence": [
+        {
+          "evidence_id": "evidence_da383adca05ac601",
+          "source": "company-knowledge",
+          "description": "Subject to increasing regulatory and compliance obligations, especially for data protection and AI"
+        }
+      ]
+    },
+    {
+      "signal_id": "signal_98831c51fc99bcc3",
+      "signal_type": "operating_dependency",
+      "category": "dependency",
+      "summary": "Operating dependency observed: Must manage significant cybersecurity risks to protect customer and company data",
+      "direction": "neutral",
+      "magnitude": "low",
+      "confidence": 0.75,
+      "evidence": [
+        {
+          "evidence_id": "evidence_98831c51fc99bcc3",
+          "source": "company-knowledge",
+          "description": "Must manage significant cybersecurity risks to protect customer and company data"
+        }
+      ]
+    },
+    {
+      "signal_id": "signal_4f675949b042b4ef",
+      "signal_type": "topic_intensified",
+      "category": "growth",
+      "summary": "Topic intensified: artificial intelligence",
+      "direction": "positive",
+      "magnitude": "medium",
+      "confidence": 0.75,
+      "evidence": [
+        {
+          "evidence_id": "evidence_4f675949b042b4ef",
+          "source": "quarter-change",
+          "description": "artificial_intelligence; previous_importance=high; current_importance=high; previous_evidence_count=3; current_evidence_count=4; previous_themes=Investment in AI Infrastructure; current_themes=Artificial Intelligence Investment"
+        }
+      ]
+    },
+    {
+      "signal_id": "signal_7bdaf8cc5a2f7e98",
+      "signal_type": "topic_intensified",
+      "category": "growth",
+      "summary": "Topic intensified: cloud",
+      "direction": "positive",
+      "magnitude": "medium",
+      "confidence": 0.75,
+      "evidence": [
+        {
+          "evidence_id": "evidence_7bdaf8cc5a2f7e98",
+          "source": "quarter-change",
+          "description": "cloud; previous_importance=high; current_importance=high; previous_evidence_count=3; current_evidence_count=4; previous_themes=Growth in Cloud Services; current_themes=Cloud Services Growth"
+        }
+      ]
+    },
+    {
+      "signal_id": "signal_56960732fe3e7354",
+      "signal_type": "topic_intensified",
+      "category": "growth",
+      "summary": "Topic intensified: regulation",
+      "direction": "positive",
+      "magnitude": "medium",
+      "confidence": 0.75,
+      "evidence": [
+        {
+          "evidence_id": "evidence_56960732fe3e7354",
+          "source": "quarter-change",
+          "description": "regulation; previous_importance=medium; current_importance=high; previous_evidence_count=3; current_evidence_count=4; previous_themes=Regulatory and Compliance Risks; current_themes=Regulatory Compliance Challenges"
+        }
+      ]
+    },
+    {
+      "signal_id": "signal_4d2d910b970421d2",
+      "signal_type": "topic_intensified",
+      "category": "growth",
+      "summary": "Topic intensified: supply chain",
+      "direction": "positive",
+      "magnitude": "medium",
+      "confidence": 0.75,
+      "evidence": [
+        {
+          "evidence_id": "evidence_4d2d910b970421d2",
+          "source": "quarter-change",
+          "description": "supply_chain; previous_importance=medium; current_importance=high; previous_evidence_count=2; current_evidence_count=2; previous_themes=Supply Chain Challenges; current_themes=Supply Chain Vulnerabilities"
+        }
+      ]
+    },
+    {
+      "signal_id": "signal_aa99f07973729598",
+      "signal_type": "persistent_topic",
+      "category": "growth",
+      "summary": "Persistent topic observed: Cloud",
+      "direction": "neutral",
+      "magnitude": "low",
+      "confidence": 0.7,
+      "evidence": [
+        {
+          "evidence_id": "evidence_aa99f07973729598",
+          "source": "topic-evolution",
+          "description": "Cloud; presence=persistent; trend=stable; quarters_present=5; presence_ratio=1"
+        }
+      ]
+    },
+    {
+      "signal_id": "signal_d952d2f175256a70",
+      "signal_type": "persistent_topic",
+      "category": "growth",
+      "summary": "Persistent topic observed: Cybersecurity",
+      "direction": "neutral",
+      "magnitude": "low",
+      "confidence": 0.7,
+      "evidence": [
+        {
+          "evidence_id": "evidence_d952d2f175256a70",
+          "source": "topic-evolution",
+          "description": "Cybersecurity; presence=persistent; trend=stable; quarters_present=5; presence_ratio=1"
+        }
+      ]
+    },
+    {
+      "signal_id": "signal_6f5d55f67761f4f4",
+      "signal_type": "dormant_topic",
+      "category": "operational",
+      "summary": "Dormant topic observed: Product Quality",
+      "direction": "weakening",
+      "magnitude": "medium",
+      "confidence": 0.7,
+      "evidence": [
+        {
+          "evidence_id": "evidence_6f5d55f67761f4f4",
+          "source": "topic-evolution",
+          "description": "Product Quality; presence=dormant; trend=insufficient_history; quarters_present=1; presence_ratio=0.2"
+        }
+      ]
+    },
+    {
+      "signal_id": "signal_868d86aeb6a5ba9a",
+      "signal_type": "strengthening_topic",
+      "category": "growth",
+      "summary": "Strengthening topic observed: Regulation",
+      "direction": "positive",
+      "magnitude": "medium",
+      "confidence": 0.8,
+      "evidence": [
+        {
+          "evidence_id": "evidence_868d86aeb6a5ba9a",
+          "source": "topic-evolution",
+          "description": "Regulation; presence=recurring; trend=strengthening; quarters_present=2; presence_ratio=0.4"
+        }
+      ]
+    },
+    {
+      "signal_id": "signal_e1f54c424cce233c",
+      "signal_type": "persistent_topic",
+      "category": "growth",
+      "summary": "Persistent topic observed: Supply Chain",
+      "direction": "neutral",
+      "magnitude": "low",
+      "confidence": 0.7,
+      "evidence": [
+        {
+          "evidence_id": "evidence_e1f54c424cce233c",
+          "source": "topic-evolution",
+          "description": "Supply Chain; presence=persistent; trend=mixed; quarters_present=5; presence_ratio=1"
+        }
+      ]
+    },
+    {
+      "signal_id": "signal_bdacd22b7960f5c1",
+      "signal_type": "dormant_topic",
+      "category": "operational",
+      "summary": "Dormant topic observed: Taxation",
+      "direction": "weakening",
+      "magnitude": "medium",
+      "confidence": 0.7,
+      "evidence": [
+        {
+          "evidence_id": "evidence_bdacd22b7960f5c1",
+          "source": "topic-evolution",
+          "description": "Taxation; presence=dormant; trend=insufficient_history; quarters_present=1; presence_ratio=0.2"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "schema_version": "1.0.0",
+    "pipeline_version": "business-signal-builder-v1",
+    "signal_version": 1,
+    "generated_at": "2026-06-14T06:12:01.836Z",
+    "input_hash": "5c2d55d0eaca84d10c2124e1e8e8cd557f2f93cf9030d1c4d0196cc6de91f3fd"
+  },
+  "lineage": {
+    "derived_from": [
+      {
+        "path": "company-knowledge/current.json",
+        "version": 1,
+        "input_hash": "df4313c381ff8121df9aa1457fd3274d4280b78e870c500332646f6e3c22964b"
+      },
+      {
+        "path": "quarter-change/2026-04-29.json",
+        "version": 1,
+        "input_hash": "dafcfbd6056f4686ec0d5b23156377f66123a9805a8f4ac5fbf17b9f0c7a81f2"
+      },
+      {
+        "path": "topic-evolution/current.json",
+        "version": 1,
+        "input_hash": "76020913340fb7111b9bb29343022569fb17c232d2a08aece7c5632f0ba7585b"
+      }
+    ],
+    "source_filings": [
+      {
+        "id": "0001193125-26-027207",
+        "period": "2026-01-28",
+        "type": "10-Q"
+      },
+      {
+        "id": "0001193125-26-191507",
+        "period": "2026-04-29",
+        "type": "10-Q"
+      }
+    ],
+    "model_version": "deterministic-v1",
+    "prompt_version": "none"
+  }
+}

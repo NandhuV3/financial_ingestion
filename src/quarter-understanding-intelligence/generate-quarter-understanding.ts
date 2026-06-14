@@ -1,5 +1,7 @@
 import type { BusinessSignalArtifact } from "../business-signal-intelligence/types/business-signal.types.js";
+import type { QuarterChangeReport } from "../change-engine/change.types.js";
 import type { CompanyKnowledge } from "../company-knowledge/types/company-knowledge.types.js";
+import type { TopicEvolutionReport } from "../topic-evolution/topic-evolution.types.js";
 import {
   buildQuarterUnderstanding,
   type BuildQuarterUnderstandingInputs,
@@ -18,7 +20,9 @@ export type GenerateQuarterUnderstandingParams = {
   reportingPeriod: string;
   companyKnowledge: CompanyKnowledge;
   businessSignalArtifact: BusinessSignalArtifact;
-  reasoningOutput: QuarterUnderstandingReasoningOutput;
+  quarterChange?: QuarterChangeReport | null;
+  topicEvolution?: TopicEvolutionReport | null;
+  reasoningOutput?: QuarterUnderstandingReasoningOutput | null;
   repository: QuarterUnderstandingRepository;
   derivedFrom?: DerivedFromArtifact[];
   builder?: (inputs: BuildQuarterUnderstandingInputs) => QuarterUnderstandingArtifact;
@@ -35,7 +39,9 @@ export async function generateQuarterUnderstanding(
       companyKnowledge: params.companyKnowledge,
       businessSignalArtifact: params.businessSignalArtifact,
       reportingPeriod: params.reportingPeriod,
-      reasoningOutput: params.reasoningOutput,
+      ...(params.quarterChange !== undefined ? { quarterChange: params.quarterChange } : {}),
+      ...(params.topicEvolution !== undefined ? { topicEvolution: params.topicEvolution } : {}),
+      ...(params.reasoningOutput !== undefined ? { reasoningOutput: params.reasoningOutput } : {}),
       derivedFrom: params.derivedFrom,
     });
   } catch (error) {

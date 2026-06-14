@@ -1,5 +1,12 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import {
+  countCompanyKnowledgeFields,
+  generateCompanyKnowledgeCommand,
+} from "../src/company-knowledge/generate-company-knowledge-command.js";
 import {
   generateCompanyKnowledge,
 } from "../src/company-knowledge/generate-company-knowledge.js";
@@ -114,6 +121,68 @@ describe("generate company knowledge command", () => {
     assert.equal(repository.saved[0]?.artifact.metadata.input_hash, "input-hash");
     assert.equal(repository.saved[0]?.artifact.confidence.overall, 0.9);
     assert.deepEqual(repository.saved[0]?.artifact.lineage.derived_from, ["structured-intelligence", "filing-metadata"]);
+  });
+
+  it("loads prerequisites, persists Company Knowledge, and logs command output", async () => {
+    const previousCwd = process.cwd();
+    const previousWarehouseRoot = process.env.PARTNER_WAREHOUSE_ROOT;
+    const tempDirectory = await mkdtemp(join(tmpdir(), "company-knowledge-command-"));
+    const warehouseRoot = join(tempDirectory, "warehouse");
+    const filingDirectory = join(tempDirectory, "data", "MSFT", "filings", "2026-04-29");
+    const logs: string[] = [];
+    const originalConsoleLog = console.log;
+
+    try {
+      process.chdir(tempDirectory);
+      process.env.PARTNER_WAREHOUSE_ROOT = warehouseRoot;
+      console.log = (message?: unknown) => {
+        logs.push(String(message));
+      };
+
+      await mkdir(join(filingDirectory, "metadata"), { recursive: true });
+      await mkdir(join(filingDirectory, "intelligence"), { recursive: true });
+      await writeFile(
+        join(filingDirectory, "metadata", "filing.json"),
+        JSON.stringify(filingMetadata(), null, 2),
+        "utf8",
+      );
+      await writeFile(
+        join(filingDirectory, "intelligence", "structured-intelligence.json"),
+        JSON.stringify(structuredIntelligence(), null, 2),
+        "utf8",
+      );
+
+      const result = await generateCompanyKnowledgeCommand("msft", "2026-04-29");
+      const persisted = JSON.parse(await readFile(
+        join(warehouseRoot, "companies", "MSFT", "company-knowledge", "current.json"),
+        "utf8",
+      )) as CompanyKnowledge;
+
+      assert.equal(result.company, "Microsoft");
+      assert.deepEqual(persisted, result);
+      assert.equal(persisted.metadata.pipeline_version, "company-knowledge-builder-v1");
+      assert.equal(logs.some((entry) => entry.includes("Company Knowledge generated for MSFT")), true);
+      assert.equal(logs.some((entry) => entry.includes("Fields:")), true);
+      assert.equal(logs.some((entry) => entry.includes("Current artifact:")), true);
+    } finally {
+      console.log = originalConsoleLog;
+      process.chdir(previousCwd);
+
+      if (previousWarehouseRoot === undefined) {
+        delete process.env.PARTNER_WAREHOUSE_ROOT;
+      } else {
+        process.env.PARTNER_WAREHOUSE_ROOT = previousWarehouseRoot;
+      }
+
+      await rm(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
+  it("counts populated Company Knowledge fields", () => {
+    assert.deepEqual(countCompanyKnowledgeFields(artifact()), {
+      populated: 9,
+      total: 10,
+    });
   });
 });
 

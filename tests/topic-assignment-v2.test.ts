@@ -1,6 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { assignTopicsByConfidence, summarizeAssignments } from "../src/topic-assignment-v2/build-topic-assignments.js";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { assignTopicsByConfidence, buildTopicAssignments, summarizeAssignments } from "../src/topic-assignment-v2/build-topic-assignments.js";
 import type { SemanticTopicMatchFile } from "../src/topic-intelligence/semantic-topic.types.js";
 import type { Theme, ThemeOutput } from "../src/types/theme.types.js";
 
@@ -59,6 +62,53 @@ describe("topic assignment v2", () => {
       "unassigned",
     ]);
     assert.deepEqual(output.themes.map((theme) => theme.topic_id), [null, null, null]);
+  });
+
+  it("fails fast when semantic-topic-matches.json is missing", async () => {
+    await withTempWorkspace(async () => {
+      await writeFilingThemeOutput("MSFT", "2026-04-29", themeOutput());
+
+      await assert.rejects(
+        () => buildTopicAssignments("MSFT", "2026-04-29"),
+        /Missing semantic-topic-matches\.json.*Topic matching has not been executed.*generate:topic-matches/s,
+      );
+    });
+  });
+
+  it("handles an empty semantic-topic-matches.json without pretending matches were loaded", async () => {
+    await withTempWorkspace(async () => {
+      await writeFilingThemeOutput("MSFT", "2026-04-29", themeOutput());
+      await writeSemanticMatchFile("MSFT", "2026-04-29", {
+        ...matchFile(),
+        matches: [],
+      });
+
+      const output = await buildTopicAssignments("MSFT", "2026-04-29");
+
+      assert.deepEqual(summarizeAssignments(output.themes), {
+        assigned_count: 0,
+        low_confidence_count: 0,
+        unassigned_count: 3,
+      });
+      assert.deepEqual(output.themes.map((theme) => theme.topic_id), [null, null, null]);
+    });
+  });
+
+  it("writes assigned and low-confidence topics when semantic matches exist", async () => {
+    await withTempWorkspace(async () => {
+      await writeFilingThemeOutput("MSFT", "2026-04-29", themeOutput());
+      await writeSemanticMatchFile("MSFT", "2026-04-29", matchFile());
+
+      const output = await buildTopicAssignments("MSFT", "2026-04-29");
+      const stored = JSON.parse(await readFile(topicAssignmentPath("MSFT", "2026-04-29"), "utf8")) as ThemeOutput;
+
+      assert.deepEqual(summarizeAssignments(output.themes), {
+        assigned_count: 1,
+        low_confidence_count: 1,
+        unassigned_count: 1,
+      });
+      assert.equal(stored.themes.length, 3);
+    });
   });
 });
 
@@ -120,4 +170,35 @@ function match(themeName: string, category: string, topicId: string, confidence:
     ],
     decision: "low_confidence" as const,
   };
+}
+
+async function withTempWorkspace(callback: () => Promise<void>): Promise<void> {
+  const originalCwd = process.cwd();
+  const directory = await mkdtemp(join(tmpdir(), "topic-assignment-v2-"));
+
+  try {
+    process.chdir(directory);
+    await callback();
+  } finally {
+    process.chdir(originalCwd);
+    await rm(directory, { recursive: true, force: true });
+  }
+}
+
+async function writeFilingThemeOutput(ticker: string, filingDate: string, output: ThemeOutput): Promise<void> {
+  const directory = join(process.cwd(), "data", ticker, "filings", filingDate, "intelligence");
+
+  await mkdir(directory, { recursive: true });
+  await writeFile(join(directory, "themes.json"), `${JSON.stringify(output, null, 2)}\n`, "utf8");
+}
+
+async function writeSemanticMatchFile(ticker: string, filingDate: string, output: SemanticTopicMatchFile): Promise<void> {
+  const directory = join(process.cwd(), "data", ticker, "filings", filingDate, "intelligence");
+
+  await mkdir(directory, { recursive: true });
+  await writeFile(join(directory, "semantic-topic-matches.json"), `${JSON.stringify(output, null, 2)}\n`, "utf8");
+}
+
+function topicAssignmentPath(ticker: string, filingDate: string): string {
+  return join(process.cwd(), "data", ticker, "filings", filingDate, "intelligence", "themes.with-topics.json");
 }

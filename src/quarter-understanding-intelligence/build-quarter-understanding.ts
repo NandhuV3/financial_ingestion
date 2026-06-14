@@ -1,7 +1,15 @@
 import type { BusinessSignalArtifact } from "../business-signal-intelligence/types/business-signal.types.js";
+import type { QuarterChangeReport } from "../change-engine/change.types.js";
 import type { CompanyKnowledge } from "../company-knowledge/types/company-knowledge.types.js";
 import { getCurrentTimestamp } from "../shared/dates/timestamps.js";
 import { calculateStringHash } from "../shared/hashing/hash-file.js";
+import type { TopicEvolutionReport } from "../topic-evolution/topic-evolution.types.js";
+import {
+  buildDeterministicQuarterInsights,
+  type QuarterInsight,
+} from "./build-deterministic-quarter-understanding.js";
+import { buildQuarterUnderstandingConcepts } from "./build-quarter-understanding-concepts.js";
+import { consolidateQuarterConcepts } from "./consolidate-quarter-understandings.js";
 import type {
   BusinessKey,
   CompanyKnowledgeAlignment,
@@ -36,6 +44,8 @@ export type LLMReasoningOutput = {
 export type BuildQuarterUnderstandingInputs = {
   companyKnowledge?: CompanyKnowledge | null;
   businessSignalArtifact?: BusinessSignalArtifact | null;
+  quarterChange?: QuarterChangeReport | null;
+  topicEvolution?: TopicEvolutionReport | null;
   reasoningOutput?: LLMReasoningOutput | null;
   reportingPeriod: string;
   derivedFrom?: DerivedFromArtifact[];
@@ -79,6 +89,91 @@ export function buildQuarterUnderstanding(
 }
 
 function buildUnderstandings(
+  inputs: BuildQuarterUnderstandingInputs,
+  company: string,
+  reportingPeriod: string,
+  derivedFrom: DerivedFromArtifact[],
+): QuarterUnderstanding[] {
+  if (hasDeterministicSources(inputs)) {
+    return buildDeterministicUnderstandings(inputs, company, reportingPeriod, derivedFrom);
+  }
+
+  return buildLegacyReasoningUnderstandings(inputs, company, reportingPeriod, derivedFrom);
+}
+
+function buildDeterministicUnderstandings(
+  inputs: BuildQuarterUnderstandingInputs,
+  company: string,
+  reportingPeriod: string,
+  derivedFrom: DerivedFromArtifact[],
+): QuarterUnderstanding[] {
+  const signalArtifactRef = findArtifactRef(derivedFrom, "business-signal");
+  const companyKnowledgeRef = findArtifactRef(derivedFrom, "company-knowledge");
+  const rawInsights = buildDeterministicQuarterInsights({
+    companyKnowledge: inputs.companyKnowledge,
+    businessSignalArtifact: inputs.businessSignalArtifact,
+    quarterChange: inputs.quarterChange,
+    topicEvolution: inputs.topicEvolution,
+  });
+  const concepts = buildQuarterUnderstandingConcepts(rawInsights);
+  const insights = consolidateQuarterConcepts(concepts);
+  const sourceCounts = countInsightSources(inputs, insights);
+  const understandings: QuarterUnderstanding[] = [];
+  const seenAnchors = new Set<string>();
+
+  for (const insight of insights) {
+    const category = normalizeCategory(insight.category);
+    const semanticAnchorKey = normalizeSemanticAnchor(insight.semantic_anchor_key);
+    const summary = insight.summary.trim();
+
+    if (!category || !semanticAnchorKey || !summary || seenAnchors.has(semanticAnchorKey)) {
+      continue;
+    }
+
+    const sourceCount = sourceCounts.get(semanticAnchorKey) ?? 1;
+    const signalAgreement = signalAgreementForInsight(insight, sourceCount);
+    const businessKey = buildBusinessKey(company, category, semanticAnchorKey);
+    const resolvedSignals = resolveSignalsForInsight(inputs.businessSignalArtifact, insight);
+    const signalRefs = resolvedSignals.map((signal) => ({
+      signal_id: signal.signal_id,
+      period: inputs.businessSignalArtifact?.period ?? reportingPeriod,
+      artifact_path: signalArtifactRef?.path ?? "",
+      input_hash: inputs.businessSignalArtifact?.metadata.input_hash ?? signalArtifactRef?.input_hash ?? "",
+    }));
+
+    seenAnchors.add(semanticAnchorKey);
+    understandings.push({
+      understanding_id: buildUnderstandingId(businessKey, reportingPeriod),
+      semantic_anchor_key: semanticAnchorKey,
+      business_key: businessKey,
+      category,
+      summary,
+      importance: insight.importance,
+      confidence: {
+        score: calculateConfidenceScore(signalAgreement, sourceCount),
+        evidence_count: sourceCount,
+        source_reliability: sourceReliabilityForEvidenceCount(sourceCount),
+        signal_agreement: signalAgreement,
+        company_knowledge_alignment: "consistent",
+      },
+      evidence: {
+        signal_refs: signalRefs,
+        company_knowledge_ref: companyKnowledgeRef
+          ? {
+              artifact_path: companyKnowledgeRef.path,
+              version: companyKnowledgeRef.version,
+              input_hash: companyKnowledgeRef.input_hash,
+            }
+          : null,
+        evidence_context: evidenceContextForInsight(insight, resolvedSignals, summary),
+      },
+    });
+  }
+
+  return understandings.sort(compareUnderstandings);
+}
+
+function buildLegacyReasoningUnderstandings(
   inputs: BuildQuarterUnderstandingInputs,
   company: string,
   reportingPeriod: string,
@@ -179,6 +274,14 @@ function buildUnderstandingId(businessKey: BusinessKey, reportingPeriod: string)
 function calculateConfidenceScore(signalAgreement: SignalAgreement, evidenceCount: number): number {
   const sourceReliability = sourceReliabilityForEvidenceCount(evidenceCount);
 
+  if (signalAgreement === "conflicting") {
+    return 0.45;
+  }
+
+  if (signalAgreement === "mixed") {
+    return 0.6;
+  }
+
   if (signalAgreement === "corroborating" && sourceReliability === "high") {
     return 0.9;
   }
@@ -187,11 +290,7 @@ function calculateConfidenceScore(signalAgreement: SignalAgreement, evidenceCoun
     return 0.75;
   }
 
-  if (signalAgreement === "conflicting") {
-    return 0.45;
-  }
-
-  return 0.6;
+  return 0.5;
 }
 
 function sourceReliabilityForEvidenceCount(evidenceCount: number): "high" | "medium" | "low" {
@@ -210,8 +309,19 @@ function buildDerivedFrom(inputs: BuildQuarterUnderstandingInputs): DerivedFromA
   return normalizeDerivedFrom([
     ...(inputs.derivedFrom ?? []),
     ...(inputs.businessSignalArtifact ? [businessSignalArtifactRef(inputs.businessSignalArtifact)] : []),
+    ...(inputs.companyKnowledge ? [companyKnowledgeArtifactRef(inputs.companyKnowledge)] : []),
+    ...(inputs.quarterChange ? [quarterChangeArtifactRef(inputs.quarterChange)] : []),
+    ...(inputs.topicEvolution ? [topicEvolutionArtifactRef(inputs.topicEvolution)] : []),
     ...(inputs.businessSignalArtifact?.lineage.derived_from ?? []),
   ]);
+}
+
+function companyKnowledgeArtifactRef(artifact: CompanyKnowledge): DerivedFromArtifact {
+  return {
+    path: "company-knowledge/current.json",
+    version: artifact.metadata.knowledge_version,
+    input_hash: artifact.metadata.input_hash,
+  };
 }
 
 function businessSignalArtifactRef(artifact: BusinessSignalArtifact): DerivedFromArtifact {
@@ -222,17 +332,45 @@ function businessSignalArtifactRef(artifact: BusinessSignalArtifact): DerivedFro
   };
 }
 
+function quarterChangeArtifactRef(artifact: QuarterChangeReport): DerivedFromArtifact {
+  return {
+    path: `comparison/${artifact.current_filing.filing_date}/quarter-change-report.json`,
+    version: 1,
+    input_hash: calculateStringHash(JSON.stringify(normalizeQuarterChangeForHash(artifact))),
+  };
+}
+
+function topicEvolutionArtifactRef(artifact: TopicEvolutionReport): DerivedFromArtifact {
+  return {
+    path: "reports/topic-evolution-report.json",
+    version: 1,
+    input_hash: calculateStringHash(JSON.stringify(normalizeTopicEvolutionForHash(artifact))),
+  };
+}
+
 function buildSourceFilings(inputs: BuildQuarterUnderstandingInputs): SourceFilingReference[] {
   return normalizeSourceFilings([
     ...(inputs.companyKnowledge?.lineage.source_filings ?? []),
     ...(inputs.businessSignalArtifact?.lineage.source_filings ?? []),
+    ...(inputs.quarterChange ? [filingMetadataToSourceFiling(inputs.quarterChange.current_filing)] : []),
+    ...(inputs.quarterChange?.previous_filing ? [filingMetadataToSourceFiling(inputs.quarterChange.previous_filing)] : []),
   ]);
+}
+
+function filingMetadataToSourceFiling(filing: QuarterChangeReport["current_filing"]): SourceFilingReference {
+  return {
+    id: filing.accession_number,
+    period: filing.filing_date,
+    type: filing.form_type,
+  };
 }
 
 function calculateQuarterUnderstandingInputHash(inputs: BuildQuarterUnderstandingInputs): string {
   return calculateStringHash(JSON.stringify({
     companyKnowledge: normalizeCompanyKnowledgeForHash(inputs.companyKnowledge ?? null),
     businessSignalArtifact: normalizeBusinessSignalArtifactForHash(inputs.businessSignalArtifact ?? null),
+    quarterChange: normalizeQuarterChangeForHash(inputs.quarterChange ?? null),
+    topicEvolution: normalizeTopicEvolutionForHash(inputs.topicEvolution ?? null),
     reasoningOutput: normalizeReasoningOutputForHash(inputs.reasoningOutput ?? null),
     reportingPeriod: inputs.reportingPeriod.trim(),
     derivedFrom: normalizeDerivedFrom(inputs.derivedFrom ?? []),
@@ -242,6 +380,184 @@ function calculateQuarterUnderstandingInputHash(inputs: BuildQuarterUnderstandin
     promptVersion: inputs.promptVersion ?? DEFAULT_PROMPT_VERSION,
     understandingVersion: inputs.understandingVersion ?? DEFAULT_UNDERSTANDING_VERSION,
   }));
+}
+
+function normalizeQuarterChangeForHash(report: QuarterChangeReport | null): QuarterChangeReport | null {
+  return report;
+}
+
+function normalizeTopicEvolutionForHash(report: TopicEvolutionReport | null): TopicEvolutionReport | null {
+  if (!report) {
+    return null;
+  }
+
+  return {
+    ...report,
+    generated_at: "",
+  };
+}
+
+function hasDeterministicSources(inputs: BuildQuarterUnderstandingInputs): boolean {
+  return Boolean(
+    (!inputs.reasoningOutput && inputs.companyKnowledge)
+    || inputs.businessSignalArtifact?.signals.some((signal) => "signal_type" in signal)
+    || inputs.quarterChange
+    || inputs.topicEvolution,
+  );
+}
+
+function resolveSignalsForInsight(
+  artifact: BusinessSignalArtifact | null | undefined,
+  insight: QuarterInsight,
+): BusinessSignalArtifact["signals"] {
+  const normalizedAnchors = [
+    insight.semantic_anchor_key,
+    ...(insight.source_anchor_keys ?? []),
+  ].map(normalizeSemanticAnchor).filter(Boolean);
+  const normalizedSummaries = [
+    insight.summary,
+    ...(insight.source_summaries ?? []),
+  ].map(normalizeSemanticAnchor).filter(Boolean);
+
+  return (artifact?.signals ?? []).filter((signal) => {
+    const signalText = normalizeSemanticAnchor(`${signal.signal_type} ${signal.category} ${signal.summary}`);
+
+    return normalizedAnchors.some((anchor) =>
+      signalText.includes(anchor)
+      || anchor.includes(normalizeSemanticAnchor(signal.summary).slice(0, 40)))
+      || normalizedSummaries.some((summary) =>
+        signalText.includes(summary)
+        || summary.includes(normalizeSemanticAnchor(signal.summary).slice(0, 40)));
+  });
+}
+
+function evidenceContextForInsight(
+  insight: QuarterInsight,
+  resolvedSignals: BusinessSignalArtifact["signals"],
+  fallback: string,
+): string {
+  if (insight.source_summaries && insight.source_summaries.length > 0) {
+    return dedupeStrings(insight.source_summaries).join(" ");
+  }
+
+  if (resolvedSignals.length > 0) {
+    return resolvedSignals.map((signal) => signal.summary).join(" ");
+  }
+
+  return fallback;
+}
+
+function countInsightSources(
+  inputs: BuildQuarterUnderstandingInputs,
+  insights: QuarterInsight[],
+): Map<string, number> {
+  const sourceKindsByAnchor = new Map<string, Set<string>>();
+
+  for (const insight of insights) {
+    const anchor = normalizeSemanticAnchor(insight.semantic_anchor_key);
+    const sourceKinds = sourceKindsByAnchor.get(anchor) ?? new Set<string>();
+
+    for (const sourceKind of insight.source_kinds ?? []) {
+      if (sourceKind.trim()) {
+        sourceKinds.add(sourceKind.trim());
+      }
+    }
+
+    if (insight.summary.includes("Business Signal") || matchesBusinessSignal(inputs.businessSignalArtifact, insight)) {
+      sourceKinds.add("business-signals");
+    }
+
+    if (matchesQuarterChange(inputs.quarterChange, insight)) {
+      sourceKinds.add("quarter-change");
+    }
+
+    if (matchesTopicEvolution(inputs.topicEvolution, insight)) {
+      sourceKinds.add("topic-evolution");
+    }
+
+    if (matchesCompanyKnowledge(inputs.companyKnowledge, insight)) {
+      sourceKinds.add("company-knowledge");
+    }
+
+    if (sourceKinds.size === 0) {
+      sourceKinds.add("deterministic-source");
+    }
+
+    sourceKindsByAnchor.set(anchor, sourceKinds);
+  }
+
+  return new Map([...sourceKindsByAnchor.entries()].map(([anchor, sources]) => [anchor, sources.size]));
+}
+
+function matchesBusinessSignal(
+  artifact: BusinessSignalArtifact | null | undefined,
+  insight: QuarterInsight,
+): boolean {
+  const anchors = [insight.semantic_anchor_key, ...(insight.source_anchor_keys ?? [])]
+    .map(normalizeSemanticAnchor)
+    .filter(Boolean);
+
+  return (artifact?.signals ?? []).some((signal) =>
+    anchors.some((anchor) =>
+      normalizeSemanticAnchor(signal.summary).includes(anchor)
+      || anchor.includes(normalizeSemanticAnchor(signal.summary).slice(0, 40))),
+  );
+}
+
+function matchesQuarterChange(
+  report: QuarterChangeReport | null | undefined,
+  insight: QuarterInsight,
+): boolean {
+  const anchor = normalizeSemanticAnchor(insight.semantic_anchor_key);
+  const anchors = [anchor, ...(insight.source_anchor_keys ?? []).map(normalizeSemanticAnchor)];
+
+  return [
+    ...(report?.topic_changes ?? []).map((change) => change.topic_id),
+    ...(report?.changes ?? []).map((change) => change.category),
+  ].some((value) => anchors.includes(normalizeSemanticAnchor(value)));
+}
+
+function matchesTopicEvolution(
+  report: TopicEvolutionReport | null | undefined,
+  insight: QuarterInsight,
+): boolean {
+  const anchor = normalizeSemanticAnchor(insight.semantic_anchor_key);
+  const anchors = [anchor, ...(insight.source_anchor_keys ?? []).map(normalizeSemanticAnchor)];
+
+  return (report?.topics ?? []).some((topic) => anchors.includes(normalizeSemanticAnchor(topic.topic_id)));
+}
+
+function matchesCompanyKnowledge(
+  companyKnowledge: CompanyKnowledge | null | undefined,
+  insight: QuarterInsight,
+): boolean {
+  const anchor = normalizeSemanticAnchor(insight.semantic_anchor_key);
+  const anchors = [anchor, ...(insight.source_anchor_keys ?? []).map(normalizeSemanticAnchor)];
+  const values = [
+    ...(companyKnowledge?.revenue_drivers ?? []),
+    ...(companyKnowledge?.competitive_positioning ?? []).map((value) => value.signal),
+    ...(companyKnowledge?.opportunities ?? []),
+    ...(companyKnowledge?.risks ?? []),
+    ...(companyKnowledge?.key_dependencies ?? []).map((value) => value.description),
+  ];
+
+  return values.some((value) => anchors.includes(normalizeSemanticAnchor(value)));
+}
+
+function signalAgreementForInsight(insight: QuarterInsight, sourceCount: number): SignalAgreement {
+  if (insight.signal_agreement) {
+    return insight.signal_agreement;
+  }
+
+  if (insight.insight_type === "concern") {
+    return "conflicting";
+  }
+
+  if (insight.insight_type === "watchlist" && sourceCount > 1) {
+    return "mixed";
+  }
+
+  return "corroborating";
 }
 
 function normalizeCompanyKnowledgeForHash(companyKnowledge: CompanyKnowledge | null): CompanyKnowledge | null {
