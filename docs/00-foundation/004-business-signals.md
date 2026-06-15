@@ -28,8 +28,6 @@ Quarter Change
         ↓
 Topic Evolution
         ↓
-Trust Artifacts
-        ↓
 Business Signals
         ↓
 Quarter Understanding
@@ -45,7 +43,6 @@ Business Signals owns:
 - Durable business signals
 - Trend signals
 - Movement signals
-- Trust signals
 - Operational signals
 - Strategic signals
 
@@ -66,6 +63,9 @@ Business Signals never owns:
 - Recommendations
 - Conclusions
 - Investor insights
+- Trust Signals
+- Trust Signal lifecycle
+- Trust evidence ownership
 - Management credibility verdicts
 - Narrative explanations
 
@@ -103,16 +103,6 @@ Provides:
 - Stable
 - Declining
 
-## Trust Artifacts
-
-Provides:
-
-- Commitment Tracking
-- Narrative Consistency
-- Accounting Stability
-
----
-
 # Signal Categories
 
 ## Business Signals
@@ -146,22 +136,6 @@ Examples:
 
 ---
 
-## Trust Signals
-
-Examples:
-
-- COMMITMENT_OVERDUE
-- COMMITMENT_FULFILLED
-- COMMITMENT_ABANDONED
-- STRATEGIC_PRIORITY_DROPPED
-- SEGMENT_REDEFINED
-- NON_GAAP_GAP_WIDENING
-- RESTATEMENT_ISSUED
-- CFO_DEPARTURE
-- EXPLANATION_QUALITY_GENERIC
-
----
-
 # Signal Structure
 
 Every signal follows a common schema.
@@ -175,8 +149,7 @@ type BusinessSignal = {
   category:
     | "business"
     | "strategic"
-    | "operational"
-    | "trust";
+    | "operational";
 
   company_id: string;
 
@@ -204,7 +177,6 @@ Rules derive signals from:
 - Company Knowledge
 - Quarter Change
 - Topic Evolution
-- Trust Artifacts
 
 Every signal must have:
 
@@ -240,11 +212,29 @@ Signals must contain evidence references.
 
 LOCKED.
 
-## Rule 5
+# Trust Boundary
 
-Trust signals belong here.
+Business Signals owns deterministic business observations.
 
-Trust verdicts do not.
+Business Signals does not generate Trust Signals.
+
+Trust Signals are owned by Trust Architecture.
+
+Trust Architecture consists of:
+
+* Commitment Tracking
+* Narrative Consistency
+* Accounting Stability
+* Trust Signals
+
+Business Signals and Trust Signals are independent artifacts.
+
+Quarter Understanding may consume:
+
+* Business Signals
+* Trust Signals
+
+through separate inputs.
 
 LOCKED.
 
