@@ -8,5 +8,5 @@
     "rootDir": ".",
     "outDir": "./dist",
   },
-  "include": ["src", "contracts", "packages"]
+  "include": ["src", "contracts", "packages", "builders"]
 }

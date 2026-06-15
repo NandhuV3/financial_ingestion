@@ -1,7 +1,7 @@
 import type { Artifact } from "../../../contracts/artifacts/artifact.js";
 import type { ArtifactEvaluation } from "../../../contracts/artifacts/artifact-evaluation.js";
 import type { ArtifactGovernance } from "../../../contracts/artifacts/artifact-governance.js";
-import type { ArtifactLineage } from "../../../contracts/artifacts/artifact-lineage.js";
+import type { ArtifactLineage, ModelReference, PromptReference } from "../../../contracts/artifacts/artifact-lineage.js";
 import type { ArtifactService } from "../../artifact-framework/src/artifact-service.js";
 import type { BuilderDependencies, BuilderContext } from "./builder-context.js";
 import { BuilderDependencyError, BuilderExecutionError, BuilderValidationError, builderErrorMessage } from "./builder-errors.js";
@@ -36,6 +36,8 @@ export class BuilderExecutor {
     const startedAt = params.generatedAt ?? new Date().toISOString();
     const startTime = Date.now();
     const dependencies = params.dependencies ?? {};
+    let promptReference: PromptReference | undefined;
+    let modelReference: ModelReference | undefined;
 
     this.observer.onExecutionStart({
       builderType: params.builderType,
@@ -54,6 +56,12 @@ export class BuilderExecutor {
         executionId: params.executionId,
         input: params.input,
         dependencies,
+        recordPromptReference(reference) {
+          promptReference = reference;
+        },
+        recordModelReference(reference) {
+          modelReference = reference;
+        },
       };
 
       validateBuilderInput(context);
@@ -72,6 +80,10 @@ export class BuilderExecutor {
       try {
         result = await builder.execute(context);
       } catch (error) {
+        if (error instanceof BuilderValidationError || error instanceof BuilderDependencyError) {
+          throw error;
+        }
+
         throw new BuilderExecutionError(
           `Builder execution failed for ${params.builderType}: ${builderErrorMessage(error)}`,
           error,
@@ -85,7 +97,7 @@ export class BuilderExecutor {
         company_id: params.companyId,
         period_id: params.periodId,
         content: result.content,
-        lineage: buildLineage(params.builderType, params.executionId, dependencies),
+        lineage: buildLineage(params.builderType, params.executionId, dependencies, promptReference, modelReference),
         schema_version: definition.schema_version,
         pipeline_version: definition.pipeline_version,
         input_hash: params.inputHash,
@@ -128,8 +140,10 @@ function buildLineage(
   builderType: string,
   executionId: string,
   dependencies: BuilderDependencies,
+  promptReference?: PromptReference,
+  modelReference?: ModelReference,
 ): ArtifactLineage {
-  return {
+  const lineage: ArtifactLineage = {
     upstream_dependencies: Object.values(dependencies)
       .map((artifact) => ({
         artifact_id: artifact.identity.artifact_id,
@@ -145,6 +159,16 @@ function buildLineage(
       execution_id: executionId,
     },
   };
+
+  if (promptReference !== undefined) {
+    lineage.prompt_reference = promptReference;
+  }
+
+  if (modelReference !== undefined) {
+    lineage.model_reference = modelReference;
+  }
+
+  return lineage;
 }
 
 function normalizeBuilderError(error: unknown, builderType: string): BuilderDependencyError | BuilderExecutionError | BuilderValidationError {
@@ -159,4 +183,3 @@ function normalizeBuilderError(error: unknown, builderType: string): BuilderDepe
     error,
   );
 }
-

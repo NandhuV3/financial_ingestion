@@ -1,4 +1,5 @@
 export const ARTIFACT_TYPES = [
+  "filing",
   "themes",
   "topic_assignment",
   "topic_evolution",
@@ -16,4 +17,3 @@ export const ARTIFACT_TYPES = [
 ] as const;
 
 export type ArtifactType = typeof ARTIFACT_TYPES[number];
-

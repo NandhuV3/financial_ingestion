@@ -4,6 +4,10 @@ import {
 import {
   STRUCTURED_INTELLIGENCE_SYSTEM_PROMPT,
 } from "../structured-intelligence/build-structured-intelligence.prompt.js";
+import {
+  STRUCTURED_INTELLIGENCE_PROMPT_ID as STRUCTURED_INTELLIGENCE_BUILDER_PROMPT_ID,
+  STRUCTURED_INTELLIGENCE_SYSTEM_PROMPT as STRUCTURED_INTELLIGENCE_BUILDER_SYSTEM_PROMPT,
+} from "../../builders/structured-intelligence/prompt.js";
 import { THEME_SYSTEM_PROMPT } from "../themes/theme-input.js";
 import { calculatePromptHash } from "./prompt-hash.js";
 import type { PromptProvider, ResolvedPrompt } from "./prompt.types.js";
@@ -19,6 +23,10 @@ const prompts: Record<string, Omit<ResolvedPrompt, "promptId" | "source" | "hash
   [STRUCTURED_INTELLIGENCE_SYSTEM_PROMPT_ID]: {
     version: STRUCTURED_INTELLIGENCE_PROMPT_VERSION,
     content: STRUCTURED_INTELLIGENCE_SYSTEM_PROMPT,
+  },
+  [STRUCTURED_INTELLIGENCE_BUILDER_PROMPT_ID]: {
+    version: "structured-intelligence-builder-v1",
+    content: STRUCTURED_INTELLIGENCE_BUILDER_SYSTEM_PROMPT,
   },
 };
 
