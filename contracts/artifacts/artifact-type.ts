@@ -5,6 +5,7 @@ export const ARTIFACT_TYPES = [
   "topic_evolution",
   "quarter_change",
   "structured_intelligence",
+  "company_knowledge_candidate",
   "company_knowledge",
   "business_signals",
   "quarter_understanding",

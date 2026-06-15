@@ -193,6 +193,76 @@ LOCKED.
 
 ---
 
+# Enrichment Status
+
+```ts
+type EnrichmentInputStatus = {
+  available: boolean;
+  artifact_path: string | null;
+  artifact_version: number | null;
+  absent_reason: string | null;
+};
+```
+
+```ts
+type EnrichmentStatus = {
+  quarter_change: EnrichmentInputStatus;
+  topic_evolution: EnrichmentInputStatus;
+
+  transcript_signals?: EnrichmentInputStatus;
+  market_context?: EnrichmentInputStatus;
+  industry_context?: EnrichmentInputStatus;
+};
+```
+
+LOCKED.
+
+---
+
+# Depth Indicator
+
+```ts
+type DepthIndicator = {
+  overall: "base" | "standard" | "full";
+};
+```
+
+LOCKED.
+
+---
+
+# Coverage Rules
+
+```text
+overall = base
+
+Company Knowledge only
+```
+
+```text
+overall = standard
+
+Company Knowledge
++
+at least one enrichment source
+```
+
+```text
+overall = full
+
+Company Knowledge
++
+all supported enrichment sources available
+```
+
+Business Signals may generate valid artifacts from Company Knowledge alone.
+
+Missing enrichment inputs reduce signal coverage but do not block artifact generation.
+
+LOCKED.
+
+---
+
 # Signal Coverage Model
 
 Business Signals follows a coverage-based enrichment model.
@@ -513,6 +583,10 @@ type BusinessSignalsArtifact = {
   period_id: string;
 
   signals: BusinessSignal[];
+
+  enrichment_status: EnrichmentStatus;
+
+  depth_indicator: DepthIndicator;
 
   signal_summary: {
     total_signals: number;

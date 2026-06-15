@@ -24,7 +24,6 @@ Consumes:
 Produces:
 
 - Company Knowledge Candidate
-- Company Knowledge Artifact
 
 ---
 
@@ -33,7 +32,7 @@ Produces:
 This specification defines how the Company Knowledge Builder constructs:
 
 ```text
-Company Knowledge
+Candidate Knowledge Changes
 ```
 
 from:
@@ -46,16 +45,22 @@ Structured Intelligence
 Historical Company Knowledge
 ```
 
-This is the first builder that creates:
+for governance evaluation.
+
+This builder creates candidate intelligence for the Company Knowledge governance process.
+
+It does not create:
 
 ```text
-Persistent Intelligence
+Company Knowledge
 ```
 
-instead of:
+directly.
+
+Company Knowledge creation belongs to:
 
 ```text
-Period Intelligence
+Company Knowledge Governance
 ```
 
 ---
@@ -86,19 +91,25 @@ Investor Intelligence
 
 # Core Responsibility
 
-Transform:
+Prepare candidate changes from:
 
 ```text
 Period Understanding
 ```
 
-into:
+for:
 
 ```text
-Durable Company Memory
+Company Knowledge Governance
 ```
 
-under governance control.
+evaluation.
+
+Governance creates:
+
+```text
+Company Knowledge
+```
 
 ---
 
@@ -144,7 +155,7 @@ Company Knowledge Builder owns:
 - field classification
 - evidence packaging
 - promotion proposal generation
-- lineage creation
+- lineage input reference emission
 
 Builder does NOT own:
 
@@ -152,6 +163,13 @@ Builder does NOT own:
 - governance decisions
 - merge decisions
 - human review decisions
+- rollback decisions
+- Company Knowledge creation
+- artifact identity
+- artifact version
+- artifact metadata
+- artifact persistence
+- current pointer management
 
 ---
 
@@ -225,16 +243,6 @@ Knowledge Archive
 6. Generate Promotion Proposals
 
 7. Create Candidate Artifact
-
-8. Submit To Governance Engine
-
-9. Receive Governance Decision
-
-10. Create New Knowledge Version
-
-11. Persist
-
-12. Publish
 ```
 
 ---
@@ -574,18 +582,13 @@ Create Candidate Artifact
 # Output
 
 ```typescript
-type CompanyKnowledgeCandidateArtifact = {
-  artifact_id: string;
-
+type CompanyKnowledgeCandidateContent = {
   company_id: string;
 
   period_id: string;
 
   proposals:
     PromotionProposal[];
-
-  lineage:
-    CandidateLineage;
 };
 ```
 
@@ -593,173 +596,121 @@ type CompanyKnowledgeCandidateArtifact = {
 
 # Purpose
 
-Temporary artifact.
+Company Knowledge Candidate.
 
 ---
 
-# Not Published
+# Candidate Artifact Rules
 
-To downstream systems.
-
----
-
-# Step 8
-
-Submit To Governance Engine
-
----
-
-# Target
+CompanyKnowledgeCandidateArtifact is:
 
 ```text
-Company Knowledge Governance Engine
+Persisted
+
+Replayable
+
+Auditable
 ```
+
+but:
+
+```text
+Not downstream visible
+
+Not dependency-index registered
+
+Not Company Knowledge
+```
+
+LOCKED.
 
 ---
 
-# Request
+# Artifact Framework Alignment
+
+Builder returns:
 
 ```typescript
-submitGovernanceReview(
-  candidate_artifact
-);
+BuilderResult<CompanyKnowledgeCandidateContent>
 ```
 
----
-
-# Builder Waits
-
-For governance decision.
-
----
-
-# Step 9
-
-Receive Governance Decision
-
----
-
-# Possible Results
+Builder Framework creates:
 
 ```typescript
-type GovernanceDecision =
-  | "approve"
-  | "reject"
-  | "merge"
-  | "retain"
-  | "human_review";
+Artifact<CompanyKnowledgeCandidateContent>
 ```
 
----
-
-# Rule
-
-Builder may NOT override.
-
----
-
-# Step 10
-
-Create New Knowledge Version
-
----
-
-# Only After
+Artifact Framework owns:
 
 ```text
-Governance Approval
+artifact identity
+
+artifact version
+
+metadata
+
+persistence
+
+current pointer
 ```
+
+Builder owns none of these.
+
+LOCKED.
 
 ---
 
-# Output
+# Governance Boundary
 
-```typescript
-type CompanyKnowledgeArtifact = {
-  artifact_id: string;
+Builder proposes.
 
-  company_id: string;
+Governance decides.
 
-  version: number;
+Always.
 
-  knowledge:
-    CompanyKnowledge;
-
-  governance_decisions:
-    GovernanceDecision[];
-
-  lineage:
-    KnowledgeLineage;
-};
-```
-
----
-
-# Versioning Rule
-
-Every approved change creates:
+Governance owns:
 
 ```text
-New Version
+promote
+
+merge
+
+retain
+
+review
+
+rollback
+
+Company Knowledge creation
 ```
 
----
-
-# Never Overwrite
-
-Previous versions.
+LOCKED.
 
 ---
 
-# Step 11
+# Governance Flow
 
-Persistence
-
----
-
-# Stores
+After candidate artifact creation:
 
 ```text
-Knowledge Artifact
+1. Governance loads Candidate Artifact
 
-Archive Entry
+2. Governance evaluates Promotion Proposals
 
-Governance Record
+3. Governance produces Promotion Decisions
+
+4. Governance creates Company Knowledge when approved
+
+5. Artifact Framework persists Company Knowledge
+
+6. Governance writes Audit Entry
+
+7. Invalidation Engine marks downstream artifacts stale
 ```
 
----
+This flow is not owned by the Builder.
 
-# Persistence Strategy
-
-```text
-Atomic
-```
-
----
-
-# Failure
-
-```text
-Rollback
-```
-
----
-
-# Step 12
-
-Publish
-
----
-
-# Consumers
-
-```text
-Business Signals
-
-Quarter Understanding
-
-Investor Intelligence
-```
+LOCKED.
 
 ---
 
@@ -918,15 +869,11 @@ Invalidation cannot bypass governance.
 Must record:
 
 ```text
-Prompt Version
-
-Model Version
-
 Input Hash
 
 Knowledge Version
 
-Governance Version
+Candidate Version
 ```
 
 ---
@@ -934,19 +881,16 @@ Governance Version
 # Lineage Schema
 
 ```typescript
-type KnowledgeLineage = {
+type CandidateLineage = {
   structured_intelligence_ref:
     string;
 
   prior_knowledge_version:
     number;
 
-  governance_decision_id:
-    string;
-
   input_hash: string;
 
-  output_hash: string;
+  candidate_hash: string;
 };
 ```
 
@@ -990,10 +934,6 @@ Knowledge Resolution
 Archive Resolution
 
 Proposal Generation
-
-Governance Wait Time
-
-Persistence Time
 ```
 
 ---
@@ -1005,10 +945,6 @@ type BuilderMetrics = {
   archive_load_ms: number;
 
   proposal_generation_ms: number;
-
-  governance_wait_ms: number;
-
-  persistence_ms: number;
 };
 ```
 
@@ -1021,9 +957,7 @@ type BuilderError =
   | "STRUCTURED_INTELLIGENCE_MISSING"
   | "KNOWLEDGE_LOAD_FAILURE"
   | "ARCHIVE_LOAD_FAILURE"
-  | "GOVERNANCE_SUBMISSION_FAILURE"
-  | "GOVERNANCE_TIMEOUT"
-  | "PERSISTENCE_FAILURE";
+  | "CANDIDATE_VALIDATION_FAILURE";
 ```
 
 ---
@@ -1039,19 +973,19 @@ Wait
 Governance Failure:
 
 ```text
-Retry
+Handled by Governance
 ```
 
 Timeout:
 
 ```text
-Escalate
+Handled by Governance
 ```
 
 Persistence Failure:
 
 ```text
-Rollback
+Handled by Artifact Framework
 ```
 
 ---
