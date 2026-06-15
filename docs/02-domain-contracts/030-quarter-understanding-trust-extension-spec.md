@@ -10,6 +10,18 @@ Owner: Quarter Understanding Layer
 
 This specification extends Quarter Understanding to support Trust Architecture.
 
+This extension is an enrichment path for Quarter Understanding.
+
+Base Quarter Understanding may be generated from:
+
+```text
+Company Knowledge
+
+Business Signals
+```
+
+without Trust Signals.
+
 Quarter Understanding answers:
 
 ```text
@@ -99,7 +111,7 @@ Quarter Understanding does NOT own:
 
 # Inputs
 
-Quarter Understanding receives:
+For the Trust Extension, Quarter Understanding receives:
 
 ```typescript
 TrustSignalsArtifact
@@ -120,6 +132,17 @@ QuarterChangeArtifact
 ```typescript
 PriorQuarterUnderstandingArtifacts
 ```
+
+TrustSignalsArtifact is an enrichment input for Quarter Understanding.
+
+When TrustSignalsArtifact is absent, Quarter Understanding remains valid but must record:
+
+```text
+trust_signals.available = false
+trust_dimension = absent
+```
+
+and must not generate trust conclusions.
 
 ---
 
@@ -158,6 +181,47 @@ type TrustInterpretationArtifact = {
   metadata: ArtifactMetadata;
 
   lineage: ArtifactLineage;
+};
+```
+
+---
+
+# Enrichment Status
+
+Quarter Understanding artifacts using this extension must expose trust availability.
+
+```typescript
+type EnrichmentInputStatus = {
+  available: boolean;
+  artifact_path: string | null;
+  artifact_version: number | null;
+  absent_reason: string | null;
+};
+
+type EnrichmentStatus = {
+  trust_signals: EnrichmentInputStatus;
+
+  topic_evolution: EnrichmentInputStatus;
+
+  concept_registry: EnrichmentInputStatus;
+};
+```
+
+---
+
+# Depth Indicator
+
+```typescript
+type DepthIndicator = {
+  overall: "base" | "standard" | "full";
+
+  trust_dimension:
+    | "present"
+    | "absent";
+
+  longitudinal_dimension:
+    | "present"
+    | "absent";
 };
 ```
 
@@ -1039,15 +1103,15 @@ at scale.
 
 LOCKED.
 
-1. Quarter Understanding interprets trust signals.
+1. Quarter Understanding interprets trust signals when Trust Signals are available.
 2. Trust Signals remain deterministic.
 3. Trust verdicts belong to Q3, not Quarter Understanding.
-4. Narrative coherence is assessed here.
-5. Pattern assessment is assessed here.
-6. Business context calibration is assessed here.
-7. Historical context is mandatory for recurring/escalating patterns.
+4. Narrative coherence is assessed here when trust enrichment is present.
+5. Pattern assessment is assessed here when trust enrichment is present.
+6. Business context calibration is assessed here when trust enrichment is present.
+7. Historical context is mandatory for recurring/escalating trust patterns.
 8. All interpretations must be evidence grounded.
 9. No recommendation language allowed.
-10. Trust Interpretation is the only trust input consumed by Q3.
+10. Trust Interpretation is the only trust input consumed by Q3 when trust enrichment is present.
 
 End of Specification.

@@ -61,6 +61,8 @@ Read:
 001-roadmap.md
 
 002-codex-operating-manual.md
+
+003-engineering-standards.md
 ```
 
 ---

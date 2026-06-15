@@ -11,9 +11,9 @@ Depends On:
 
 - Company Knowledge
 - Business Signals
-- Concept Registry
-- Trust Signals
-- Topic Evolution
+- Trust Signals (enrichment)
+- Topic Evolution (enrichment)
+- Concept Registry (enrichment)
 
 ---
 
@@ -48,16 +48,18 @@ Company Knowledge
 Business Signals
         ↓
 
-Trust Signals
-        ↓
-
-Topic Evolution
-        ↓
-
 Quarter Understanding
         ↓
 
 Investor Intelligence
+```
+
+Enrichment inputs:
+
+```text
+Trust Signals
+Topic Evolution
+Concept Registry
 ```
 
 ---
@@ -161,17 +163,29 @@ type QuarterUnderstandingInput = {
 
   business_signals:
     BusinessSignalArtifact[];
+};
+```
 
-  trust_signals:
+Enrichment:
+
+```typescript
+type QuarterUnderstandingEnrichmentInput = {
+  trust_signals?:
     TrustSignalArtifact[];
 
-  topic_evolution:
+  topic_evolution?:
     TopicEvolutionArtifact;
 
-  concept_registry:
+  concept_registry?:
     ActiveConceptRegistry;
 };
 ```
+
+Quarter Understanding may generate a valid artifact when required inputs are available.
+
+Enrichment inputs increase artifact depth.
+
+Missing enrichment inputs must be recorded in enrichment status and depth indicators.
 
 ---
 
@@ -184,11 +198,11 @@ Company Knowledge
 
 Business Signals
 
-Trust Signals
+Trust Signals, when available
 
-Topic Evolution
+Topic Evolution, when available
 
-Concept Registry
+Concept Registry, when available
 ```
 
 ---
@@ -247,11 +261,70 @@ type QuarterUnderstandingArtifact = {
   proposed_concepts:
     ProposedConcept[];
 
+  enrichment_status:
+    EnrichmentStatus;
+
+  depth_indicator:
+    DepthIndicator;
+
   confidence:
     null;
 
   metadata: Metadata;
 };
+```
+
+---
+
+# Enrichment Status
+
+```typescript
+type EnrichmentInputStatus = {
+  available: boolean;
+  artifact_path: string | null;
+  artifact_version: number | null;
+  absent_reason: string | null;
+};
+
+type EnrichmentStatus = {
+  trust_signals: EnrichmentInputStatus;
+
+  topic_evolution: EnrichmentInputStatus;
+
+  concept_registry: EnrichmentInputStatus;
+};
+```
+
+---
+
+# Depth Indicator
+
+```typescript
+type DepthIndicator = {
+  overall: "base" | "standard" | "full";
+
+  trust_dimension:
+    | "present"
+    | "absent";
+
+  longitudinal_dimension:
+    | "present"
+    | "absent";
+};
+```
+
+---
+
+# Consumer Contract
+
+Investor Intelligence consumers must inspect depth indicators.
+
+Investor Intelligence must propagate depth limitations.
+
+Investor Intelligence must not generate trust conclusions when:
+
+```text
+trust_dimension = absent
 ```
 
 ---
@@ -348,7 +421,7 @@ within the company's core platform.
 
 # Concept Registry Integration
 
-Quarter Understanding must use:
+When Concept Registry enrichment is available, Quarter Understanding must use:
 
 ```text
 Active Concepts
@@ -360,17 +433,19 @@ from Concept Registry.
 
 # Concept Requirement
 
-Every understanding must reference:
+When Concept Registry enrichment is available, every understanding must reference:
 
 ```typescript
 concept_id
 ```
 
+When Concept Registry enrichment is absent, concept references are not required and concept-dependent depth must be recorded as absent.
+
 ---
 
 # Validation Rule
 
-All concept_ids must exist.
+When concept_ids are emitted, all concept_ids must exist.
 
 ---
 
@@ -548,10 +623,16 @@ not future prediction.
 
 # Trust Interpretation Rules
 
-Quarter Understanding may interpret:
+When Trust Signals enrichment is available, Quarter Understanding may interpret:
 
 ```text
 Trust Signals
+```
+
+When Trust Signals enrichment is absent, Quarter Understanding must not generate trust conclusions and must record:
+
+```text
+trust_dimension = absent
 ```
 
 ---
@@ -909,7 +990,7 @@ LOCKED.
 2. Quarter Understanding consumes deterministic intelligence.
 3. Quarter Understanding does not generate signals.
 4. Quarter Understanding does not create concepts.
-5. Quarter Understanding must use Concept Registry concepts.
+5. Quarter Understanding must use Concept Registry concepts when Concept Registry enrichment is available.
 6. Every understanding requires evidence.
 7. Trust can be interpreted but not judged.
 8. Confidence is builder-generated.

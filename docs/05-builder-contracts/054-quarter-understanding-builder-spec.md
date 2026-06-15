@@ -19,9 +19,9 @@ Consumes:
 
 - Company Knowledge Artifact
 - Business Signals Artifact
-- Trust Signals Artifact
-- Topic Evolution Artifact
-- Concept Registry
+- Trust Signals Artifact (enrichment)
+- Topic Evolution Artifact (enrichment)
+- Concept Registry (enrichment)
 
 Produces:
 
@@ -45,11 +45,7 @@ Company Knowledge
 
 Business Signals
 
-Trust Signals
-
-Topic Evolution
-
-Concept Registry
+Enrichment inputs when available
 ```
 
 Quarter Understanding is the first:
@@ -71,15 +67,6 @@ Company Knowledge
 Business Signals
           ↓
 
-Trust Signals
-          ↓
-
-Topic Evolution
-          ↓
-
-Concept Registry
-          ↓
-
 Quarter Understanding Builder
           ↓
 
@@ -87,6 +74,14 @@ Quarter Understanding
           ↓
 
 Investor Intelligence
+```
+
+Enrichment inputs:
+
+```text
+Trust Signals
+Topic Evolution
+Concept Registry
 ```
 
 ---
@@ -165,7 +160,7 @@ type QuarterUnderstandingBuilderInput = {
 ```text
 1. Resolve Dependencies
 
-2. Load Concept Registry
+2. Resolve Enrichment Inputs
 
 3. Resolve Prompt
 
@@ -212,10 +207,18 @@ Dependency Index
 Company Knowledge
 
 Business Signals
+```
 
+---
+
+# Enrichment Artifacts
+
+```text
 Trust Signals
 
 Topic Evolution
+
+Concept Registry
 ```
 
 ---
@@ -229,12 +232,23 @@ type UpstreamArtifacts = {
 
   business_signals:
     BusinessSignalArtifact[];
+};
+```
 
-  trust_signals:
+---
+
+# Enrichment Resolution Contract
+
+```typescript
+type QuarterUnderstandingEnrichmentArtifacts = {
+  trust_signals?:
     TrustSignalArtifact[];
 
-  topic_evolution:
+  topic_evolution?:
     TopicEvolutionArtifact;
+
+  concept_registry?:
+    ActiveConceptRegistry;
 };
 ```
 
@@ -251,6 +265,14 @@ Approved
 
 Not Stale
 ```
+
+Required artifacts must pass validation.
+
+Missing required artifacts cause build failure.
+
+Missing enrichment artifacts do not cause build failure.
+
+Missing enrichment artifacts must be recorded in enrichment status and depth indicators.
 
 ---
 
@@ -276,14 +298,16 @@ for intelligence artifacts.
 
 # Step 2
 
-Load Concept Registry
+Resolve Enrichment Inputs
 
 ---
 
-# Source
+# Sources
 
 ```text
 Concept Registry
+
+Dependency Index
 ```
 
 ---
@@ -318,6 +342,14 @@ Active Concepts
 ```
 
 may be used.
+
+If Concept Registry enrichment is unavailable, Quarter Understanding may still generate a base artifact from required inputs.
+
+The artifact must record:
+
+```text
+concept_registry.available = false
+```
 
 ---
 
@@ -396,13 +428,13 @@ type QuarterUnderstandingContext = {
   business_signals:
     BusinessSignalArtifact[];
 
-  trust_signals:
+  trust_signals?:
     TrustSignalArtifact[];
 
-  topic_evolution:
+  topic_evolution?:
     TopicEvolutionArtifact;
 
-  active_concepts:
+  active_concepts?:
     ConceptRegistryEntry[];
 };
 ```
@@ -696,6 +728,12 @@ type QuarterUnderstandingArtifact = {
   understandings:
     UnderstandingEntry[];
 
+  enrichment_status:
+    EnrichmentStatus;
+
+  depth_indicator:
+    DepthIndicator;
+
   confidence:
     QuarterUnderstandingConfidence;
 
@@ -704,6 +742,45 @@ type QuarterUnderstandingArtifact = {
 
   metadata:
     ArtifactMetadata;
+};
+```
+
+---
+
+# Enrichment Status
+
+```typescript
+type EnrichmentInputStatus = {
+  available: boolean;
+  artifact_path: string | null;
+  artifact_version: number | null;
+  absent_reason: string | null;
+};
+
+type EnrichmentStatus = {
+  trust_signals: EnrichmentInputStatus;
+
+  topic_evolution: EnrichmentInputStatus;
+
+  concept_registry: EnrichmentInputStatus;
+};
+```
+
+---
+
+# Depth Indicator
+
+```typescript
+type DepthIndicator = {
+  overall: "base" | "standard" | "full";
+
+  trust_dimension:
+    | "present"
+    | "absent";
+
+  longitudinal_dimension:
+    | "present"
+    | "absent";
 };
 ```
 
@@ -766,11 +843,15 @@ type DependencyNode = {
   artifact_type:
     "quarter_understanding";
 
-  upstream: [
+  required_upstream: [
     "company_knowledge",
-    "business_signals",
+    "business_signals"
+  ];
+
+  enrichment_upstream: [
     "trust_signals",
-    "topic_evolution"
+    "topic_evolution",
+    "concept_registry"
   ];
 
   downstream: [
@@ -845,6 +926,16 @@ Publish Artifact
 Investor Intelligence Builder
 ```
 
+Investor Intelligence consumers must inspect depth indicators.
+
+Investor Intelligence must propagate depth limitations.
+
+Investor Intelligence must not generate trust conclusions when:
+
+```text
+trust_dimension = absent
+```
+
 ---
 
 # Publication Event
@@ -902,23 +993,25 @@ Propose Concepts
 
 ---
 
-# Required Inputs
+# Enrichment Inputs
 
 ```text
 Trust Signals
 ```
 
-mandatory.
+optional enrichment.
 
 ---
 
 # Reason
 
-Trust Understanding is part of:
+Trust interpretation is part of full-depth:
 
 ```text
 Quarter Understanding
 ```
+
+Base Quarter Understanding remains valid without Trust Signals when Company Knowledge and Business Signals are available.
 
 ---
 
@@ -935,6 +1028,15 @@ but not:
 ```text
 Converted Into Trust Verdicts
 ```
+
+When Trust Signals are absent, the artifact must record:
+
+```text
+trust_signals.available = false
+trust_dimension = absent
+```
+
+and must not generate trust conclusions.
 
 ---
 
@@ -966,6 +1068,8 @@ Company Knowledge Changed
 Business Signals Changed
 
 Trust Signals Changed
+
+Topic Evolution Changed
 
 Concept Registry Changed
 
@@ -1048,7 +1152,7 @@ type QuarterUnderstandingLineage = {
 
   model_version: string;
 
-  concept_registry_version: string;
+  concept_registry_version: string | null;
 
   input_hash: string;
 
@@ -1128,7 +1232,7 @@ Wait
 Registry Failure:
 
 ```text
-Retry
+Record Concept Registry Enrichment Unavailable
 ```
 
 Invalid Concept:
@@ -1170,9 +1274,9 @@ LOCKED.
 1. Quarter Understanding is an interpretation layer.
 2. Company Knowledge is mandatory.
 3. Business Signals are mandatory.
-4. Trust Signals are mandatory.
-5. Concept Registry is the source of concept truth.
-6. Invalid concepts cause build failure.
+4. Trust Signals are enrichment inputs.
+5. Concept Registry is the source of concept truth when concept enrichment is available.
+6. Invalid emitted concepts cause build failure.
 7. Builder may propose concepts but never create them.
 8. Trust can be interpreted but not judged.
 9. Confidence is builder-generated.

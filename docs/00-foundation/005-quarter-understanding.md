@@ -24,16 +24,18 @@ Company Knowledge
 Business Signals
         ↓
 
-Topic Evolution
-        ↓
-
-Trust Artifacts
-        ↓
-
 Quarter Understanding
         ↓
 
 Investor Intelligence
+
+Enrichment inputs:
+
+```text
+Trust Signals
+Topic Evolution
+Advanced Concept Registry
+```
 
 Quarter Understanding is the bridge between deterministic observations and investor reasoning.
 
@@ -76,6 +78,42 @@ Quarter Understanding receives structured inputs only.
 
 ---
 
+## Required Inputs
+
+Quarter Understanding may generate a valid artifact when these inputs are available:
+
+- Company Knowledge
+- Business Signals
+
+Without required inputs:
+
+```text
+Artifact Generation = Not Allowed
+```
+
+---
+
+## Enrichment Inputs
+
+Quarter Understanding may consume these inputs when available:
+
+- Trust Signals
+- Topic Evolution
+- Advanced Concept Registry
+
+Without enrichment inputs:
+
+```text
+Artifact Generation = Allowed
+Artifact Depth = Reduced
+```
+
+Enrichment inputs increase artifact depth.
+
+They do not change ownership.
+
+---
+
 ## Business Signals
 
 Provides:
@@ -83,7 +121,6 @@ Provides:
 - Business Signals
 - Strategic Signals
 - Operational Signals
-- Trust Signals
 
 ---
 
@@ -102,6 +139,8 @@ Provides:
 
 ## Topic Evolution
 
+Enrichment input.
+
 Provides:
 
 - Emerging Topics
@@ -111,13 +150,15 @@ Provides:
 
 ---
 
-## Trust Artifacts
+## Trust Signals
+
+Enrichment input.
 
 Provides:
 
-- Commitment Tracking
-- Narrative Consistency
-- Accounting Stability
+- Trust observations generated from Commitment Tracking
+- Trust observations generated from Narrative Consistency
+- Trust observations generated from Accounting Stability
 
 ---
 
@@ -243,9 +284,74 @@ Quarter Understanding owns Trust Interpretation.
 
 It does not own Trust Signals.
 
-Trust Signals come from Business Signals.
+Trust Signals come from Trust Architecture.
 
-Quarter Understanding explains what those signals mean together.
+When Trust Signals are available, Quarter Understanding explains what those signals mean together.
+
+When Trust Signals are absent, Quarter Understanding must record reduced depth and must not generate trust conclusions.
+
+---
+
+# Enrichment Status
+
+Quarter Understanding artifacts must expose enrichment availability.
+
+```typescript
+type EnrichmentInputStatus = {
+  available: boolean;
+  artifact_path: string | null;
+  artifact_version: number | null;
+  absent_reason: string | null;
+};
+
+type EnrichmentStatus = {
+  trust_signals: EnrichmentInputStatus;
+
+  topic_evolution: EnrichmentInputStatus;
+
+  concept_registry: EnrichmentInputStatus;
+};
+```
+
+---
+
+# Depth Indicator
+
+Quarter Understanding artifacts must expose interpretation depth.
+
+```typescript
+type DepthIndicator = {
+  overall: "base" | "standard" | "full";
+
+  trust_dimension:
+    | "present"
+    | "absent";
+
+  longitudinal_dimension:
+    | "present"
+    | "absent";
+};
+```
+
+Base means Company Knowledge and Business Signals are present.
+
+Standard means at least one enrichment dimension is present.
+
+Full means all supported enrichment dimensions are present.
+
+---
+
+# Consumer Contract
+
+Investor Intelligence consumers must inspect depth indicators.
+
+Investor Intelligence must propagate depth limitations.
+
+Investor Intelligence must not generate trust conclusions when:
+
+```text
+trust_dimension = absent
+```
 
 ---
 
@@ -428,7 +534,9 @@ LOCKED.
 
 ## Rule 4
 
-Trust verdicts originate here.
+Trust interpretations may originate here when Trust Signals are available.
+
+Trust verdicts do not.
 
 Trust signals do not.
 
