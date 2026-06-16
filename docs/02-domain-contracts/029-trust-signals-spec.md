@@ -210,6 +210,8 @@ type TrustSignalsArtifact = {
 
   depth_indicator: DepthIndicator;
 
+  missing_dimensions: TrustDimension[];
+
   metadata: ArtifactMetadata;
 
   lineage: ArtifactLineage;
@@ -354,20 +356,6 @@ CAPITAL_ALLOCATION_EVIDENCE_INSUFFICIENT
 ```
 
 These originate from Capital Allocation Tracking.
-
----
-
-## Governance Signals
-
-```typescript
-CFO_DEPARTURE
-
-CEO_DEPARTURE
-
-MANAGEMENT_TURNOVER_CLUSTER
-```
-
-These originate from Business Signals governance feeds.
 
 ---
 
@@ -716,7 +704,17 @@ type TrustSignalConfidence = {
 
 # Source Data Confidence
 
-Inherited from:
+Derived from:
+
+```text
+Source evidence quality
+
+Rule evaluation confidence
+
+Evidence completeness
+```
+
+Available pillar evidence may include:
 
 ```text
 Commitment Tracking
@@ -724,7 +722,13 @@ Commitment Tracking
 Narrative Consistency
 
 Accounting Stability
+
+Capital Allocation Tracking
 ```
+
+All pillars are not required.
+
+Missing pillars reduce coverage and depth but do not prevent confidence calculation when at least one pillar artifact is available.
 
 ---
 
