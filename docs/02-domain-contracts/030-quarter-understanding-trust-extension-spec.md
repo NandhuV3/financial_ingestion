@@ -33,6 +33,33 @@ Trust Signals provide observations.
 
 Quarter Understanding provides interpretation.
 
+Trust Signals:
+
+```text
+Observations
+```
+
+Quarter Understanding:
+
+```text
+Interpretation
+```
+
+Quarter Understanding owns:
+
+- trust synthesis
+- significance
+- contextual meaning
+
+Trust Signals does not own:
+
+- trust conclusions
+- management credibility conclusions
+- recommendations
+- valuation
+
+LOCKED.
+
 ---
 
 # Architecture Position
@@ -41,6 +68,7 @@ Quarter Understanding provides interpretation.
 Commitment Tracking
 Narrative Consistency
 Accounting Stability
+Capital Allocation Tracking
         ↓
 Trust Signals
         ↓

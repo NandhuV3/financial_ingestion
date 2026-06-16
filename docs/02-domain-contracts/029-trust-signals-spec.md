@@ -2,7 +2,7 @@
 
 Version: 1.0
 Status: LOCKED
-Owner: Business Signals Layer (Trust Domain)
+Owner: Trust Architecture Layer
 
 ---
 
@@ -33,6 +33,7 @@ That belongs to Quarter Understanding and Q3.
 Commitment Tracking
 Narrative Consistency
 Accounting Stability
+Capital Allocation Tracking
         ↓
 Trust Signals
         ↓
@@ -103,6 +104,12 @@ Trust Signals owns:
 - trust signal classification
 - trust signal lifecycle
 - trust signal evidence linking
+- trust dimension assignment
+- severity classification
+- direction derivation
+- confidence calculation
+- enrichment status
+- depth indicators
 
 Trust Signals does NOT own:
 
@@ -110,6 +117,76 @@ Trust Signals does NOT own:
 - confidence in management
 - credibility assessment
 - investor interpretation
+- evidence collection
+- recommendations
+- valuation
+
+---
+
+# Artifact Enrichment Pattern
+
+Trust Signals follows:
+
+```text
+018-artifact-enrichment-pattern.md
+```
+
+Supported trust pillar artifacts:
+
+```text
+Commitment Tracking
+Narrative Consistency
+Accounting Stability
+Capital Allocation Tracking
+```
+
+At least one supported trust pillar artifact is required to generate a valid Trust Signals artifact.
+
+Missing pillars:
+
+- reduce dimension coverage
+- do not fail generation when at least one pillar exists
+- must appear in enrichment_status
+- must affect depth_indicator
+
+Depth rules:
+
+```text
+1 pillar available
+→ base
+```
+
+```text
+2-3 pillars available
+→ standard
+```
+
+```text
+4 pillars available
+→ full
+```
+
+LOCKED.
+
+---
+
+# Dimension Ownership
+
+Every Trust Dimension must have exactly one owning Trust Pillar Artifact.
+
+| Dimension | Owning Pillar |
+| --- | --- |
+| commitment_follow_through | Commitment Tracking |
+| narrative_consistency | Narrative Consistency |
+| explanation_quality | Narrative Consistency |
+| accounting_stability | Accounting Stability |
+| capital_allocation_consistency | Capital Allocation Tracking |
+
+Trust Signals may emit observations only for dimensions whose owning pillar artifact exists.
+
+Trust Signals must never fabricate a dimension from adjacent pillar evidence.
+
+LOCKED.
 
 ---
 
@@ -129,6 +206,10 @@ type TrustSignalsArtifact = {
 
   confidence: TrustSignalConfidence;
 
+  enrichment_status: EnrichmentStatus;
+
+  depth_indicator: DepthIndicator;
+
   metadata: ArtifactMetadata;
 
   lineage: ArtifactLineage;
@@ -145,6 +226,8 @@ type TrustSignal = {
 
   signal_type: TrustSignalType;
 
+  dimension: TrustDimension;
+
   severity: SignalSeverity;
 
   direction: SignalDirection;
@@ -154,10 +237,20 @@ type TrustSignal = {
   source_artifact:
     | "commitment_tracking"
     | "narrative_consistency"
-    | "accounting_stability";
+    | "accounting_stability"
+    | "capital_allocation_tracking";
 
   confidence: number;
 };
+```
+
+```typescript
+type TrustDimension =
+  | "commitment_follow_through"
+  | "narrative_consistency"
+  | "explanation_quality"
+  | "accounting_stability"
+  | "capital_allocation_consistency";
 ```
 
 ---
@@ -245,6 +338,22 @@ NON_GAAP_GAP_NARROWING
 
 REPORTING_STABILITY_DECREASED
 ```
+
+---
+
+## Capital Allocation Signals
+
+```typescript
+CAPITAL_ALLOCATION_ALIGNED
+
+CAPITAL_ALLOCATION_UNDER_SUPPORTED
+
+CAPITAL_ALLOCATION_UNSUPPORTED_DEPLOYMENT
+
+CAPITAL_ALLOCATION_EVIDENCE_INSUFFICIENT
+```
+
+These originate from Capital Allocation Tracking.
 
 ---
 
@@ -486,6 +595,68 @@ Credibility Rating
 ```
 
 Those belong downstream.
+
+---
+
+# Enrichment Status
+
+```typescript
+type EnrichmentInputStatus = {
+  available: boolean;
+
+  artifact_path: string | null;
+
+  artifact_version: number | null;
+
+  absent_reason: string | null;
+};
+```
+
+```typescript
+type EnrichmentStatus = {
+  commitment_tracking: EnrichmentInputStatus;
+
+  narrative_consistency: EnrichmentInputStatus;
+
+  accounting_stability: EnrichmentInputStatus;
+
+  capital_allocation_tracking: EnrichmentInputStatus;
+};
+```
+
+LOCKED.
+
+---
+
+# Depth Indicator
+
+```typescript
+type DepthIndicator = {
+  overall: "base" | "standard" | "full";
+
+  commitment_dimension:
+    | "present"
+    | "absent";
+
+  narrative_dimension:
+    | "present"
+    | "absent";
+
+  explanation_dimension:
+    | "present"
+    | "absent";
+
+  accounting_dimension:
+    | "present"
+    | "absent";
+
+  capital_allocation_dimension:
+    | "present"
+    | "absent";
+};
+```
+
+LOCKED.
 
 ---
 
@@ -756,6 +927,8 @@ Commitment Tracking Changes
 Narrative Consistency Changes
 
 Accounting Stability Changes
+
+Capital Allocation Tracking Changes
 ```
 
 or
@@ -864,17 +1037,29 @@ type ArtifactMetadata = {
 
 ```typescript
 type ArtifactLineage = {
-  commitment_tracking_version: number;
+  commitment_tracking_version: number | null;
 
-  narrative_consistency_version: number;
+  narrative_consistency_version: number | null;
 
-  accounting_stability_version: number;
+  accounting_stability_version: number | null;
+
+  capital_allocation_tracking_version: number | null;
 
   signal_rules_version: string;
 
   input_hash: string;
 };
 ```
+
+Unavailable pillar versions must be recorded as:
+
+```text
+null
+```
+
+and must match enrichment_status.
+
+LOCKED.
 
 ---
 
@@ -920,5 +1105,7 @@ LOCKED.
 8. Signal clustering is interpreted downstream.
 9. Quarter Understanding consumes signals.
 10. Q3 consumes trust interpretations, not raw signals.
+11. Trust Signals follows the Artifact Enrichment Pattern.
+12. Trust Signals may emit observations only for dimensions whose owning pillar artifact exists.
 
 End of Specification.
