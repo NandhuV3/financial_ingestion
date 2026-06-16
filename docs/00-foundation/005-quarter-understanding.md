@@ -121,6 +121,9 @@ Provides:
 - Business Signals
 - Strategic Signals
 - Operational Signals
+- Quarter-over-quarter observations through movement signals
+
+Quarter Understanding receives quarter-over-quarter observations exclusively through Business Signals movement signals and must not consume QuarterChangeArtifact directly.
 
 ---
 

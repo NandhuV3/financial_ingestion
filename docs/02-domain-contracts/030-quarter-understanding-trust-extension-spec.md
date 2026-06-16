@@ -154,14 +154,12 @@ TopicEvolutionArtifact
 ```
 
 ```typescript
-QuarterChangeArtifact
-```
-
-```typescript
 PriorQuarterUnderstandingArtifacts
 ```
 
 TrustSignalsArtifact is an enrichment input for Quarter Understanding.
+
+Quarter Understanding receives quarter-over-quarter observations exclusively through Business Signals movement signals and must not consume QuarterChangeArtifact directly.
 
 When TrustSignalsArtifact is absent, Quarter Understanding remains valid but must record:
 
@@ -524,7 +522,7 @@ Company Knowledge
 
 Topic Evolution
 
-Quarter Change
+Business Signals movement signals
 ```
 
 ---
@@ -555,7 +553,7 @@ Management:
 Cloud remains primary growth engine.
 ```
 
-Quarter Change:
+Business Signals movement signals:
 
 ```text
 Cloud growth accelerating.
@@ -577,7 +575,7 @@ Management:
 Cloud remains primary growth engine.
 ```
 
-Quarter Change:
+Business Signals movement signals:
 
 ```text
 Cloud revenue collapsing.
@@ -754,7 +752,7 @@ Measures:
 
 ```text
 Availability of Company Knowledge
-and Quarter Change context.
+and Business Signals movement-signal context.
 ```
 
 ---
@@ -865,7 +863,7 @@ Company Knowledge
 
 Topic Evolution
 
-Quarter Change
+Business Signals movement signals
 ```
 
 only.
@@ -937,7 +935,7 @@ Measures:
 
 ```text
 Use of Company Knowledge
-and Quarter Change.
+and Business Signals movement signals.
 ```
 
 ---
@@ -982,7 +980,7 @@ Trust Signals Change
 
 Company Knowledge Changes
 
-Quarter Change Changes
+Business Signals Change
 
 Topic Evolution Changes
 ```
@@ -1099,7 +1097,7 @@ type ArtifactLineage = {
 
   topic_evolution_version: number;
 
-  quarter_change_version: number;
+  business_signals_version: number;
 
   prompt_version: string;
 
