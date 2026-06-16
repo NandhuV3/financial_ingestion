@@ -173,6 +173,16 @@ LOCKED.
 
 ---
 
+# Quarter Change Boundary
+
+Quarter Understanding receives quarter-over-quarter observations exclusively through Business Signals movement signals and must not consume QuarterChangeArtifact directly.
+
+Quarter Change remains solely an upstream dependency of Business Signals.
+
+LOCKED.
+
+---
+
 # Enrichment Status
 
 ```ts

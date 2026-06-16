@@ -187,6 +187,8 @@ Enrichment inputs increase artifact depth.
 
 Missing enrichment inputs must be recorded in enrichment status and depth indicators.
 
+Quarter Understanding receives quarter-over-quarter observations exclusively through Business Signals movement signals and must not consume QuarterChangeArtifact directly.
+
 ---
 
 # Allowed Inputs
@@ -225,6 +227,8 @@ Q4
 Q5
 
 Partner Domain
+
+QuarterChangeArtifact
 
 Market Data
 
