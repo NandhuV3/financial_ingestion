@@ -51,29 +51,23 @@ LOCKED.
 
 # Architectural Position
 
-Commitment Tracking
+```text
+Trust Pillars
         ↓
-
-Narrative Consistency
+Trust Signals
         ↓
-
-Accounting Stability
-        ↓
-
-Business Signals
-        ↓
-
 Quarter Understanding
         ↓
-
-Investor Intelligence (Q3)
+Investor Intelligence
         ↓
-
 Partner Domain
+```
 
 Trust flows through dedicated trust artifacts.
 
 It is not generated from general business signals.
+
+LOCKED.
 
 ---
 
@@ -179,9 +173,29 @@ Trust decreases when actions diverge.
 
 ---
 
+# Dimension Ownership
+
+Every Trust Dimension must have exactly one owning Trust Pillar Artifact.
+
+| Dimension | Owning Pillar |
+| --- | --- |
+| commitment_follow_through | Commitment Tracking |
+| narrative_consistency | Narrative Consistency |
+| explanation_quality | Narrative Consistency |
+| accounting_stability | Accounting Stability |
+| capital_allocation_consistency | Capital Allocation Tracking |
+
+Trust Signals may emit observations only for dimensions whose owning pillar artifact exists.
+
+Trust Signals must never fabricate a dimension from adjacent pillar evidence.
+
+LOCKED.
+
+---
+
 # Trust Artifacts
 
-Three dedicated trust artifacts exist.
+Four dedicated trust pillar artifacts exist.
 
 ---
 
@@ -351,9 +365,100 @@ type AccountingStabilityArtifact = {
 
 ---
 
+# 4. Capital Allocation Tracking Artifact
+
+Purpose:
+
+Track stated capital priorities versus observed capital deployment.
+
+---
+
+## Ownership
+
+Owns:
+
+- Stated capital priorities
+- Observed capital deployment
+- Capital allocation gaps
+- Priority-versus-deployment evidence
+
+Does not own:
+
+- Commitment lifecycle
+- Trust conclusions
+- Recommendations
+- Valuation
+- Interpretation
+
+---
+
+## Schema
+
+```typescript
+type CapitalAllocationTrackingArtifact = {
+  company_id: string;
+
+  period_id: string;
+
+  stated_priorities: {
+    priority_id: string;
+
+    priority_text: string;
+
+    priority_type:
+      | "buybacks"
+      | "dividends"
+      | "acquisitions"
+      | "organic_investment"
+      | "debt_reduction"
+      | "capital_expenditure"
+      | "other";
+
+    evidence_refs: string[];
+  }[];
+
+  observed_deployments: {
+    deployment_id: string;
+
+    deployment_type:
+      | "buybacks"
+      | "dividends"
+      | "acquisitions"
+      | "organic_investment"
+      | "debt_reduction"
+      | "capital_expenditure"
+      | "other";
+
+    amount: number | null;
+
+    evidence_refs: string[];
+  }[];
+
+  gaps: {
+    gap_id: string;
+
+    priority_id: string;
+
+    deployment_refs: string[];
+
+    gap_type:
+      | "aligned"
+      | "under_supported"
+      | "unsupported_deployment"
+      | "insufficient_evidence";
+
+    evidence_refs: string[];
+  }[];
+}
+```
+
+LOCKED.
+
+---
+
 # Trust Signals
 
-Business Signals derives trust observations.
+Trust Signals derive trust observations from Trust Pillar Artifacts.
 
 No LLM involvement.
 
@@ -402,6 +507,26 @@ Every trust signal must be:
 Trust signals are observations.
 
 Not conclusions.
+
+LOCKED.
+
+---
+
+# Trust Boundary
+
+Trust Signals produce observations.
+
+Quarter Understanding produces interpretation.
+
+Investor Intelligence produces investor-facing synthesis.
+
+Trust Signals must not emit:
+
+- Trust conclusions
+- Management credibility conclusions
+- Recommendations
+- Valuation opinions
+- Investor conclusions
 
 LOCKED.
 
@@ -582,6 +707,7 @@ trust/
 ├── commitment-tracking/
 ├── narrative-consistency/
 ├── accounting-stability/
+├── capital-allocation-tracking/
 ├── signals/
 ├── interpretations/
 └── evaluations/
