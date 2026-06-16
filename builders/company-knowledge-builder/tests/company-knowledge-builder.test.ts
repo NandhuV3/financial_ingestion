@@ -7,9 +7,10 @@ import type { ArtifactRepository } from "../../../packages/artifact-framework/sr
 import { ArtifactService } from "../../../packages/artifact-framework/src/artifact-service.js";
 import type { ArtifactLookup } from "../../../packages/artifact-framework/src/artifact-types.js";
 import { BuilderExecutor } from "../../../packages/builder-framework/src/builder-executor.js";
+import { BuilderDependencyError, BuilderValidationError } from "../../../packages/builder-framework/src/builder-errors.js";
 import { BuilderRegistry } from "../../../packages/builder-framework/src/builder-registry.js";
 import { CompanyKnowledgeBuilder } from "../builder.js";
-import { compareField } from "../comparison-engine.js";
+import { buildCandidateSummary, buildEvaluationHooks, compareField } from "../comparison-engine.js";
 import {
   COMPANY_KNOWLEDGE_BUILDER_TYPE,
   COMPANY_KNOWLEDGE_BUILDER_VERSION,
@@ -21,8 +22,10 @@ import type {
   CompanyKnowledge,
   CompanyKnowledgeArtifactContent,
   CompanyKnowledgeBuilderInput,
+  CompanyKnowledgeHistoryContent,
   StructuredIntelligenceArtifactContent,
 } from "../types.js";
+import { validateCompanyKnowledgeCandidateContent } from "../validator.js";
 
 describe("company knowledge builder", () => {
   it("generates a first-population candidate artifact through the Builder Framework", async () => {
@@ -88,6 +91,102 @@ describe("company knowledge builder", () => {
     }), null);
   });
 
+  it("records Company Knowledge history as a resolved dependency", async () => {
+    const structured = structuredArtifact(baseStructuredIntelligence());
+    const current = currentKnowledgeArtifact(currentKnowledgeMatchingStructured(baseStructuredIntelligence()));
+    const history = companyKnowledgeHistoryArtifact([
+      currentKnowledgeArtifact(currentKnowledgeMatchingStructured(baseStructuredIntelligence())).content,
+    ]);
+    const artifact = await executor(new TestArtifactRepository()).executeBuilder<CompanyKnowledgeBuilderInput, CompanyKnowledgeCandidateContent>({
+      builderType: COMPANY_KNOWLEDGE_BUILDER_TYPE,
+      companyId: "MSFT",
+      periodId: "2026-Q2",
+      executionId: "execution-history",
+      input: input(),
+      inputHash: "candidate-input-hash",
+      dependencies: {
+        structured_intelligence: structured,
+        company_knowledge: current,
+        company_knowledge_history: history,
+      },
+    });
+
+    assert.deepEqual(artifact.lineage.upstream_dependencies.map((dependency) => dependency.artifact_id), [
+      current.identity.artifact_id,
+      history.identity.artifact_id,
+      structured.identity.artifact_id,
+    ]);
+  });
+
+  it("uses Company Knowledge history for evidence accumulation", async () => {
+    const structured = baseStructuredIntelligence();
+    const current = currentKnowledgeMatchingStructured(structured);
+    const historical = currentKnowledgeMatchingStructured(structured);
+
+    current.revenue_drivers = current.revenue_drivers.map((driver) => ({
+      ...driver,
+      supporting_periods: ["2026-Q1"],
+    }));
+    historical.revenue_drivers = historical.revenue_drivers.map((driver) => ({
+      ...driver,
+      supporting_periods: ["2025-Q4"],
+      last_updated_period: "2025-Q4",
+    }));
+
+    const artifact = await executor(new TestArtifactRepository()).executeBuilder<CompanyKnowledgeBuilderInput, CompanyKnowledgeCandidateContent>({
+      builderType: COMPANY_KNOWLEDGE_BUILDER_TYPE,
+      companyId: "MSFT",
+      periodId: "2026-Q2",
+      executionId: "execution-history-evidence",
+      input: input(),
+      inputHash: "candidate-input-hash",
+      dependencies: {
+        structured_intelligence: structuredArtifact(structured),
+        company_knowledge: currentKnowledgeArtifact(current),
+        company_knowledge_history: companyKnowledgeHistoryArtifact([
+          currentKnowledgeArtifact(historical).content,
+        ]),
+      },
+    });
+    const revenueDrivers = artifact.content.candidate_changes.find((change) => change.field_path === "revenue_drivers");
+
+    assert.equal(revenueDrivers?.change_type, "evidence_accumulation");
+    assert.equal(revenueDrivers?.evidence_delta, 1);
+  });
+
+  it("fails fast when Structured Intelligence dependency is missing", async () => {
+    await assert.rejects(
+      executor(new TestArtifactRepository()).executeBuilder<CompanyKnowledgeBuilderInput, CompanyKnowledgeCandidateContent>({
+        builderType: COMPANY_KNOWLEDGE_BUILDER_TYPE,
+        companyId: "MSFT",
+        periodId: "2026-Q2",
+        executionId: "execution-missing-structured",
+        input: input(),
+        inputHash: "candidate-input-hash",
+        dependencies: {},
+      }),
+      BuilderDependencyError,
+    );
+  });
+
+  it("allows missing Company Knowledge history", async () => {
+    const structured = baseStructuredIntelligence();
+    const artifact = await executor(new TestArtifactRepository()).executeBuilder<CompanyKnowledgeBuilderInput, CompanyKnowledgeCandidateContent>({
+      builderType: COMPANY_KNOWLEDGE_BUILDER_TYPE,
+      companyId: "MSFT",
+      periodId: "2026-Q2",
+      executionId: "execution-no-history",
+      input: input(),
+      inputHash: "candidate-input-hash",
+      dependencies: {
+        structured_intelligence: structuredArtifact(structured),
+        company_knowledge: currentKnowledgeArtifact(currentKnowledgeMatchingStructured(structured)),
+      },
+    });
+
+    assert.equal(artifact.content.candidate_changes.length, 9);
+  });
+
   it("detects no-change candidates", async () => {
     const repository = new TestArtifactRepository();
     const structured = baseStructuredIntelligence();
@@ -121,6 +220,7 @@ describe("company knowledge builder", () => {
       candidate_confidence: 0.8,
       current_supporting_periods: ["2026-Q1"],
       candidate_supporting_periods: ["2026-Q1", "2026-Q2"],
+      historical_supporting_periods: [],
     });
 
     assert.equal(result.change_type, "minor_update");
@@ -133,17 +233,89 @@ describe("company knowledge builder", () => {
       field_path: "management_focus",
       stability_class: "dynamic",
       current_value: "abcdef",
-      candidate_value: "abcxyz",
+      candidate_value: "uvwxyz",
       supporting_evidence: ["evidence-1"],
       current_confidence: 0.8,
       candidate_confidence: 0.8,
       current_supporting_periods: ["2026-Q1"],
       candidate_supporting_periods: ["2026-Q2"],
+      historical_supporting_periods: [],
     });
 
     assert.equal(result.change_type, "major_update");
     assert.equal(result.review_required, true);
     assert.equal(result.builder_recommendation, "candidate_review");
+  });
+
+  it("classifies semantic similarity below 0.50 as major update before contradiction elevation", () => {
+    const result = compareField({
+      field_path: "management_focus",
+      stability_class: "dynamic",
+      current_value: "cloud infrastructure platforms",
+      candidate_value: "retail grocery delivery",
+      supporting_evidence: ["evidence-1"],
+      current_confidence: 0.9,
+      candidate_confidence: 0.9,
+      current_supporting_periods: ["2026-Q1"],
+      candidate_supporting_periods: ["2026-Q2"],
+      historical_supporting_periods: [],
+    });
+
+    assert.equal(result.change_type, "major_update");
+  });
+
+  it("elevates explicit stable high-confidence conflicts to contradiction", () => {
+    const result = compareField({
+      field_path: "business_model",
+      stability_class: "stable",
+      current_value: "Retail grocery stores and food delivery",
+      candidate_value: "Enterprise software and cloud infrastructure services",
+      supporting_evidence: ["evidence-1"],
+      current_confidence: 0.9,
+      candidate_confidence: 0.9,
+      current_supporting_periods: ["2026-Q1"],
+      candidate_supporting_periods: ["2026-Q2"],
+      historical_supporting_periods: [],
+    });
+
+    assert.equal(result.change_type, "contradiction");
+    assert.equal(result.review_required, true);
+  });
+
+  it("requires high confidence for candidate promote", () => {
+    const result = compareField({
+      field_path: "management_focus",
+      stability_class: "dynamic",
+      current_value: "cloud infrastructure",
+      candidate_value: "cloud infrastructure ai",
+      supporting_evidence: ["evidence-1"],
+      current_confidence: 0.7,
+      candidate_confidence: 0.8,
+      current_supporting_periods: ["2026-Q1"],
+      candidate_supporting_periods: ["2026-Q1", "2026-Q2"],
+      historical_supporting_periods: [],
+    });
+
+    assert.equal(result.change_type, "minor_update");
+    assert.equal(result.builder_recommendation, "candidate_promote");
+  });
+
+  it("does not promote low-confidence minor updates", () => {
+    const result = compareField({
+      field_path: "management_focus",
+      stability_class: "dynamic",
+      current_value: "cloud infrastructure",
+      candidate_value: "cloud infrastructure ai",
+      supporting_evidence: ["evidence-1"],
+      current_confidence: 0.7,
+      candidate_confidence: 0.79,
+      current_supporting_periods: ["2026-Q1"],
+      candidate_supporting_periods: ["2026-Q1", "2026-Q2"],
+      historical_supporting_periods: [],
+    });
+
+    assert.equal(result.change_type, "minor_update");
+    assert.notEqual(result.builder_recommendation, "candidate_promote");
   });
 
   it("detects contradictions", async () => {
@@ -232,6 +404,52 @@ describe("company knowledge builder", () => {
 
     assert.equal(products?.review_required, true);
     assert.equal(products?.builder_recommendation, "candidate_review");
+  });
+
+  it("rejects candidate summary mismatches", () => {
+    const change = compareField({
+      field_path: "management_focus",
+      stability_class: "dynamic",
+      current_value: null,
+      candidate_value: "cloud infrastructure",
+      supporting_evidence: ["evidence-1"],
+      current_confidence: 0,
+      candidate_confidence: 0.82,
+      current_supporting_periods: [],
+      candidate_supporting_periods: ["2026-Q2"],
+      historical_supporting_periods: [],
+    });
+    const content = candidateContent([change]);
+
+    content.candidate_summary.changed_fields = 99;
+
+    assert.throws(
+      () => validateCompanyKnowledgeCandidateContent(content),
+      BuilderValidationError,
+    );
+  });
+
+  it("rejects evaluation hook mismatches", () => {
+    const change = compareField({
+      field_path: "management_focus",
+      stability_class: "dynamic",
+      current_value: null,
+      candidate_value: "cloud infrastructure",
+      supporting_evidence: ["evidence-1"],
+      current_confidence: 0,
+      candidate_confidence: 0.82,
+      current_supporting_periods: [],
+      candidate_supporting_periods: ["2026-Q2"],
+      historical_supporting_periods: [],
+    });
+    const content = candidateContent([change]);
+
+    content.evaluation_hooks.changed_fields = 99;
+
+    assert.throws(
+      () => validateCompanyKnowledgeCandidateContent(content),
+      BuilderValidationError,
+    );
   });
 
   it("records framework-owned lineage and preserves builder ownership boundaries", async () => {
@@ -462,6 +680,27 @@ function currentKnowledgeArtifact(knowledge: CompanyKnowledge): Artifact<Company
       governance_confidence: 0.9,
     },
   });
+}
+
+function companyKnowledgeHistoryArtifact(
+  versions: CompanyKnowledgeArtifactContent[],
+): Artifact<CompanyKnowledgeHistoryContent> {
+  return artifact("company-knowledge-history-artifact-1", "company_knowledge", {
+    versions,
+  });
+}
+
+function candidateContent(
+  changes: ReturnType<typeof compareField>[],
+): CompanyKnowledgeCandidateContent {
+  return {
+    company_id: "MSFT",
+    period_id: "2026-Q2",
+    filing_id: "msft-2026-q2-10q",
+    candidate_changes: changes,
+    candidate_summary: buildCandidateSummary(changes),
+    evaluation_hooks: buildEvaluationHooks(changes),
+  };
 }
 
 function artifact<T>(artifactId: string, artifactType: ArtifactType, content: T): Artifact<T> {

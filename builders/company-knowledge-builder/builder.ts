@@ -16,6 +16,7 @@ import { buildCompanyKnowledgeCandidateEvaluationHooks } from "./evaluation.js";
 import type {
   CompanyKnowledgeArtifactContent,
   CompanyKnowledgeBuilderInput,
+  CompanyKnowledgeHistoryContent,
   StructuredIntelligenceArtifactContent,
 } from "./types.js";
 import {
@@ -47,6 +48,9 @@ export class CompanyKnowledgeBuilder implements Builder<
     const currentKnowledge = optionalDependencyContent<CompanyKnowledgeArtifactContent>(
       context.dependencies.company_knowledge,
     );
+    const knowledgeHistory = optionalDependencyContent<CompanyKnowledgeHistoryContent>(
+      context.dependencies.company_knowledge_history,
+    );
 
     validateStructuredIntelligenceDependency(structuredIntelligence);
 
@@ -54,11 +58,18 @@ export class CompanyKnowledgeBuilder implements Builder<
       validateCompanyKnowledgeDependency(currentKnowledge);
     }
 
+    if (knowledgeHistory !== null) {
+      for (const version of knowledgeHistory.versions) {
+        validateCompanyKnowledgeDependency(version);
+      }
+    }
+
     const candidateKnowledge = buildCandidateKnowledgeFromStructuredIntelligence(structuredIntelligence);
     const comparisonResults = compareCompanyKnowledgeFields(
       currentKnowledge?.knowledge ?? null,
       candidateKnowledge,
       structuredIntelligence,
+      knowledgeHistory,
     );
     const candidateChanges = comparisonResults.filter((change) => change.supporting_evidence.length > 0);
     const content: CompanyKnowledgeCandidateContent = {

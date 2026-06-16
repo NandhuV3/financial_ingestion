@@ -2,19 +2,23 @@ import { createHash } from "node:crypto";
 import type { Artifact } from "../../../contracts/artifacts/artifact.js";
 import { ArtifactStatus } from "../../../contracts/artifacts/artifact-status.js";
 import type { ArtifactRepository } from "./artifact-repository.js";
-import type { ArtifactLookup, CreateArtifactParams } from "./artifact-types.js";
+import type { ArtifactLookup, CreateArtifactParams, ReservedArtifactId } from "./artifact-types.js";
 import { createArtifactId, nextArtifactVersion } from "./artifact-versioning.js";
 import { validateArtifact } from "./artifact-validation.js";
 
 export class ArtifactService {
   constructor(private readonly repository: ArtifactRepository) {}
 
+  reserveArtifactId(): ReservedArtifactId {
+    return createArtifactId() as ReservedArtifactId;
+  }
+
   async createArtifact<T>(params: CreateArtifactParams<T>): Promise<Artifact<T>> {
     const current = await this.repository.getCurrent<unknown>(params);
     const version = nextArtifactVersion(current);
     const artifact: Artifact<T> = {
       identity: {
-        artifact_id: createArtifactId(),
+        artifact_id: params.artifact_id ?? createArtifactId(),
         artifact_type: params.artifact_type,
         company_id: params.company_id,
         period_id: params.period_id,

@@ -14,6 +14,7 @@ export type StabilityClass = typeof STABILITY_CLASSES[number];
 export const CHANGE_TYPES = [
   "new_information",
   "minor_update",
+  "moderate_update",
   "major_update",
   "contradiction",
   "evidence_accumulation",

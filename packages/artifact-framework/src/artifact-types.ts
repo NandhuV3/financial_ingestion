@@ -10,7 +10,12 @@ export type ArtifactLookup = {
   period_id: string | null;
 };
 
+export type ReservedArtifactId = string & {
+  readonly __reservedArtifactId: unique symbol;
+};
+
 export type CreateArtifactParams<T> = ArtifactLookup & {
+  artifact_id?: ReservedArtifactId;
   content: T;
   lineage: ArtifactLineage;
   schema_version: string;
@@ -23,4 +28,3 @@ export type CreateArtifactParams<T> = ArtifactLookup & {
 };
 
 export type ArtifactRecord<T = unknown> = Artifact<T>;
-

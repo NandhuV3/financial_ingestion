@@ -127,6 +127,7 @@ export type FieldComparisonInput = {
   candidate_confidence: number;
   current_supporting_periods: string[];
   candidate_supporting_periods: string[];
+  historical_supporting_periods: string[];
 };
 
 export type ComparisonResult = CandidateChange & {

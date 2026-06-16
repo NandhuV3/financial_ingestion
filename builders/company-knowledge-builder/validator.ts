@@ -96,6 +96,47 @@ export function validateCompanyKnowledgeCandidateContent(content: CompanyKnowled
     throw new BuilderValidationError("content.candidate_summary.total_fields_evaluated must match candidate_changes length.");
   }
 
+  const expectedSummary = {
+    unchanged_fields: content.candidate_changes.filter((change) => change.change_type === "no_change").length,
+    changed_fields: content.candidate_changes.filter((change) => change.change_type !== "no_change").length,
+    major_changes: content.candidate_changes.filter((change) => change.change_type === "major_update").length,
+    contradictions: content.candidate_changes.filter((change) => change.change_type === "contradiction").length,
+    review_candidates: content.candidate_changes.filter((change) => change.review_required).length,
+  };
+
+  for (const [field, expected] of Object.entries(expectedSummary)) {
+    if (summary[field as keyof typeof expectedSummary] !== expected) {
+      throw new BuilderValidationError(`content.candidate_summary.${field} must match candidate_changes.`);
+    }
+  }
+
+  const hooks = content.evaluation_hooks;
+  const expectedRecommendationDistribution = {
+    candidate_promote: content.candidate_changes.filter((change) => change.builder_recommendation === "candidate_promote").length,
+    candidate_merge: content.candidate_changes.filter((change) => change.builder_recommendation === "candidate_merge").length,
+    candidate_review: content.candidate_changes.filter((change) => change.builder_recommendation === "candidate_review").length,
+    candidate_retain: content.candidate_changes.filter((change) => change.builder_recommendation === "candidate_retain").length,
+  };
+
+  assertHookCount(hooks.total_fields_evaluated, content.candidate_changes.length, "content.evaluation_hooks.total_fields_evaluated");
+  assertHookCount(hooks.changed_fields, expectedSummary.changed_fields, "content.evaluation_hooks.changed_fields");
+  assertHookCount(hooks.unchanged_fields, expectedSummary.unchanged_fields, "content.evaluation_hooks.unchanged_fields");
+  assertHookCount(hooks.contradiction_count, expectedSummary.contradictions, "content.evaluation_hooks.contradiction_count");
+  assertHookCount(
+    hooks.evidence_accumulation_count,
+    content.candidate_changes.filter((change) => change.change_type === "evidence_accumulation").length,
+    "content.evaluation_hooks.evidence_accumulation_count",
+  );
+  assertHookCount(hooks.review_candidate_count, expectedSummary.review_candidates, "content.evaluation_hooks.review_candidate_count");
+
+  for (const recommendation of BUILDER_RECOMMENDATIONS) {
+    assertHookCount(
+      hooks.recommendation_distribution[recommendation],
+      expectedRecommendationDistribution[recommendation],
+      `content.evaluation_hooks.recommendation_distribution.${recommendation}`,
+    );
+  }
+
   for (const stabilityClass of Object.keys(content.evaluation_hooks.stability_class_distribution)) {
     if (!validStabilityClasses.has(stabilityClass)) {
       throw new BuilderValidationError(`content.evaluation_hooks.stability_class_distribution.${stabilityClass} is invalid.`);
@@ -118,5 +159,13 @@ function requireConfidence(value: unknown, field: string): void {
 function requireCount(value: unknown, field: string): void {
   if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
     throw new BuilderValidationError(`${field} must be a non-negative integer.`);
+  }
+}
+
+function assertHookCount(actual: unknown, expected: number, field: string): void {
+  requireCount(actual, field);
+
+  if (actual !== expected) {
+    throw new BuilderValidationError(`${field} must match candidate_changes.`);
   }
 }
