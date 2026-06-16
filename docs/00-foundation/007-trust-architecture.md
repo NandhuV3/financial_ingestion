@@ -487,8 +487,6 @@ LANGUAGE_SHIFT_SIGNIFICANT
 
 CAPITAL_ALLOCATION_DIVERGENCE
 
-CFO_DEPARTURE
-
 EXPLANATION_QUALITY_GENERIC
 ```
 
@@ -640,18 +638,28 @@ Longitudinal Trust Assessment
 
 # Confidence Model
 
-Trust confidence depends on:
+Trust confidence derives from:
 
-- Evidence Depth
-- History Length
-- Signal Agreement
-- Artifact Coverage
+- Source evidence quality
+- Rule evaluation confidence
+- Evidence completeness
+- Artifact coverage
+
+Available pillar evidence may include:
+
+- Commitment Tracking
+- Narrative Consistency
+- Accounting Stability
+- Capital Allocation Tracking
+
+All pillars are not required.
 
 Confidence must decrease when:
 
 - History is short
 - Signals conflict
 - Evidence is missing
+- Pillar coverage is limited
 
 High confidence without evidence is forbidden.
 

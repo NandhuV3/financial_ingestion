@@ -172,6 +172,18 @@ trust_dimension = absent
 
 and must not generate trust conclusions.
 
+When TrustSignalsArtifact is present, Quarter Understanding must inspect:
+
+```text
+TrustSignalsArtifact.missing_dimensions
+```
+
+before generating trust interpretations.
+
+Missing dimensions represent trust dimensions whose owning pillar artifact was unavailable.
+
+Quarter Understanding and Investor Intelligence must propagate those coverage limitations.
+
 ---
 
 # Explicit Non-Inputs
