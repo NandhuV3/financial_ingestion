@@ -402,6 +402,149 @@ LOCKED.
 
 ---
 
+# Modularity Rules
+
+Implementation must be modular.
+
+Architecture compliance alone is not sufficient.
+
+Code must also be:
+
+* maintainable
+* reviewable
+* reusable
+* testable
+
+LOCKED.
+
+---
+
+# Single Responsibility Principle
+
+Files should have one primary responsibility.
+
+Examples:
+
+Good:
+
+```text
+builder.ts
+comparison-engine.ts
+validator.ts
+evaluation.ts
+```
+
+Bad:
+
+```text
+builder.ts
+
+- dependency resolution
+- comparison logic
+- validation logic
+- recommendation logic
+- scoring logic
+- reporting logic
+```
+
+Builders should orchestrate.
+
+Domain modules should implement domain logic.
+
+LOCKED.
+
+---
+
+# Builder Structure Rules
+
+Builders should primarily:
+
+* resolve dependencies
+* invoke domain modules
+* assemble outputs
+* return BuilderResult
+
+Builders should avoid owning:
+
+* comparison engines
+* classification engines
+* scoring engines
+* recommendation engines
+* validation engines
+
+Extract reusable logic into dedicated modules.
+
+LOCKED.
+
+---
+
+# File Size Guidance
+
+There is no fixed file size limit.
+
+However:
+
+* files should remain understandable
+* files should remain reviewable
+* files should remain maintainable
+
+When a file grows significantly, responsibilities should be evaluated and split where appropriate.
+
+Large files containing multiple responsibilities are discouraged.
+
+LOCKED.
+
+---
+
+# Function Design Rules
+
+Functions should perform a single logical task.
+
+Prefer:
+
+* small composable functions
+* explicit inputs
+* explicit outputs
+
+Avoid:
+
+* deeply nested logic
+* hidden side effects
+* large multi-purpose functions
+
+LOCKED.
+
+---
+
+# Reusability Rules
+
+Before creating new logic:
+
+1. Reuse existing implementation when appropriate.
+2. Extend existing implementation when justified.
+3. Create new implementation only when necessary.
+
+Avoid duplicate business logic across builders.
+
+LOCKED.
+
+---
+
+# Testability Rules
+
+Major responsibilities should be independently testable.
+
+Examples:
+
+* comparison engine tests
+* validator tests
+* recommendation engine tests
+* builder orchestration tests
+
+Avoid designs where critical behavior can only be tested indirectly through large orchestration flows.
+
+LOCKED.
+
 # Production Readiness Principle
 
 Prefer:

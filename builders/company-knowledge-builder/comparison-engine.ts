@@ -7,6 +7,7 @@ import {
 } from "./contract.js";
 import type {
   CompanyKnowledge,
+  CompanyKnowledgeHistoryContent,
   ComparisonResult,
   FieldComparisonInput,
   KnowledgeFieldPath,
@@ -18,6 +19,8 @@ const PROMOTION_RULES_VERSION = "company-knowledge-promotion-rules-v1";
 const NO_CHANGE_SIMILARITY_THRESHOLD = 0.9;
 const MINOR_UPDATE_SIMILARITY_THRESHOLD = 0.75;
 const MAJOR_UPDATE_SIMILARITY_THRESHOLD = 0.5;
+// Governed promotion threshold: "High Confidence" in the builder contract.
+const HIGH_CONFIDENCE_THRESHOLD = 0.8;
 
 const fieldStability: Record<KnowledgeFieldPath, StabilityClass> = {
   business_model: "stable",
@@ -112,6 +115,7 @@ export function compareCompanyKnowledgeFields(
   currentKnowledge: CompanyKnowledge | null,
   candidateKnowledge: CompanyKnowledge,
   structuredIntelligence: StructuredIntelligenceArtifactContent,
+  knowledgeHistory: CompanyKnowledgeHistoryContent | null = null,
 ): ComparisonResult[] {
   return fieldPaths().map((fieldPath) => compareField({
     field_path: fieldPath,
@@ -123,6 +127,11 @@ export function compareCompanyKnowledgeFields(
     candidate_confidence: extractConfidence(candidateKnowledge[fieldPath]),
     current_supporting_periods: extractSupportingPeriods(currentKnowledge?.[fieldPath]),
     candidate_supporting_periods: extractSupportingPeriods(candidateKnowledge[fieldPath]),
+    historical_supporting_periods: extractHistoricalSupportingPeriods(
+      knowledgeHistory,
+      fieldPath,
+      candidateKnowledge[fieldPath],
+    ),
   }));
 }
 
@@ -132,15 +141,29 @@ export function compareField(input: FieldComparisonInput): ComparisonResult {
     ? 0
     : calculateSemanticSimilarity(input.current_value, input.candidate_value);
   const confidenceDelta = round(input.candidate_confidence - input.current_confidence);
-  const evidenceDelta = Math.max(0, uniqueCount(input.candidate_supporting_periods) - uniqueCount(input.current_supporting_periods));
+  const candidateSupportingPeriods = [
+    ...input.candidate_supporting_periods,
+    ...input.historical_supporting_periods,
+  ];
+  const evidenceDelta = Math.max(0, uniqueCount(candidateSupportingPeriods) - uniqueCount(input.current_supporting_periods));
   const hasEvidenceAccumulation = evidenceDelta > 0 && semanticSimilarity >= NO_CHANGE_SIMILARITY_THRESHOLD;
-  const changeType = firstPopulation
+  const classifiedChangeType = firstPopulation
     ? "new_information"
     : classifyChange(semanticSimilarity, hasEvidenceAccumulation);
+  const changeType = !firstPopulation && detectContradiction(input, semanticSimilarity)
+    ? "contradiction"
+    : classifiedChangeType;
   const reviewRequired = input.stability_class === "stable" && !["no_change", "new_information"].includes(changeType)
     || changeType === "contradiction"
-    || changeType === "major_update";
-  const builderRecommendation = recommend(changeType, input.stability_class, confidenceDelta, evidenceDelta);
+    || changeType === "major_update"
+    || changeType === "moderate_update";
+  const builderRecommendation = recommend(
+    changeType,
+    input.stability_class,
+    input.candidate_confidence,
+    confidenceDelta,
+    evidenceDelta,
+  );
 
   return {
     field_path: input.field_path,
@@ -220,16 +243,28 @@ function classifyChange(semanticSimilarity: number, hasEvidenceAccumulation: boo
     return "minor_update";
   }
 
-  if (semanticSimilarity < MAJOR_UPDATE_SIMILARITY_THRESHOLD) {
-    return "contradiction";
+  if (semanticSimilarity >= MAJOR_UPDATE_SIMILARITY_THRESHOLD) {
+    return "moderate_update";
   }
 
   return "major_update";
 }
 
+function detectContradiction(
+  input: FieldComparisonInput,
+  semanticSimilarity: number,
+): boolean {
+  return input.stability_class === "stable"
+    && semanticSimilarity < MAJOR_UPDATE_SIMILARITY_THRESHOLD
+    && input.current_confidence >= HIGH_CONFIDENCE_THRESHOLD
+    && input.candidate_confidence >= HIGH_CONFIDENCE_THRESHOLD
+    && input.supporting_evidence.length > 0;
+}
+
 function recommend(
   changeType: CandidateChange["change_type"],
   stabilityClass: StabilityClass,
+  candidateConfidence: number,
   confidenceDelta: number,
   evidenceDelta: number,
 ): BuilderRecommendation {
@@ -241,7 +276,10 @@ function recommend(
     return "candidate_promote";
   }
 
-  if (changeType === "minor_update" && confidenceDelta >= 0 && evidenceDelta > 0) {
+  if (changeType === "minor_update"
+    && confidenceDelta > 0
+    && evidenceDelta > 0
+    && candidateConfidence >= HIGH_CONFIDENCE_THRESHOLD) {
     return "candidate_promote";
   }
 
@@ -312,6 +350,25 @@ function extractSupportingPeriods(value: unknown): string[] {
   }
 
   return [];
+}
+
+function extractHistoricalSupportingPeriods(
+  knowledgeHistory: CompanyKnowledgeHistoryContent | null,
+  fieldPath: KnowledgeFieldPath,
+  candidateValue: unknown,
+): string[] {
+  if (!knowledgeHistory) {
+    return [];
+  }
+
+  return knowledgeHistory.versions.flatMap((version) => {
+    const historicalValue = version.knowledge[fieldPath];
+    const similarity = calculateSemanticSimilarity(historicalValue, candidateValue);
+
+    return similarity >= NO_CHANGE_SIMILARITY_THRESHOLD
+      ? extractSupportingPeriods(historicalValue)
+      : [];
+  });
 }
 
 function fieldPaths(): KnowledgeFieldPath[] {
