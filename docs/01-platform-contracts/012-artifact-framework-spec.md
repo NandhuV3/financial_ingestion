@@ -8,6 +8,22 @@ Owner: Architecture
 
 ---
 
+# Canonical Object Model
+
+Platform object taxonomy is owned by:
+
+```text
+docs/00-foundation/010-platform-object-model.md
+```
+
+This specification does not redefine the platform object model.
+
+The Artifact Framework defines persistence, versioning, lineage, archive, auditability, and lifecycle mechanics for objects that are persisted as artifacts.
+
+LOCKED.
+
+---
+
 # Purpose
 
 The Artifact Framework defines the canonical storage,
@@ -19,6 +35,53 @@ All platform intelligence is represented as artifacts.
 Artifacts are first-class assets.
 
 Artifacts are not transient outputs.
+
+---
+
+# Relationship To Platform Object Classes
+
+The platform object classes are:
+
+```text
+Intelligence Artifacts
+Governance Artifacts
+Operational Records
+```
+
+The canonical definitions live in:
+
+```text
+docs/00-foundation/010-platform-object-model.md
+```
+
+## Intelligence Artifacts
+
+The Artifact Framework owns artifact mechanics for Intelligence Artifacts:
+
+- identity
+- metadata
+- lineage
+- versioning
+- archive
+- current pointer
+- hashes
+- immutable persistence
+
+## Governance Artifacts
+
+The Artifact Framework owns the same artifact mechanics for Governance Artifacts when a governance contract defines the object as an artifact.
+
+The Artifact Framework does not own governance meaning, approval logic, review decisions, promotion decisions, or rollback approval.
+
+## Operational Records
+
+Operational Records are not automatically artifacts.
+
+The Artifact Framework persists Operational Records only when a platform contract explicitly defines that record as an artifact.
+
+Otherwise, Operational Records belong to their owning audit, event, metrics, log, recovery, or observability store.
+
+LOCKED.
 
 ---
 
@@ -52,7 +115,17 @@ Layers consume artifacts only.
 
 ---
 
-# Artifact Categories
+# Legacy Artifact Category Examples
+
+The following examples predate the canonical platform object model.
+
+Use:
+
+```text
+docs/00-foundation/010-platform-object-model.md
+```
+
+for authoritative object classification.
 
 ## Layer Artifacts
 

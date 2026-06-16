@@ -455,6 +455,47 @@ LOCKED.
 
 ---
 
+# File Responsibility Rules
+
+Each file must have an explicit responsibility.
+
+A file must not mix:
+
+* domain decisions and persistence
+* validation and decision logic
+* orchestration and storage adapters
+* audit construction and artifact mutation
+* prompt construction and provider invocation
+* production logic and test fixtures
+
+When a file starts owning multiple responsibilities, split it before adding more behavior.
+
+LOCKED.
+
+---
+
+# Separation Of Concerns Rules
+
+Implementation boundaries must match architecture boundaries.
+
+Builders propose.
+
+Governance decides.
+
+Artifact Framework persists and versions artifacts.
+
+Dependency Index stores dependency state.
+
+Invalidation Engine evaluates propagation.
+
+Observability records execution behavior.
+
+No module may bypass the owner of a responsibility for convenience.
+
+LOCKED.
+
+---
+
 # Builder Structure Rules
 
 Builders should primarily:
@@ -480,17 +521,17 @@ LOCKED.
 
 # File Size Guidance
 
-There is no fixed file size limit.
+Files should remain small enough to review and audit.
 
-However:
+Guidance:
 
-* files should remain understandable
-* files should remain reviewable
-* files should remain maintainable
+* prefer files under 250 lines for domain logic
+* prefer files under 400 lines for orchestration
+* split files earlier when responsibilities diverge
 
-When a file grows significantly, responsibilities should be evaluated and split where appropriate.
+These are maintainability thresholds, not permission to create large files.
 
-Large files containing multiple responsibilities are discouraged.
+Exceeding them requires a clear architectural reason.
 
 LOCKED.
 
@@ -544,6 +585,32 @@ Examples:
 Avoid designs where critical behavior can only be tested indirectly through large orchestration flows.
 
 LOCKED.
+
+---
+
+## Test Structure Rules
+
+Test files own behavior verification only.
+
+Shared fixtures must live in:
+- fixtures.ts
+- builders.ts
+- test-data.ts
+
+Repository mocks must live in:
+- test repositories
+- test doubles
+- harness modules
+
+Avoid placing:
+- fixtures
+- repositories
+- builders
+- large mock objects
+
+inside behavior test files.
+
+---
 
 # Production Readiness Principle
 

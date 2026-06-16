@@ -6,6 +6,7 @@ export const ARTIFACT_TYPES = [
   "quarter_change",
   "structured_intelligence",
   "company_knowledge_candidate",
+  "governance_decision",
   "company_knowledge",
   "business_signals",
   "quarter_understanding",

@@ -6,6 +6,60 @@ Owner: Knowledge Governance Layer
 
 ---
 
+# Platform Object Classification
+
+Object classification follows:
+
+```text
+docs/00-foundation/010-platform-object-model.md
+```
+
+Company Knowledge Governance uses all three platform object classes.
+
+## Intelligence Artifacts
+
+Approved Company Knowledge is an Intelligence Artifact.
+
+It is downstream visible according to Company Knowledge dependency contracts.
+
+## Governance Artifacts
+
+The following Company Knowledge Governance objects are Governance Artifacts:
+
+- Company Knowledge Candidate
+- Governance Decision
+- Review Queue Entry
+- Promotion Decision
+- Human Review Decision
+- Rollback Approval
+
+Governance Artifacts are replayable and auditable.
+
+Governance Artifacts are visible to governance workflows and audit/replay tooling.
+
+Governance Artifacts are not downstream intelligence inputs unless explicitly stated by a domain contract.
+
+Company Knowledge Candidate artifacts are not dependency-index registered.
+
+Approved Company Knowledge is dependency-index registered.
+
+## Operational Records
+
+The following Company Knowledge Governance objects are Operational Records:
+
+- Company Knowledge Audit Entry
+- Rollback Execution Record
+- governance metrics
+- governance logs
+
+Operational Records are not downstream intelligence artifacts.
+
+Operational Records support auditability, recovery, replay, and observability.
+
+LOCKED.
+
+---
+
 # Purpose
 
 Company Knowledge Governance answers:
