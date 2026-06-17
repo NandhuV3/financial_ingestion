@@ -375,6 +375,15 @@ export function validQuarterUnderstandingContent(): QuarterUnderstandingArtifact
       trust_dimension: "absent",
       longitudinal_dimension: "absent",
     },
+    limitations: {
+      trust_dimension_gaps: [
+        "commitment_follow_through",
+        "narrative_consistency",
+        "explanation_quality",
+        "accounting_stability",
+        "capital_allocation_consistency",
+      ],
+    },
     confidence: {
       overall: 0.8,
       grounding_score: 0.8,
