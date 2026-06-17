@@ -139,10 +139,18 @@ LOCKED.
 Required:
 
 ```text
+Company Knowledge
+
 Quarter Understanding
 ```
 
-Investor Intelligence may not generate an artifact without Quarter Understanding.
+Investor Intelligence may not generate an artifact without:
+
+```text
+Company Knowledge
+
+Quarter Understanding
+```
 
 LOCKED.
 
@@ -153,18 +161,33 @@ LOCKED.
 Optional:
 
 ```text
-Market Context
-Industry Context
-Valuation Context
-Cross-Company Context
+Business Signals
+
+Trust Signals
+
+Commitment Tracking
+
+Topic Evolution
+
+Prior Investor Intelligence
+
+Market Data
 ```
 
-Future enrichment:
+Enrichment scope:
 
 ```text
-Macro Context
-Alternative Data
-Portfolio Context
+Business Signals: Q2 only
+
+Trust Signals: conditional exception only
+
+Commitment Tracking: Q3 longitudinal depth only
+
+Topic Evolution: longitudinal context
+
+Prior Investor Intelligence: historical continuity
+
+Market Data: Q4 only
 ```
 
 Missing enrichment reduces depth.
@@ -200,10 +223,12 @@ type EnrichmentInputStatus = {
 
 ```ts
 type EnrichmentStatus = {
-  market_context: EnrichmentInputStatus;
-  industry_context: EnrichmentInputStatus;
-  valuation_context: EnrichmentInputStatus;
-  cross_company_context: EnrichmentInputStatus;
+  business_signals: EnrichmentInputStatus;
+  trust_signals: EnrichmentInputStatus;
+  commitment_tracking: EnrichmentInputStatus;
+  topic_evolution: EnrichmentInputStatus;
+  prior_investor_intelligence: EnrichmentInputStatus;
+  market_data: EnrichmentInputStatus;
 };
 ```
 
@@ -377,7 +402,23 @@ Q2 owns:
 * Capital efficiency synthesis
 * Financial durability synthesis
 
-Q2 must be grounded in Quarter Understanding.
+Q2 must be grounded in:
+
+```text
+Company Knowledge
+
+Quarter Understanding
+```
+
+Q2 may consume:
+
+```text
+Business Signals
+```
+
+only as Q2 enrichment.
+
+Q2 does not generate Business Signals.
 
 LOCKED.
 
@@ -401,6 +442,26 @@ Q3 owns:
 Q3 consumes trust interpretation from Quarter Understanding.
 
 Q3 does not generate Trust Signals.
+
+Q3 may consume Trust Signals directly only when:
+
+```text
+quarter_understanding.depth_indicator.trust_dimension = "absent"
+```
+
+When:
+
+```text
+quarter_understanding.depth_indicator.trust_dimension = "present"
+```
+
+Trust Signals must not be consumed directly.
+
+Quarter Understanding remains the sole trust interpretation source.
+
+Commitment Tracking may be consumed only for Q3 longitudinal depth enrichment.
+
+Investor Intelligence must not consume Trust pillar artifacts other than the explicit Commitment Tracking longitudinal-depth exception.
 
 LOCKED.
 
@@ -428,6 +489,16 @@ Q3 must explicitly record:
 
 ```text
 Trust Depth Limitation
+```
+
+Validation must enforce:
+
+```text
+If quarter_understanding.depth_indicator.trust_dimension = "present",
+trust_signals must not be present in the Q3 context.
+
+If quarter_understanding.depth_indicator.trust_dimension = "absent",
+trust_signals may be present only as the conditional fallback source.
 ```
 
 LOCKED.
@@ -479,10 +550,22 @@ LOCKED.
 
 # Q4 Valuation Context Rule
 
+Sprint 11 behavior:
+
+```text
+Q4.status = "insufficient_data"
+
+Q4.absent_reason = "market_data_unavailable"
+```
+
+Market data integration is deferred.
+
+Valuation methodology is future work and is not implemented in Sprint 11.
+
 When:
 
 ```text
-valuation_context.available = false
+market_data.available = false
 ```
 
 Q4 must:
@@ -498,6 +581,50 @@ Q4 may not generate:
 * Valuation-sensitive conclusions
 * Cheap/Expensive conclusions
 * Mispricing conclusions
+* Price targets
+
+LOCKED.
+
+---
+
+# Ownership Boundary
+
+Investor Intelligence synthesizes.
+
+Investor Intelligence does not:
+
+* Generate signals
+* Reinterpret raw trust evidence
+* Consume trust pillar artifacts except Commitment Tracking for Q3 longitudinal depth
+* Consume Quarter Change directly
+* Produce buy/sell/hold recommendations
+* Produce price targets
+
+LOCKED.
+
+---
+
+# Replayability
+
+Investor Intelligence must support replay through:
+
+```text
+per_question_input_hashes
+
+coherence_hash
+
+artifact lineage
+
+deterministic context assembly
+```
+
+Each Q1-Q5 section must record the input hash for the exact question context used.
+
+The artifact must record a coherence hash over the assembled Q1-Q5 outputs and shared context.
+
+Lineage must include required inputs and every enrichment input actually used.
+
+Context assembly must be deterministic and must not depend on unordered input traversal.
 
 LOCKED.
 
@@ -572,7 +699,7 @@ Trust Signals unavailable.
 Q4:
 
 ```text
-Valuation Context unavailable.
+Market Data unavailable.
 ```
 
 Q1:
@@ -611,10 +738,12 @@ enrichment_status
 before generating conclusions dependent on:
 
 ```text
-Market Context
-Industry Context
-Valuation Context
-Cross-Company Context
+Business Signals
+Trust Signals
+Commitment Tracking
+Topic Evolution
+Prior Investor Intelligence
+Market Data
 ```
 
 LOCKED.
@@ -816,16 +945,20 @@ Investor Intelligence must be replayable.
 Required lineage:
 
 ```text
+Company Knowledge
+
 Quarter Understanding
 ```
 
 Optional lineage:
 
 ```text
-Market Context
-Industry Context
-Valuation Context
-Cross-Company Context
+Business Signals
+Trust Signals
+Commitment Tracking
+Topic Evolution
+Prior Investor Intelligence
+Market Data
 ```
 
 LOCKED.

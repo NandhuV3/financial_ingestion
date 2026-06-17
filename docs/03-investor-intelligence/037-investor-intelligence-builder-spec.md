@@ -22,8 +22,8 @@ It coordinates:
 - Q4 generation (optional)
 - Q5 synthesis
 - confidence propagation
-- lineage construction
-- artifact assembly
+- replayability metadata construction
+- artifact content assembly
 
 ---
 
@@ -34,9 +34,6 @@ Quarter Understanding
         ↓
 
 Company Knowledge
-        ↓
-
-Trust Artifacts
         ↓
 
 Investor Intelligence Builder
@@ -65,9 +62,9 @@ Builder owns:
 - dependency validation
 - execution ordering
 - confidence propagation
-- artifact assembly
-- lineage generation
-- partial invalidation support
+- artifact content assembly
+- prompt/replayability lineage generation
+- invalidation metadata emission
 
 Builder does NOT own:
 
@@ -92,23 +89,35 @@ Build Context
 
 Execute Questions
 
-Assemble Artifact
+Assemble Artifact Content
 
 Calculate Confidence
 
-Generate Lineage
+Generate Replayability Metadata
 
-Publish Artifact
+Return BuilderResult<InvestorIntelligenceArtifactContent>
+
+Artifact Framework Persistence/Versioning
+```
+
+Replayability requires:
+
+```text
+per-question input hashes
+
+coherence hash
+
+prompt lineage and replayability references for required inputs and used enrichment inputs
+
+deterministic context assembly
 ```
 
 ---
 
-# Artifact Produced
+# Artifact Content Produced
 
 ```typescript
-type InvestorIntelligenceArtifact = {
-  artifact_id: string;
-
+type InvestorIntelligenceArtifactContent = {
   company: string;
 
   period: string;
@@ -125,11 +134,20 @@ type InvestorIntelligenceArtifact = {
 
   artifact_confidence: InvestorConfidence;
 
-  lineage: InvestorLineage;
+  prompt_lineage: InvestorPromptLineage;
 
-  metadata: Metadata;
+  per_question_input_hashes: PerQuestionInputHashes;
+
+  coherence_hash: string;
+
+  output_hash: string;
+
+  evaluation_hooks: InvestorIntelligenceEvaluationHooks;
 };
 ```
+
+Artifact Framework provides artifact identity, metadata, Artifact Framework
+lineage, versioning, hashes, persistence, current pointer, and archive/history.
 
 ---
 
@@ -141,24 +159,22 @@ Required:
 Company Knowledge
 
 Quarter Understanding
-
-Business Signals
-
-Topic Evolution
-
-Commitment Tracking
-
-Narrative Consistency
-
-Accounting Stability
 ```
 
 Optional:
 
 ```text
-Market Data
+Business Signals (Q2 only)
 
-Valuation Data
+Trust Signals (conditional exception only)
+
+Commitment Tracking (Q3 longitudinal depth only)
+
+Topic Evolution
+
+Prior Investor Intelligence
+
+Market Data
 
 Historical Investor Intelligence
 ```
@@ -177,7 +193,11 @@ type DependencyValidation = {
 
   quarter_understanding: boolean;
 
-  trust_artifacts: boolean;
+  business_signals: boolean;
+
+  trust_signals: boolean;
+
+  commitment_tracking: boolean;
 
   topic_evolution: boolean;
 };
@@ -214,16 +234,52 @@ Build Failure
 Missing:
 
 ```text
-Trust Artifacts
+Business Signals
 ```
 
 Result:
 
 ```text
-Q3 Partial
+Q2 Reduced Coverage
 ```
 
-not build failure.
+Missing:
+
+```text
+Trust Signals
+```
+
+Result:
+
+```text
+Q3 uses Quarter Understanding trust interpretation when available.
+
+Q3 records trust limitation when Quarter Understanding trust_dimension is absent.
+```
+
+Missing:
+
+```text
+Commitment Tracking
+```
+
+Result:
+
+```text
+Q3 Longitudinal Depth Reduced
+```
+
+Missing:
+
+```text
+Topic Evolution
+```
+
+Result:
+
+```text
+Longitudinal Depth Reduced
+```
 
 ---
 
@@ -404,6 +460,9 @@ and:
 ```typescript
 Q4.status =
   "insufficient_data"
+
+Q4.absent_reason =
+  "market_data_unavailable"
 ```
 
 ---
@@ -509,16 +568,18 @@ weakest_input:
 
 ---
 
-# Lineage Generation
+# Replayability Lineage Generation
 
-Builder generates artifact lineage.
+Builder generates prompt lineage and replayability metadata.
+
+Artifact Framework generates Artifact Framework lineage.
 
 ---
 
-# Artifact Lineage
+# Prompt/Replayability Lineage
 
 ```typescript
-type InvestorLineage = {
+type InvestorPromptLineage = {
   company_knowledge_version: number;
 
   quarter_understanding_version: number;
@@ -591,7 +652,8 @@ independently.
 artifact_version
 ```
 
-increments whenever any question changes.
+is owned by Artifact Framework and increments according to Artifact Framework
+versioning rules.
 
 ---
 
@@ -743,7 +805,7 @@ Confidence Validation
 
 Forbidden Language Scan
 
-Lineage Validation
+Replayability Metadata Validation
 ```
 
 ---
@@ -772,7 +834,7 @@ Invalid Schema
 
 # Fail Build
 
-Missing Lineage
+Missing Replayability Metadata
 
 ---
 
@@ -834,10 +896,12 @@ for evaluation pipeline.
 
 ```typescript
 {
-  artifact_version,
   confidence,
   prompt_versions,
-  lineage,
+  prompt_lineage,
+  per_question_input_hashes,
+  coherence_hash,
+  output_hash,
   question_statuses
 }
 ```
@@ -846,7 +910,7 @@ for evaluation pipeline.
 
 # Dependency Index Integration
 
-Builder registers:
+Dependency Index registers:
 
 ```text
 Investor Intelligence
@@ -863,7 +927,13 @@ Business Signals
 
 Topic Evolution
 
-Trust Artifacts
+Trust Signals (conditional exception only)
+
+Commitment Tracking (Q3 longitudinal depth only)
+
+Prior Investor Intelligence
+
+Market Data
 ```
 
 ---
@@ -952,7 +1022,7 @@ LOCKED.
 6. Questions maintain independent versions.
 7. Partial invalidation is mandatory.
 8. Confidence propagates upward.
-9. Lineage is mandatory.
+9. Replayability metadata is mandatory.
 10. Builder must be fully replayable and auditable.
 
 End of Specification.

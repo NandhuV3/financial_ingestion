@@ -50,10 +50,6 @@ Transform:
 Company Knowledge
 +
 Quarter Understanding
-+
-Topic Evolution
-+
- Business Signals
 ```
 
 into:
@@ -104,17 +100,15 @@ Company Knowledge
 
 Quarter Understanding
 
+## Enrichment
+
 Business Signals
 
 Topic Evolution
 
----
-
-# Optional Inputs
-
 Historical Investor Intelligence
 
-Historical Quarter Understanding
+Prior Investor Intelligence
 
 ---
 
@@ -283,9 +277,8 @@ type Q2Answer = {
 
   evidence_package: Q2EvidencePackage;
 
-  lineage: Q2Lineage;
-
-  metadata: Metadata;
+  replayability_metadata:
+    Q2ReplayabilityMetadata;
 };
 ```
 
@@ -684,10 +677,10 @@ across periods.
 
 ---
 
-# Lineage
+# Replayability Metadata
 
 ```typescript
-type Q2Lineage = {
+type Q2ReplayabilityMetadata = {
   company_knowledge_version: number;
 
   quarter_understanding_version: number;
@@ -704,19 +697,16 @@ type Q2Lineage = {
 };
 ```
 
+This is replayability metadata owned by Investor Intelligence and is not
+Artifact Framework lineage.
+
 ---
 
-# Metadata
+# Artifact Framework Metadata
 
-```typescript
-type Metadata = {
-  artifact_version: number;
-
-  generated_at: string;
-
-  schema_version: string;
-};
-```
+Metadata, artifact_version, Artifact Framework lineage, artifact-level hashes,
+persistence, current pointer, and archive/history are provided by Artifact
+Framework and are not part of Q2 content.
 
 ---
 
@@ -748,7 +738,7 @@ LOCKED.
 5. All growth claims require evidence.
 6. Revenue drivers must be traceable.
 7. Growth durability must be explicit.
-8. Topic Evolution is required for persistence assessment.
+8. Topic Evolution enriches persistence assessment; absence must be recorded as a limitation.
 9. Q2 is forward-looking but evidence-grounded.
 10. Q2 serves as a primary input into Q5 ownership thesis generation.
 

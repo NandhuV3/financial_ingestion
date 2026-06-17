@@ -21,15 +21,6 @@ Investor Intelligence is the company-level synthesis layer.
 Company Knowledge
         ↓
 
-Business Signals
-        ↓
-
-Topic Evolution
-        ↓
-
-Trust Artifacts
-        ↓
-
 Quarter Understanding
         ↓
 
@@ -39,6 +30,20 @@ Investor Intelligence
 Partner Domain
 
 Investor Intelligence sits above Quarter Understanding and synthesizes information across time.
+
+Required inputs:
+
+- Company Knowledge
+- Quarter Understanding
+
+Enrichment inputs:
+
+- Business Signals (Q2 only)
+- Trust Signals (conditional exception only)
+- Commitment Tracking (Q3 longitudinal depth only)
+- Topic Evolution
+- Prior Investor Intelligence
+- Market Data
 
 ---
 
@@ -126,6 +131,10 @@ Primary Inputs:
 
 - Company Knowledge
 - Quarter Understanding
+
+Enrichment Inputs:
+
+- Business Signals (Q2 only)
 - Topic Evolution
 
 Purpose:
@@ -147,9 +156,11 @@ Requires synthesis.
 Primary Inputs:
 
 - Trust Interpretation
-- Commitment Tracking
-- Narrative Consistency
-- Accounting Stability
+
+Conditional Inputs:
+
+- Trust Signals only when Quarter Understanding trust dimension is absent
+- Commitment Tracking only for longitudinal depth
 
 Purpose:
 
@@ -165,6 +176,14 @@ Management credibility versus observable reality.
 
 Trust is NOT risk.
 
+Investor Intelligence does not consume trust pillar artifacts directly.
+
+Quarter Understanding remains the sole trust interpretation source when:
+
+```text
+quarter_understanding.depth_indicator.trust_dimension = "present"
+```
+
 LOCKED.
 
 ---
@@ -175,25 +194,38 @@ LOCKED.
 
 Primary Inputs:
 
-- Market Data
 - Company Knowledge
-- Investor Intelligence Context
+- Quarter Understanding
+
+Enrichment Inputs:
+
+- Market Data
 
 Purpose:
 
-Evaluate:
+Frame:
 
-- Valuation Context
-- Market Expectations
-- Business Quality versus Price
+- Market expectation context when available
+- Limitations when market data is unavailable
 
 Q4 may return:
 
 ```text
-INSUFFICIENT_DATA
+insufficient_data
 ```
 
 until valuation infrastructure exists.
+
+Sprint 11 behavior:
+
+```text
+status = "insufficient_data"
+absent_reason = "market_data_unavailable"
+```
+
+Market data integration is deferred.
+
+Valuation methodology is future work and is not implemented in Sprint 11.
 
 LOCKED.
 
@@ -241,6 +273,32 @@ LOCKED.
 
 ---
 
+# Ownership Boundary
+
+Investor Intelligence synthesizes.
+
+Investor Intelligence does not:
+
+- generate signals
+- reinterpret raw trust evidence
+- consume trust pillar artifacts
+- consume Quarter Change directly
+- produce buy/sell/hold recommendations
+- produce price targets
+
+---
+
+# Replayability
+
+Investor Intelligence must record:
+
+- per-question input hashes
+- coherence hash
+- prompt lineage and replayability references for required inputs and used enrichment inputs
+- deterministic context assembly rules
+
+---
+
 # Artifact Structure
 
 Investor Intelligence is a single artifact.
@@ -249,10 +307,10 @@ Per-question versioning exists internally.
 
 ---
 
-## Artifact Schema
+## Artifact Content Schema
 
 ```typescript
-type InvestorIntelligenceArtifact = {
+type InvestorIntelligenceArtifactContent = {
   company_id: string;
 
   period_id: string;
@@ -265,15 +323,26 @@ type InvestorIntelligenceArtifact = {
     q5: Q5Answer;
   };
 
-  artifact_version: number;
+  prompt_lineage: InvestorPromptLineage;
+
+  prompt_versions: PromptVersions;
+
+  model_versions: ModelVersions;
+
+  per_question_input_hashes: PerQuestionInputHashes;
 
   coherence_hash: string;
 
-  metadata: ArtifactMetadata;
+  output_hash: string;
 
-  lineage: ArtifactLineage;
+  evaluation_hooks: InvestorIntelligenceEvaluationHooks;
 }
 ```
+
+This is Investor Intelligence content. Artifact Framework wraps this content
+and owns artifact identity, artifact_id, metadata, Artifact Framework lineage,
+versioning, artifact_version, persistence, current pointer, archive/history,
+and framework-level hashes.
 
 ---
 
@@ -552,12 +621,26 @@ Are thesis-breaking conditions explicit?
 
 # Storage Structure
 
-investor-intelligence/
-├── current.json
-├── archive/
-├── lineage/
-├── evaluations/
-└── longitudinal-index/
+Artifact Framework:
+├── identity
+├── metadata
+├── lineage
+├── versioning
+├── persistence
+├── current pointer
+└── archive/history
+
+Investor Intelligence content:
+├── q1-q5 answers
+├── evidence packages
+├── confidence
+├── enrichment/depth
+├── prompt lineage
+├── prompt/model versions
+├── per-question input hashes
+├── coherence hash
+├── output hash
+└── evaluation hooks
 
 ---
 

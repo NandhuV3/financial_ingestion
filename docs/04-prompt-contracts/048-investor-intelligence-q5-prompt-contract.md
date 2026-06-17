@@ -530,8 +530,11 @@ Q3 is mandatory.
 If:
 
 ```typescript
-q3.trust_verdict ==
-"trust_concerns"
+q3.trust_assessment === null
+
+or
+
+q3.trust_depth_limitation !== null
 ```
 
 Then:

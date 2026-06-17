@@ -22,8 +22,12 @@ Consumes:
 
 - Company Knowledge Artifact
 - Quarter Understanding Artifact
-- Trust Artifacts
-- Market Data (Q4 only)
+- Business Signals Artifact (Q2 enrichment only)
+- Trust Signals Artifact (conditional exception only)
+- Commitment Tracking Artifact (Q3 longitudinal depth only)
+- Topic Evolution Artifact
+- Prior Investor Intelligence Artifact
+- Market Data Artifact (Q4 enrichment only)
 
 Produces:
 
@@ -70,9 +74,6 @@ Company Knowledge
             ↓
 
 Quarter Understanding
-            ↓
-
-Trust Artifacts
             ↓
 
 Investor Intelligence Builder
@@ -189,23 +190,42 @@ another question's responsibility.
 
 Investor Intelligence Builder owns:
 
-- dependency resolution
-- question orchestration
+- orchestration
+- dependency validation
+- context assembly
 - prompt execution
-- boundary enforcement
+- response parsing
 - confidence computation
 - artifact assembly
-- lineage generation
+- artifact content assembly
+- replayability metadata emission
+- validation
+
+Artifact Framework owns:
+
 - persistence
+- artifact versioning
+- current pointer management
+- archival/history
+
+Dependency Index owns:
+
 - dependency registration
+- dependency graph management
+- invalidation state
 
 Builder does NOT own:
 
 - business memory
 - signal generation
 - trust signals
+- raw trust evidence reinterpretation
 - company knowledge
 - partner presentation
+- Quarter Change processing
+- valuation methodology
+- buy/sell/hold recommendations
+- price targets
 
 ---
 
@@ -248,17 +268,17 @@ type InvestorIntelligenceBuilderInput = {
 
 12. Validate Boundaries
 
-13. Assemble Artifact
+13. Assemble Artifact Content
 
 14. Compute Confidence
 
-15. Persist
+15. Return BuilderResult<InvestorIntelligenceArtifactContent>
 
-16. Register Dependencies
+16. Artifact Framework Persistence/Versioning
 
-17. Execute Evaluation
+17. Dependency Index Registration
 
-18. Publish
+18. Evaluation Hook Emission
 ```
 
 ---
@@ -283,29 +303,65 @@ Dependency Index
 Company Knowledge
 
 Quarter Understanding
+
+Business Signals (optional, Q2 only)
+
+Topic Evolution (optional)
 ```
 
----
-
-# Required Trust Artifacts
+# Enrichment Artifacts
 
 ```text
+Business Signals
+
+Trust Signals
+
 Commitment Tracking
 
-Narrative Consistency
+Topic Evolution
 
-Accounting Stability
-```
+Prior Investor Intelligence
 
----
-
-# Optional
-
-```text
 Market Data
 ```
 
-for Q4.
+Business Signals is available to Q2 only.
+
+Trust Signals may be consumed directly only when:
+
+```text
+quarter_understanding.depth_indicator.trust_dimension = "absent"
+```
+
+When:
+
+```text
+quarter_understanding.depth_indicator.trust_dimension = "present"
+```
+
+Trust Signals must not be consumed directly.
+
+Quarter Understanding remains the sole trust interpretation source.
+
+Commitment Tracking may be consumed only for Q3 longitudinal depth.
+
+Topic Evolution is longitudinal enrichment.
+
+Prior Investor Intelligence supports continuity.
+
+Market Data is Q4 enrichment only.
+
+Sprint 11 Q4 behavior:
+
+```text
+Q4.status = "insufficient_data"
+
+Q4.absent_reason = "market_data_unavailable"
+```
+
+Market data integration is deferred.
+
+Valuation methodology is future work and is not implemented in Sprint 11.
 
 ---
 
@@ -319,14 +375,20 @@ type UpstreamArtifacts = {
   quarter_understanding:
     QuarterUnderstandingArtifact;
 
+  business_signals:
+    BusinessSignalsArtifact | null;
+
+  trust_signals:
+    TrustSignalsArtifact | null;
+
   commitment_tracking:
-    CommitmentTrackingArtifact;
+    CommitmentTrackingArtifact | null;
 
-  narrative_consistency:
-    NarrativeConsistencyArtifact;
+  topic_evolution:
+    TopicEvolutionArtifact | null;
 
-  accounting_stability:
-    AccountingStabilityArtifact;
+  prior_investor_intelligence:
+    InvestorIntelligenceArtifact | null;
 
   market_data:
     MarketDataArtifact | null;
@@ -353,6 +415,14 @@ Not Stale
 
 ```text
 Build Failure
+```
+
+Enrichment artifacts must not be treated as mandatory.
+
+Validation must fail if Trust Signals are supplied directly while:
+
+```text
+quarter_understanding.depth_indicator.trust_dimension = "present"
 ```
 
 ---
@@ -428,9 +498,11 @@ Quarter Understanding
 # Q3 Context
 
 ```text
-Trust Artifacts
-
 Quarter Understanding
+
+Trust Signals (optional, only when Quarter Understanding trust_dimension = absent)
+
+Commitment Tracking (optional, longitudinal depth only)
 ```
 
 ---
@@ -438,13 +510,21 @@ Quarter Understanding
 # Q4 Context
 
 ```text
-Market Data
-
 Q1
 
 Q2
 
 Q3
+
+Market Data (deferred in Sprint 11)
+```
+
+Sprint 11 sets:
+
+```text
+Q4.status = "insufficient_data"
+
+Q4.absent_reason = "market_data_unavailable"
 ```
 
 ---
@@ -711,20 +791,21 @@ Artifact Rejected
 
 # Step 13
 
-Assemble Artifact
+Assemble Artifact Content
 
 ---
 
 # Output
 
 ```typescript
-type InvestorIntelligenceArtifact = {
-  artifact_id: string;
+type InvestorIntelligenceArtifactContent = {
+  company_id:
+    string;
 
-  artifact_type:
-    "investor_intelligence";
+  period_id:
+    string;
 
-  business_key: {
+  business_key?: {
     company_id: string;
 
     period_id: string;
@@ -745,13 +826,38 @@ type InvestorIntelligenceArtifact = {
   q5:
     Q5Answer;
 
-  lineage:
-    InvestorIntelligenceLineage;
+  confidence:
+    InvestorConfidence;
 
-  metadata:
-    ArtifactMetadata;
+  enrichment_status:
+    EnrichmentStatus;
+
+  depth_indicator:
+    DepthIndicator;
+
+  per_question_input_hashes:
+    PerQuestionInputHashes;
+
+  coherence_hash:
+    string;
+
+  output_hash:
+    string;
+
+  prompt_lineage:
+    InvestorPromptLineage;
+
+  evaluation_hooks:
+    InvestorIntelligenceEvaluationHooks;
 };
 ```
+
+Artifact Framework provides artifact identity, artifact type, metadata,
+Artifact Framework lineage, versioning, hashes, persistence, current pointer,
+and archive/history.
+
+Investor Intelligence Builder provides only artifact content and
+builder-owned replayability metadata.
 
 ---
 
@@ -839,26 +945,36 @@ Evaluation Architecture
 
 # Step 15
 
-Persistence
+Return BuilderResult<InvestorIntelligenceArtifactContent>
 
 ---
 
-# Storage
+# Step 16
 
 ```text
-Artifact Store
+Artifact Framework Persistence/Versioning
 ```
 
 ---
 
-# Persisted Objects
+# Artifact Framework Owns
 
 ```text
-Artifact
+Artifact identity
 
-Lineage
+Artifact metadata
 
-Metadata
+Artifact lineage
+
+Artifact versioning
+
+Artifact-level hashes
+
+Persistence
+
+Current pointer
+
+Archive/history
 ```
 
 ---
@@ -964,19 +1080,24 @@ Not Deleted
 
 # Step 18
 
-Publish
+Evaluation Hook Emission
 
 ---
 
-# Consumers
+# Consumer Availability
 
 ```text
 Partner Domain
 ```
 
+Investor Intelligence Builder does not publish artifacts directly.
+
+Artifact Framework persistence and current-pointer updates make the resulting
+artifact available to downstream consumers.
+
 ---
 
-# Publication Event
+# Artifact Publication Event
 
 ```typescript
 type ArtifactPublishedEvent = {
@@ -988,6 +1109,9 @@ type ArtifactPublishedEvent = {
   timestamp: string;
 };
 ```
+
+Artifact publication events are emitted by platform ownership boundaries, not
+by Investor Intelligence Builder.
 
 ---
 
@@ -1033,10 +1157,16 @@ Reduced Confidence
 
 # Trust Architecture Integration
 
-Q3 is the sole owner of:
+Q3 owns investor trust synthesis.
+
+Q3 is not the owner of:
 
 ```text
-Trust Verdict
+Trust Signal generation
+
+Trust pillar artifact processing
+
+Raw trust evidence reinterpretation
 ```
 
 ---
@@ -1044,16 +1174,19 @@ Trust Verdict
 # Trust Inputs
 
 ```text
-Commitment Tracking
+Quarter Understanding is the sole trust interpretation source
+when trust_dimension = present.
 
-Narrative Consistency
+Trust Signals may be consumed directly only
+when trust_dimension = absent.
 
-Accounting Stability
+Commitment Tracking may be consumed only
+for Q3 longitudinal depth.
 ```
 
 ---
 
-# Q3 may interpret.
+# Q3 may synthesize.
 
 ---
 
@@ -1064,7 +1197,9 @@ Accounting Stability
 # Other Questions may NOT:
 
 ```text
-Create Trust Verdicts
+Create Trust Signals
+
+Consume Trust pillar artifacts
 ```
 
 ---
@@ -1086,7 +1221,13 @@ Quarter Understanding Changed
 
 Company Knowledge Changed
 
-Trust Artifacts Changed
+Business Signals Changed
+
+Trust Signals Changed
+
+Commitment Tracking Changed
+
+Topic Evolution Changed
 
 Prompt Changed
 
@@ -1127,6 +1268,10 @@ Model Versions
 Input Hashes
 
 Output Hashes
+
+Per-Question Input Hashes
+
+Coherence Hash
 ```
 
 for:
@@ -1145,10 +1290,10 @@ Q5
 
 ---
 
-# Lineage Schema
+# Replayability Metadata Schema
 
 ```typescript
-type InvestorIntelligenceLineage = {
+type InvestorIntelligenceReplayabilityMetadata = {
   q1_prompt_version: string;
 
   q2_prompt_version: string;
@@ -1161,11 +1306,24 @@ type InvestorIntelligenceLineage = {
 
   input_hash: string;
 
+  per_question_input_hashes: {
+    q1: string;
+    q2: string;
+    q3: string;
+    q4: string | null;
+    q5: string;
+  };
+
+  coherence_hash: string;
+
   output_hash: string;
 
   evaluation_version: string;
 };
 ```
+
+This structure is builder-owned replayability metadata. It is distinct from
+Artifact Framework lineage, which is supplied by the Artifact Framework.
 
 ---
 
@@ -1178,9 +1336,9 @@ Question Execution
 
 Boundary Validation
 
-Assembly
+Content Assembly
 
-Persistence
+Artifact Framework Handoff
 
 Evaluation
 ```
@@ -1203,7 +1361,7 @@ type BuilderMetrics = {
 
   validation_ms: number;
 
-  persistence_ms: number;
+  artifact_framework_handoff_ms: number;
 
   evaluation_ms: number;
 
@@ -1254,10 +1412,10 @@ Recommendation Violation:
 Reject Artifact
 ```
 
-Persistence Failure:
+Artifact Framework Handoff Failure:
 
 ```text
-Rollback
+Return failure to Builder Framework
 ```
 
 ---
@@ -1287,7 +1445,7 @@ LOCKED.
 1. Investor Intelligence is the final intelligence layer.
 2. Investor Intelligence owns Q1-Q5.
 3. Q1-Q5 ownership boundaries are mandatory.
-4. Q3 is the sole owner of trust verdicts.
+4. Q3 owns investor trust synthesis.
 5. Q5 is the sole owner of ownership reasoning.
 6. Investor Intelligence must never produce investment advice.
 7. Q4 is optional.

@@ -169,6 +169,12 @@ Evaluation System
 Governance Workflows
 ```
 
+Investor Intelligence consumes concept-normalized understanding only through approved inputs.
+
+Investor Intelligence must not consume Quarter Change directly.
+
+Investor Intelligence must not use Concept Registry access to bypass Quarter Understanding depth limitations.
+
 ---
 
 # Forbidden Direct Consumers

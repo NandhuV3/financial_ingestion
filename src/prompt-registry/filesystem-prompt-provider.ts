@@ -8,6 +8,20 @@ import {
   STRUCTURED_INTELLIGENCE_PROMPT_ID as STRUCTURED_INTELLIGENCE_BUILDER_PROMPT_ID,
   STRUCTURED_INTELLIGENCE_SYSTEM_PROMPT as STRUCTURED_INTELLIGENCE_BUILDER_SYSTEM_PROMPT,
 } from "../../builders/structured-intelligence/prompt.js";
+import {
+  INVESTOR_Q1_PROMPT_ID,
+  INVESTOR_Q2_PROMPT_ID,
+  INVESTOR_Q3_PROMPT_ID,
+  INVESTOR_Q4_PROMPT_ID,
+  INVESTOR_Q5_PROMPT_ID,
+} from "../../builders/investor-intelligence-builder/contract.js";
+import {
+  INVESTOR_Q1_SYSTEM_PROMPT,
+  INVESTOR_Q2_SYSTEM_PROMPT,
+  INVESTOR_Q3_SYSTEM_PROMPT,
+  INVESTOR_Q4_SYSTEM_PROMPT,
+  INVESTOR_Q5_SYSTEM_PROMPT,
+} from "./investor-intelligence-prompts.js";
 import { THEME_SYSTEM_PROMPT } from "../themes/theme-input.js";
 import { calculatePromptHash } from "./prompt-hash.js";
 import type { PromptProvider, ResolvedPrompt } from "./prompt.types.js";
@@ -27,6 +41,26 @@ const prompts: Record<string, Omit<ResolvedPrompt, "promptId" | "source" | "hash
   [STRUCTURED_INTELLIGENCE_BUILDER_PROMPT_ID]: {
     version: "structured-intelligence-builder-v1",
     content: STRUCTURED_INTELLIGENCE_BUILDER_SYSTEM_PROMPT,
+  },
+  [INVESTOR_Q1_PROMPT_ID]: {
+    version: "investor-q1-v1",
+    content: INVESTOR_Q1_SYSTEM_PROMPT,
+  },
+  [INVESTOR_Q2_PROMPT_ID]: {
+    version: "investor-q2-v1",
+    content: INVESTOR_Q2_SYSTEM_PROMPT,
+  },
+  [INVESTOR_Q3_PROMPT_ID]: {
+    version: "investor-q3-v1",
+    content: INVESTOR_Q3_SYSTEM_PROMPT,
+  },
+  [INVESTOR_Q4_PROMPT_ID]: {
+    version: "investor-q4-v1",
+    content: INVESTOR_Q4_SYSTEM_PROMPT,
+  },
+  [INVESTOR_Q5_PROMPT_ID]: {
+    version: "investor-q5-v1",
+    content: INVESTOR_Q5_SYSTEM_PROMPT,
   },
 };
 

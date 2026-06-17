@@ -6,10 +6,8 @@ Q3 answers:
 
 > "Can the story be trusted?"
 
-Q3 is responsible for evaluating management credibility,
-commitment reliability,
-narrative consistency,
-and accounting stability.
+Q3 is responsible for synthesizing investor-facing trust understanding
+from Quarter Understanding.
 
 Q3 does NOT evaluate:
 
@@ -34,17 +32,15 @@ Investor Intelligence
 
 Consumes:
 
-- Commitment Tracking
-- Narrative Consistency
-- Accounting Stability
-- Trust Signals
 - Company Knowledge
 - Quarter Understanding
+- Trust Signals (conditional exception only)
+- Commitment Tracking (longitudinal depth only)
 
 Produces:
 
-- Trust Verdict
-- Trust Rationale
+- Trust Synthesis
+- Trust Depth Limitation
 - Trust Evidence Package
 - Trust Confidence
 
@@ -66,21 +62,37 @@ Q3 must answer:
 
 ## Required
 
-Commitment Tracking Artifact
+Company Knowledge Artifact
 
-Narrative Consistency Artifact
+Quarter Understanding Artifact
 
-Accounting Stability Artifact
+## Enrichment
 
 Trust Signals Artifact
 
-Company Knowledge Artifact
+Commitment Tracking Artifact
 
 ## Optional
 
-Quarter Understanding
-
 Historical Investor Intelligence
+
+Trust Signals may be consumed directly only when:
+
+```text
+quarter_understanding.depth_indicator.trust_dimension = "absent"
+```
+
+When:
+
+```text
+quarter_understanding.depth_indicator.trust_dimension = "present"
+```
+
+Trust Signals must not be consumed directly.
+
+Quarter Understanding remains the sole trust interpretation source.
+
+Commitment Tracking may be consumed only for longitudinal depth.
 
 ---
 
@@ -98,6 +110,10 @@ Quarter Change directly
 
 Business Signals directly
 
+Narrative Consistency directly
+
+Accounting Stability directly
+
 Market data
 
 Valuation data
@@ -112,104 +128,74 @@ Social media
 
 ---
 
-# Trust Dimensions
+# Trust Dimension Source Rules
 
-Q3 evaluates four dimensions.
+Q3 may synthesize trust only from trust interpretation already present in Quarter Understanding.
+
+Q3 must not reinterpret raw trust pillar evidence.
+
+Q3 must not consume Trust Signals directly when Quarter Understanding trust dimension is present.
+
+Q3 may consume Trust Signals directly only as a fallback when Quarter Understanding trust dimension is absent.
+
+Q3 may consume Commitment Tracking only for longitudinal depth.
 
 ## Commitment Reliability
 
-Measures:
-
-- commitments made
-- commitments fulfilled
-- commitments delayed
-- commitments abandoned
-
 Source:
 
-Commitment Tracking
+Quarter Understanding trust interpretation.
+
+Commitment Tracking may provide longitudinal depth only.
 
 ---
 
 ## Narrative Consistency
 
-Measures:
-
-- strategic message stability
-- explanation consistency
-- management communication drift
-
 Source:
 
-Narrative Consistency
+Quarter Understanding trust interpretation.
+
+Narrative Consistency artifact is not a direct Investor Intelligence input.
 
 ---
 
 ## Accounting Stability
 
-Measures:
-
-- restatements
-- accounting changes
-- unusual adjustments
-- reporting volatility
-
 Source:
 
-Accounting Stability
+Quarter Understanding trust interpretation.
+
+Accounting Stability artifact is not a direct Investor Intelligence input.
 
 ---
 
 ## Evidence Alignment
 
-Measures:
-
-Whether management claims align with:
-
-- reported outcomes
-- observed business signals
-- prior commitments
-
 Source:
 
-Trust Signals
+Quarter Understanding trust interpretation.
+
+Trust Signals may be used only under the conditional fallback rule.
+
+LOCKED.
 
 ---
 
-# Verdict Scale
+# Trust Assessment Scale
 
 ```typescript
-type TrustVerdict =
-  | "high_trust"
-  | "moderate_trust"
-  | "trust_concerns"
-  | "low_trust";
+type TrustAssessment =
+  | "supported_by_quarter_understanding"
+  | "limited_by_missing_trust_dimension"
+  | "limited_by_partial_trust_coverage";
 ```
 
 Definitions:
 
-### high_trust
+Q3 must not generate trust verdicts when Quarter Understanding trust dimension is absent.
 
-Management statements consistently align
-with observable outcomes.
-
-### moderate_trust
-
-Minor inconsistencies exist
-but overall credibility remains intact.
-
-### trust_concerns
-
-Repeated inconsistencies,
-missed commitments,
-or weak evidence alignment.
-
-### low_trust
-
-Material credibility concerns.
-
-Evidence suggests management narrative
-cannot be relied upon.
+Q3 must not reinterpret raw Trust Signals into a management credibility conclusion.
 
 ---
 
@@ -217,9 +203,11 @@ cannot be relied upon.
 
 ```typescript
 type Q3Answer = {
-  verdict: TrustVerdict;
+  trust_assessment: TrustAssessment | null;
 
-  rationale: string;
+  summary: string;
+
+  trust_depth_limitation: string | null;
 
   key_evidence: TrustEvidence[];
 
@@ -234,9 +222,28 @@ type Q3Answer = {
     | "partial"
     | "insufficient_inputs";
 
-  lineage: Q3Lineage;
+  replayability_metadata:
+    Q3ReplayabilityMetadata;
+};
+```
 
-  metadata: Metadata;
+This is replayability metadata owned by Investor Intelligence and is not
+Artifact Framework lineage. Artifact Framework owns metadata, lineage,
+versioning, artifact_version, persistence, current pointer, and archive/history.
+
+```typescript
+type Q3ReplayabilityMetadata = {
+  quarter_understanding_version: number;
+
+  trust_signals_version: number | null;
+
+  commitment_tracking_version: number | null;
+
+  prompt_version: string;
+
+  model_version: string;
+
+  input_hash: string;
 };
 ```
 
@@ -244,7 +251,7 @@ type Q3Answer = {
 
 # Evidence Requirements
 
-Every verdict must reference evidence.
+Every trust assessment must reference evidence.
 
 ```typescript
 type TrustEvidence = {
@@ -252,8 +259,7 @@ type TrustEvidence = {
 
   source:
     | "commitment_tracking"
-    | "narrative_consistency"
-    | "accounting_stability"
+    | "quarter_understanding"
     | "trust_signal";
 
   summary: string;
@@ -265,7 +271,7 @@ type TrustEvidence = {
 };
 ```
 
-No evidence → no verdict.
+No evidence → no trust assessment.
 
 ---
 
@@ -277,10 +283,10 @@ Q3 never self-assesses confidence.
 
 Confidence inputs:
 
-- commitment coverage
-- history depth
-- narrative evidence density
-- accounting evidence density
+- Quarter Understanding trust depth
+- Trust Signals fallback coverage
+- Commitment Tracking longitudinal depth
+- evidence density
 
 ```typescript
 type Q3Confidence = {
@@ -356,23 +362,27 @@ Forbidden examples:
 
 Automated Checks
 
-- verdict populated
+- trust_assessment or trust_depth_limitation populated
 - evidence present
-- valid trust verdict
+- valid trust assessment
 - confidence populated
-- lineage populated
+- replayability metadata populated
 
 Consistency Checks
 
-high_trust cannot coexist with:
+trust_assessment must be null when:
 
-- multiple abandoned commitments
-- severe accounting instability
-- major narrative contradictions
+```text
+quarter_understanding.depth_indicator.trust_dimension = "absent"
+```
 
-low_trust requires:
+unless Trust Signals are consumed under the conditional fallback rule.
 
-at least one high-severity evidence item
+Trust Signals must not be present when:
+
+```text
+quarter_understanding.depth_indicator.trust_dimension = "present"
+```
 
 ---
 
@@ -382,13 +392,11 @@ Regenerate when:
 
 Commitment Tracking changes
 
-Narrative Consistency changes
-
-Accounting Stability changes
-
 Trust Signals change
 
 Company Knowledge changes
+
+Quarter Understanding changes
 
 Do not regenerate for:
 
@@ -406,7 +414,7 @@ Presentation changes
 
 Track:
 
-Trust verdict evolution
+Trust assessment evolution
 
 Commitment fulfillment trends
 
@@ -417,22 +425,21 @@ Accounting stability trends
 Confidence trends
 
 Historical comparison must operate using
-structured evidence and verdicts,
+structured evidence and assessments,
 not answer prose.
 
 ---
 
 # Architectural Principles
 
-Q3 evaluates credibility,
+Q3 synthesizes trust understanding,
 not business quality.
 
-Q3 evaluates observable behavior,
-not management intent.
+Q3 does not reinterpret raw trust evidence.
 
 Q3 produces trust intelligence,
 not investment recommendations.
 
-All trust conclusions must be evidence-backed,
+All trust assessments must be evidence-backed,
 traceable,
 and longitudinally auditable.

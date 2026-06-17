@@ -17,6 +17,7 @@ Depends On:
 - Investor Intelligence Q1
 - Investor Intelligence Q2
 - Investor Intelligence Q3
+- Market Data (Deferred)
 - Valuation Inputs (Future Layer)
 
 ---
@@ -33,10 +34,9 @@ Q4 is the Valuation Understanding prompt.
 
 Its responsibility is to explain:
 
-- valuation context
-- valuation sensitivity
-- valuation support
-- valuation concerns
+- insufficient-data status in Sprint 11
+- market-data limitation when valuation inputs are unavailable
+- future valuation context only after Market Data and Valuation Architecture exist
 
 without providing investment recommendations.
 
@@ -100,10 +100,9 @@ Investment Attractiveness
 
 Q4 owns:
 
-- valuation interpretation
-- valuation support assessment
-- valuation concern assessment
-- valuation context explanation
+- expectation framing
+- market-data limitation reporting
+- valuation-depth limitation reporting
 
 Q4 does NOT own:
 
@@ -129,16 +128,12 @@ Growth Understanding
 +
 
 Trust Understanding
-
-+
-
-Valuation Inputs
 ```
 
 into:
 
 ```text
-Valuation Understanding
+Price Question Output
 ```
 
 ---
@@ -170,9 +165,21 @@ type Q4PromptInput = {
   q3: Q3Answer;
 
   valuation_inputs:
-    ValuationInputArtifact;
+    ValuationInputArtifact | null;
 };
 ```
+
+Sprint 11 behavior:
+
+```text
+Q4.status = "insufficient_data"
+
+Q4.absent_reason = "market_data_unavailable"
+```
+
+Market data integration is deferred.
+
+Valuation methodology is future work and is not implemented in Sprint 11.
 
 ---
 
@@ -187,7 +194,9 @@ Q2
 
 Q3
 
-Valuation Inputs
+Market Data (deferred in Sprint 11)
+
+Valuation Inputs (future)
 ```
 
 ---

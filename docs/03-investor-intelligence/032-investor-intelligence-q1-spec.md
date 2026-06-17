@@ -96,9 +96,9 @@ Company Knowledge
 
 Quarter Understanding
 
-Topic Evolution
+## Enrichment
 
----
+Topic Evolution
 
 # Optional Inputs
 
@@ -170,9 +170,8 @@ type Q1Answer = {
 
   evidence_package: Q1EvidencePackage;
 
-  lineage: Q1Lineage;
-
-  metadata: Metadata;
+  replayability_metadata:
+    Q1ReplayabilityMetadata;
 };
 ```
 
@@ -590,10 +589,10 @@ This supports future Company Knowledge governance.
 
 ---
 
-# Lineage
+# Replayability Metadata
 
 ```typescript
-type Q1Lineage = {
+type Q1ReplayabilityMetadata = {
   company_knowledge_version: number;
 
   quarter_understanding_version: number;
@@ -608,19 +607,16 @@ type Q1Lineage = {
 };
 ```
 
+This is replayability metadata owned by Investor Intelligence and is not
+Artifact Framework lineage.
+
 ---
 
-# Metadata
+# Artifact Framework Metadata
 
-```typescript
-type Metadata = {
-  artifact_version: number;
-
-  generated_at: string;
-
-  schema_version: string;
-};
-```
+Metadata, artifact_version, Artifact Framework lineage, artifact-level hashes,
+persistence, current pointer, and archive/history are provided by Artifact
+Framework and are not part of Q1 content.
 
 ---
 

@@ -83,9 +83,14 @@ Artifact owns:
 Artifact owns:
 
 - confidence
-- lineage
+- prompt lineage
+- replayability metadata
 - auditability
 - historical comparison
+
+Artifact Framework owns artifact identity, metadata, Artifact Framework
+lineage, artifact-level hashes, versioning, persistence, current pointer, and
+archive/history.
 
 Artifact does NOT own:
 
@@ -125,12 +130,10 @@ company + period
 
 ---
 
-# Artifact Schema
+# Artifact Content Schema
 
 ```typescript
-type InvestorIntelligenceArtifact = {
-  artifact_id: string;
-
+type InvestorIntelligenceArtifactContent = {
   business_key: InvestorIntelligenceKey;
 
   q1: Q1Answer;
@@ -145,18 +148,57 @@ type InvestorIntelligenceArtifact = {
 
   confidence: InvestorConfidence;
 
+  enrichment_status:
+    EnrichmentStatus;
+
+  depth_indicator:
+    DepthIndicator;
+
+  per_question_input_hashes:
+    PerQuestionInputHashes;
+
+  coherence_hash: string;
+
   longitudinal_summary:
     LongitudinalSummary;
 
-  lineage: InvestorLineage;
+  prompt_lineage:
+    InvestorPromptLineage;
 
-  metadata: Metadata;
+  evaluation_hooks:
+    InvestorIntelligenceEvaluationHooks;
 };
 ```
+
+Artifact Framework wraps this content as an immutable artifact and provides
+artifact identity, metadata, Artifact Framework lineage, versioning, hashes,
+persistence, current pointer, and archive/history.
 
 ---
 
 # Question Sections
+
+---
+
+# Replay Hashes
+
+```typescript
+type PerQuestionInputHashes = {
+  q1: string;
+
+  q2: string;
+
+  q3: string;
+
+  q4: string | null;
+
+  q5: string;
+};
+```
+
+The coherence hash covers the assembled Q1-Q5 outputs and shared context.
+
+Context assembly must be deterministic.
 
 ---
 
@@ -444,16 +486,18 @@ Q3 unavailable
 
 ---
 
-# Lineage
+# Prompt Replayability Lineage
 
-Lineage is mandatory.
+Prompt lineage and replayability metadata are mandatory.
+
+Artifact Framework lineage is supplied by Artifact Framework.
 
 ---
 
 # Schema
 
 ```typescript
-type InvestorLineage = {
+type InvestorPromptLineage = {
   company_knowledge_version: number;
 
   quarter_understanding_version: number;
@@ -492,9 +536,12 @@ type InvestorLineage = {
     q5: string;
   };
 
-  input_hash: string;
+  per_question_input_hashes:
+    PerQuestionInputHashes;
 
-  artifact_hash: string;
+  coherence_hash: string;
+
+  output_hash: string;
 };
 ```
 
@@ -633,9 +680,13 @@ InvestorEvaluationPackage
 
   confidence,
 
-  lineage,
+  prompt_lineage,
 
-  artifact_hash
+  per_question_input_hashes,
+
+  coherence_hash,
+
+  output_hash
 }
 ```
 
@@ -652,7 +703,7 @@ Schema Validation
 
 Confidence Validation
 
-Lineage Validation
+Replayability Metadata Validation
 
 Recommendation Scan
 ```
@@ -746,15 +797,17 @@ Company Knowledge
 
 Quarter Understanding
 
-Business Signals
+Business Signals (Q2 enrichment only)
+
+Trust Signals (conditional exception only)
+
+Commitment Tracking (Q3 longitudinal depth only)
 
 Topic Evolution
 
-Commitment Tracking
+Prior Investor Intelligence
 
-Narrative Consistency
-
-Accounting Stability
+Market Data
 ```
 
 ---
@@ -835,19 +888,12 @@ Must support:
 
 ---
 
-# Metadata
+# Artifact Framework Metadata
 
-```typescript
-type Metadata = {
-  artifact_version: number;
-
-  schema_version: string;
-
-  generated_at: string;
-
-  generation_duration_ms: number;
-};
-```
+Metadata, artifact_version, schema version, generation timestamps,
+Artifact Framework lineage, artifact-level hashes, persistence, current pointer,
+and archive/history are provided by Artifact Framework and are not part of
+InvestorIntelligenceArtifactContent.
 
 ---
 
@@ -860,7 +906,7 @@ LOCKED.
 3. Q1–Q5 are first-class sections.
 4. Q4 is optional.
 5. Q5 remains valid without Q4.
-6. Lineage is mandatory.
+6. Replayability metadata is mandatory.
 7. Historical versions are immutable.
 8. Recommendation language is forbidden.
 9. Cross-question consistency is enforced.

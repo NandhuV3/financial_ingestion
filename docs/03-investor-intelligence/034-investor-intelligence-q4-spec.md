@@ -16,11 +16,8 @@ Q4 is the valuation intelligence layer.
 
 Q4 evaluates:
 
-- current valuation context
-- valuation relative to business quality
-- valuation relative to growth expectations
-- valuation relative to historical norms
-- valuation relative to peers
+- expectation context when market data is available
+- limitations when market data is unavailable
 
 Q4 does NOT:
 
@@ -44,10 +41,9 @@ in the current valuation?
 
 Q4 owns:
 
-- valuation context
-- valuation assessment
-- valuation confidence
-- valuation evidence
+- expectation context
+- valuation limitation reporting
+- Q4 evidence references
 
 Q4 does NOT own:
 
@@ -102,10 +98,6 @@ Q4 absence must never block:
 
 ## Required
 
-Market Data
-
-Valuation Data
-
 Company Knowledge
 
 Q1 Answer
@@ -117,6 +109,10 @@ Q3 Answer
 ---
 
 # Optional
+
+Market Data
+
+Valuation Data
 
 Peer Benchmark Data
 
@@ -168,9 +164,8 @@ type Q4Answer = {
 
   evidence_package: Q4EvidencePackage;
 
-  lineage: Q4Lineage;
-
-  metadata: Metadata;
+  replayability_metadata:
+    Q4ReplayabilityMetadata;
 };
 ```
 
@@ -178,7 +173,25 @@ type Q4Answer = {
 
 # Status Rules
 
+## Sprint 11
+
+Sprint 11 always returns:
+
+```typescript
+status = "insufficient_data";
+
+absent_reason = "market_data_unavailable";
+```
+
+Market data integration is deferred.
+
+Valuation methodology is future work and is not implemented in Sprint 11.
+
+---
+
 ## Answered
+
+Answered status is reserved for a future Market Data and Valuation Architecture.
 
 Valuation data available.
 
@@ -366,6 +379,10 @@ It does NOT evaluate:
 ```text
 Future Share Price
 ```
+
+Sprint 11 does not execute this valuation framework.
+
+The framework remains deferred until Market Data and Valuation Architecture are implemented.
 
 ---
 
@@ -571,10 +588,10 @@ Peer Relative Valuation Tracking
 
 ---
 
-# Lineage
+# Replayability Metadata
 
 ```typescript
-type Q4Lineage = {
+type Q4ReplayabilityMetadata = {
   q1_version: number;
 
   q2_version: number;
@@ -593,19 +610,16 @@ type Q4Lineage = {
 };
 ```
 
+This is replayability metadata owned by Investor Intelligence and is not
+Artifact Framework lineage.
+
 ---
 
-# Metadata
+# Artifact Framework Metadata
 
-```typescript
-type Metadata = {
-  artifact_version: number;
-
-  generated_at: string;
-
-  schema_version: string;
-};
-```
+Metadata, artifact_version, Artifact Framework lineage, artifact-level hashes,
+persistence, current pointer, and archive/history are provided by Artifact
+Framework and are not part of Q4 content.
 
 ---
 

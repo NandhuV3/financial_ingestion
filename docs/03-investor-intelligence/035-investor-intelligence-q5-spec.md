@@ -96,12 +96,6 @@ Q3 Answer
 
 Company Knowledge
 
-Topic Evolution
-
-Commitment Tracking Summary
-
-Narrative Consistency Summary
-
 ---
 
 ## Optional
@@ -109,6 +103,8 @@ Narrative Consistency Summary
 Q4 Answer
 
 Historical Investor Intelligence
+
+Topic Evolution
 
 ---
 
@@ -152,7 +148,7 @@ Raw upstream artifacts
 
 This preserves:
 
-- lineage
+- replayability metadata
 - auditability
 - explainability
 
@@ -206,9 +202,8 @@ type Q5Answer = {
 
   confidence: Q5Confidence;
 
-  metadata: Metadata;
-
-  lineage: Q5Lineage;
+  replayability_metadata:
+    Q5ReplayabilityMetadata;
 };
 ```
 
@@ -582,7 +577,11 @@ plus tolerance.
 If:
 
 ```typescript
-Q3.verdict === "low_trust"
+Q3.trust_assessment === null
+
+or
+
+Q3.trust_depth_limitation !== null
 ```
 
 then:
@@ -802,10 +801,10 @@ Hybrid invalidation determines propagation.
 
 ---
 
-# Lineage
+# Replayability Metadata
 
 ```typescript
-type Q5Lineage = {
+type Q5ReplayabilityMetadata = {
   q1_version: number;
 
   q2_version: number;
@@ -824,19 +823,16 @@ type Q5Lineage = {
 };
 ```
 
+This is replayability metadata owned by Investor Intelligence and is not
+Artifact Framework lineage.
+
 ---
 
-# Metadata
+# Artifact Framework Metadata
 
-```typescript
-type Metadata = {
-  artifact_version: number;
-
-  generated_at: string;
-
-  schema_version: string;
-};
-```
+Metadata, artifact_version, Artifact Framework lineage, artifact-level hashes,
+persistence, current pointer, and archive/history are provided by Artifact
+Framework and are not part of Q5 content.
 
 ---
 
