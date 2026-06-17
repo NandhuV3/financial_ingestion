@@ -56,6 +56,13 @@ describe("quarter understanding builder", () => {
     assert.equal(result.content.understandings.some((understanding) => understanding.category === "trust"), false);
     assert.equal(result.content.understandings.every((understanding) =>
       understanding.evidence_package.trust_signal_refs.length === 0), true);
+    assert.deepEqual(result.content.limitations.trust_dimension_gaps, [
+      "commitment_follow_through",
+      "narrative_consistency",
+      "explanation_quality",
+      "accounting_stability",
+      "capital_allocation_consistency",
+    ]);
     assert.equal(result.content.proposed_concepts.length > 0, true);
     assert.deepEqual(await repository.getCurrent({
       artifact_type: "quarter_understanding",
@@ -84,6 +91,32 @@ describe("quarter understanding builder", () => {
     assert.equal(result.content.depth_indicator.trust_dimension, "present");
     assert.equal(trustUnderstandings.length, 1);
     assert.deepEqual(trustUnderstandings[0]?.evidence_package.trust_signal_refs, ["trust-signal-1"]);
+    assert.deepEqual(result.content.limitations.trust_dimension_gaps, [
+      "narrative_consistency",
+      "explanation_quality",
+      "accounting_stability",
+      "capital_allocation_consistency",
+    ]);
+  });
+
+  it("propagates full trust coverage when Trust Signals have no missing dimensions", async () => {
+    const trustSignals = trustSignalsArtifact();
+    trustSignals.content.missing_dimensions = [];
+    const result = await executor(new TestArtifactRepository()).executeBuilder<QuarterUnderstandingBuilderInput, QuarterUnderstandingArtifactContent>({
+      builderType: QUARTER_UNDERSTANDING_BUILDER_TYPE,
+      companyId: "MSFT",
+      periodId: "2026-Q2",
+      executionId: "quarter-understanding-full-trust-coverage",
+      input: input(),
+      inputHash: "quarter-understanding-input-hash",
+      dependencies: {
+        company_knowledge: companyKnowledgeArtifact(),
+        business_signals: businessSignalsArtifact(),
+        trust_signals: trustSignals,
+      },
+    });
+
+    assert.deepEqual(result.content.limitations.trust_dimension_gaps, []);
   });
 
   it("enriches longitudinal interpretation only when Topic Evolution is present", async () => {
@@ -253,6 +286,16 @@ describe("quarter understanding builder", () => {
         trust_signal_refs: ["trust-signal-1"],
       },
     };
+
+    assert.throws(
+      () => validateQuarterUnderstandingArtifactContent(content),
+      BuilderValidationError,
+    );
+  });
+
+  it("rejects trust coverage limitation mismatches", () => {
+    const content = validQuarterUnderstandingContent();
+    content.limitations.trust_dimension_gaps = [];
 
     assert.throws(
       () => validateQuarterUnderstandingArtifactContent(content),

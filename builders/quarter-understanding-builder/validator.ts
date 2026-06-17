@@ -1,5 +1,7 @@
 import type { Artifact } from "../../contracts/artifacts/artifact.js";
 import { BuilderDependencyError, BuilderValidationError } from "../../packages/builder-framework/src/builder-errors.js";
+import { TRUST_DIMENSIONS, type TrustDimension } from "../trust-signals-builder/contract.js";
+import type { TrustSignalsArtifactContent } from "../trust-signals-builder/types.js";
 import {
   DEPTH_LEVELS,
   IMPORTANCE_LEVELS,
@@ -79,6 +81,7 @@ export function rejectForbiddenDependencies(dependencies: Record<string, Artifac
 export function validateQuarterUnderstandingArtifactContent(
   content: QuarterUnderstandingArtifactContent,
   conceptRegistry: ConceptRegistryContent | null = null,
+  trustSignals: TrustSignalsArtifactContent | null = null,
 ): void {
   requireText(content.company_id, "quarter_understanding.company_id");
   requireText(content.period_id, "quarter_understanding.period_id");
@@ -94,6 +97,7 @@ export function validateQuarterUnderstandingArtifactContent(
   validateEnrichmentStatus(content);
   validateDepthIndicator(content);
   validateDepthConsistency(content);
+  validateLimitations(content, trustSignals);
   validateConfidence(content);
 
   for (const [index, understanding] of content.understandings.entries()) {
@@ -266,12 +270,45 @@ function validateDepthConsistency(content: QuarterUnderstandingArtifactContent):
   }
 }
 
+function validateLimitations(
+  content: QuarterUnderstandingArtifactContent,
+  trustSignals: TrustSignalsArtifactContent | null,
+): void {
+  if (content.limitations === null || typeof content.limitations !== "object") {
+    throw new BuilderValidationError("quarter_understanding.limitations must be an object.");
+  }
+
+  const gaps = content.limitations.trust_dimension_gaps;
+
+  if (!Array.isArray(gaps)) {
+    throw new BuilderValidationError("quarter_understanding.limitations.trust_dimension_gaps must be an array.");
+  }
+
+  for (const gap of gaps) {
+    if (!TRUST_DIMENSIONS.includes(gap)) {
+      throw new BuilderValidationError("quarter_understanding.limitations.trust_dimension_gaps contains invalid trust dimension.");
+    }
+  }
+
+  const expected = content.enrichment_status.trust_signals.available
+    ? trustSignals?.missing_dimensions ?? gaps
+    : [...TRUST_DIMENSIONS];
+
+  if (normalizeTrustDimensions(gaps) !== normalizeTrustDimensions(expected)) {
+    throw new BuilderValidationError("quarter_understanding.limitations.trust_dimension_gaps does not match trust coverage.");
+  }
+}
+
 function validateConfidence(content: QuarterUnderstandingArtifactContent): void {
   validateConfidenceValue(content.confidence.overall, "quarter_understanding.confidence.overall");
   validateConfidenceValue(content.confidence.grounding_score, "quarter_understanding.confidence.grounding_score");
   validateConfidenceValue(content.confidence.signal_utilization_score, "quarter_understanding.confidence.signal_utilization_score");
   validateConfidenceValue(content.confidence.evidence_coverage_score, "quarter_understanding.confidence.evidence_coverage_score");
   validateConfidenceValue(content.confidence.interpretation_quality_score, "quarter_understanding.confidence.interpretation_quality_score");
+}
+
+function normalizeTrustDimensions(dimensions: TrustDimension[]): string {
+  return [...dimensions].sort().join("|");
 }
 
 function validateEvaluationHooks(content: QuarterUnderstandingArtifactContent): void {

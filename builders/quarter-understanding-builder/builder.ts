@@ -13,6 +13,7 @@ import {
   buildQuarterUnderstandingDepthIndicator,
   buildQuarterUnderstandingEnrichmentStatus,
 } from "./enrichment.js";
+import { buildQuarterUnderstandingLimitations } from "./limitations.js";
 import { buildUnderstandings } from "./understanding-engine.js";
 import type {
   ConceptRegistryContent,
@@ -93,6 +94,7 @@ export class QuarterUnderstandingBuilder implements Builder<
       proposed_concepts,
       enrichment_status: enrichmentStatus,
       depth_indicator: depthIndicator,
+      limitations: buildQuarterUnderstandingLimitations(trustSignalsArtifact?.content ?? null),
       confidence: buildQuarterUnderstandingConfidence({
         understandings,
         availableSignalCount: businessSignalsArtifact.content.signals.length,
@@ -107,7 +109,11 @@ export class QuarterUnderstandingBuilder implements Builder<
       }),
     };
 
-    validateQuarterUnderstandingArtifactContent(content, conceptRegistryArtifact?.content ?? null);
+    validateQuarterUnderstandingArtifactContent(
+      content,
+      conceptRegistryArtifact?.content ?? null,
+      trustSignalsArtifact?.content ?? null,
+    );
 
     return {
       content,

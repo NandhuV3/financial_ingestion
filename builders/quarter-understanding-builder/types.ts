@@ -2,6 +2,7 @@ import type { Artifact } from "../../contracts/artifacts/artifact.js";
 import type { CompanyKnowledgeArtifactContent } from "../company-knowledge-builder/types.js";
 import type { BusinessSignal, BusinessSignalsArtifactContent, TopicEvolutionArtifactContent } from "../business-signals-builder/types.js";
 import type { TrustSignalsArtifactContent, TrustSignal } from "../trust-signals-builder/types.js";
+import type { TrustDimension } from "../trust-signals-builder/contract.js";
 import type {
   DepthLevel,
   UnderstandingCategory,
@@ -97,6 +98,10 @@ export type QuarterUnderstandingEvaluationHooks = {
   enrichment_status: EnrichmentStatus;
 };
 
+export type QuarterUnderstandingLimitations = {
+  trust_dimension_gaps: TrustDimension[];
+};
+
 export type QuarterUnderstandingArtifactContent = {
   company_id: string;
   period_id: string;
@@ -104,6 +109,7 @@ export type QuarterUnderstandingArtifactContent = {
   proposed_concepts: ProposedConcept[];
   enrichment_status: EnrichmentStatus;
   depth_indicator: DepthIndicator;
+  limitations: QuarterUnderstandingLimitations;
   confidence: QuarterUnderstandingConfidence;
   evaluation_hooks: QuarterUnderstandingEvaluationHooks;
 };
