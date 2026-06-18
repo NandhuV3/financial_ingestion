@@ -1,3 +1,4 @@
+import { TRUST_SIGNALS_CALIBRATION } from "./calibration-contract.js";
 import { buildTrustSignal, sourceRef } from "./signal-factory.js";
 import type {
   CommitmentInput,
@@ -81,7 +82,7 @@ function averageConfidence(values: Array<number | undefined>): number {
   const validValues = values.filter((value): value is number => Number.isFinite(value));
 
   if (validValues.length === 0) {
-    return 0.6;
+    return TRUST_SIGNALS_CALIBRATION.COMMITMENT_CONFIDENCE_FALLBACK;
   }
 
   return validValues.reduce((sum, value) => sum + value, 0) / validValues.length;

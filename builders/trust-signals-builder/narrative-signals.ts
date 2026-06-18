@@ -1,4 +1,5 @@
 import { BuilderValidationError } from "../../packages/builder-framework/src/builder-errors.js";
+import { TRUST_SIGNALS_CALIBRATION } from "./calibration-contract.js";
 import { buildTrustSignal, sourceRef } from "./signal-factory.js";
 import type {
   LanguageShiftInput,
@@ -48,7 +49,9 @@ function signalForPriority(
     source_artifact_refs: [sourceRef(artifact)],
     source_record_refs: [priority.priority_id],
     observation: `Strategic priority status observed: ${priority.current_status}.`,
-    confidence: priority.confidence ?? artifact.content.confidence?.overall ?? 0.6,
+    confidence: priority.confidence
+      ?? artifact.content.confidence?.overall
+      ?? TRUST_SIGNALS_CALIBRATION.NARRATIVE_RECORD_CONFIDENCE_FALLBACK,
   });
 }
 
@@ -71,7 +74,9 @@ function signalForLanguageShift(
     source_artifact_refs: [sourceRef(artifact)],
     source_record_refs: [shift.shift_id],
     observation: `Language shift observed: ${shift.shift_magnitude}.`,
-    confidence: shift.confidence ?? artifact.content.confidence?.overall ?? 0.6,
+    confidence: shift.confidence
+      ?? artifact.content.confidence?.overall
+      ?? TRUST_SIGNALS_CALIBRATION.NARRATIVE_RECORD_CONFIDENCE_FALLBACK,
   });
 }
 
@@ -88,7 +93,7 @@ function stabilitySignals(context: TrustSignalBuildContext): TrustSignal[] {
     return [];
   }
 
-  if ((stablePriorityRatio as number) >= 0.8) {
+  if ((stablePriorityRatio as number) >= TRUST_SIGNALS_CALIBRATION.NARRATIVE_STABILITY_HIGH_MIN_RATIO) {
     return [buildTrustSignal({
       company_id: context.companyId,
       period_id: context.periodId,
@@ -98,11 +103,12 @@ function stabilitySignals(context: TrustSignalBuildContext): TrustSignal[] {
       source_artifact_refs: [sourceRef(artifact)],
       source_record_refs: ["narrative_summary"],
       observation: "Narrative stability ratio observed as high.",
-      confidence: artifact.content.confidence?.overall ?? 0.7,
+      confidence: artifact.content.confidence?.overall
+        ?? TRUST_SIGNALS_CALIBRATION.NARRATIVE_STABILITY_CONFIDENCE_FALLBACK,
     })];
   }
 
-  if ((stablePriorityRatio as number) <= 0.4) {
+  if ((stablePriorityRatio as number) <= TRUST_SIGNALS_CALIBRATION.NARRATIVE_STABILITY_LOW_MAX_RATIO) {
     return [buildTrustSignal({
       company_id: context.companyId,
       period_id: context.periodId,
@@ -112,7 +118,8 @@ function stabilitySignals(context: TrustSignalBuildContext): TrustSignal[] {
       source_artifact_refs: [sourceRef(artifact)],
       source_record_refs: ["narrative_summary"],
       observation: "Narrative stability ratio observed as low.",
-      confidence: artifact.content.confidence?.overall ?? 0.7,
+      confidence: artifact.content.confidence?.overall
+        ?? TRUST_SIGNALS_CALIBRATION.NARRATIVE_STABILITY_CONFIDENCE_FALLBACK,
     })];
   }
 

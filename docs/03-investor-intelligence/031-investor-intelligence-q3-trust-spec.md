@@ -32,10 +32,8 @@ Investor Intelligence
 
 Consumes:
 
-- Company Knowledge
 - Quarter Understanding
-- Trust Signals (conditional exception only)
-- Commitment Tracking (longitudinal depth only)
+- Quarter Understanding trust interpretation
 
 Produces:
 
@@ -62,37 +60,25 @@ Q3 must answer:
 
 ## Required
 
-Company Knowledge Artifact
-
 Quarter Understanding Artifact
-
-## Enrichment
-
-Trust Signals Artifact
-
-Commitment Tracking Artifact
 
 ## Optional
 
-Historical Investor Intelligence
+Prior Investor Intelligence
 
-Trust Signals may be consumed directly only when:
-
-```text
-quarter_understanding.depth_indicator.trust_dimension = "absent"
-```
-
-When:
+Company Knowledge reaches Q3 through Quarter Understanding.
 
 ```text
-quarter_understanding.depth_indicator.trust_dimension = "present"
+Company Knowledge
+        ↓
+Quarter Understanding
+        ↓
+Investor Intelligence Q3
 ```
 
-Trust Signals must not be consumed directly.
+Q3 does not consume Company Knowledge directly.
 
-Quarter Understanding remains the sole trust interpretation source.
-
-Commitment Tracking may be consumed only for longitudinal depth.
+Q3 consumes Quarter Understanding trust interpretation.
 
 ---
 
@@ -110,9 +96,17 @@ Quarter Change directly
 
 Business Signals directly
 
+Trust Signals directly
+
+Commitment Tracking directly
+
 Narrative Consistency directly
 
 Accounting Stability directly
+
+Capital Allocation Tracking directly
+
+Raw trust evidence
 
 Market data
 
@@ -132,21 +126,29 @@ Social media
 
 Q3 may synthesize trust only from trust interpretation already present in Quarter Understanding.
 
-Q3 must not reinterpret raw trust pillar evidence.
+Q3 consumes Quarter Understanding trust interpretation only.
 
-Q3 must not consume Trust Signals directly when Quarter Understanding trust dimension is present.
+Quarter Understanding is the sole trust interpretation source.
 
-Q3 may consume Trust Signals directly only as a fallback when Quarter Understanding trust dimension is absent.
+Q3 never consumes:
 
-Q3 may consume Commitment Tracking only for longitudinal depth.
+```text
+Trust Signals
+Commitment Tracking
+Narrative Consistency
+Accounting Stability
+Capital Allocation Tracking
+Raw trust evidence
+```
+
+Q3 synthesizes investor-facing trust understanding from Quarter Understanding
+trust interpretation.
 
 ## Commitment Reliability
 
 Source:
 
 Quarter Understanding trust interpretation.
-
-Commitment Tracking may provide longitudinal depth only.
 
 ---
 
@@ -156,7 +158,7 @@ Source:
 
 Quarter Understanding trust interpretation.
 
-Narrative Consistency artifact is not a direct Investor Intelligence input.
+No direct Narrative Consistency artifact consumption is allowed.
 
 ---
 
@@ -166,7 +168,7 @@ Source:
 
 Quarter Understanding trust interpretation.
 
-Accounting Stability artifact is not a direct Investor Intelligence input.
+No direct Accounting Stability artifact consumption is allowed.
 
 ---
 
@@ -176,7 +178,7 @@ Source:
 
 Quarter Understanding trust interpretation.
 
-Trust Signals may be used only under the conditional fallback rule.
+No direct Trust Signals or Trust Pillar artifact consumption is allowed.
 
 LOCKED.
 
@@ -227,23 +229,27 @@ type Q3Answer = {
 };
 ```
 
-This is replayability metadata owned by Investor Intelligence and is not
-Artifact Framework lineage. Artifact Framework owns metadata, lineage,
-versioning, artifact_version, persistence, current pointer, and archive/history.
+This is Investor Intelligence content-level replayability metadata.
+
+It is not Artifact Framework lineage.
+
+Artifact Framework owns artifact identity, artifact metadata, framework
+lineage, artifact versioning, persistence, current pointers, archive/history,
+and framework hashes.
 
 ```typescript
 type Q3ReplayabilityMetadata = {
-  quarter_understanding_version: number;
-
-  trust_signals_version: number | null;
-
-  commitment_tracking_version: number | null;
+  prompt_lineage: InvestorPromptLineage;
 
   prompt_version: string;
 
   model_version: string;
 
-  input_hash: string;
+  section_input_hash: string;
+
+  section_output_hash: string;
+
+  evaluation_metadata: Q3EvaluationMetadata;
 };
 ```
 
@@ -258,9 +264,9 @@ type TrustEvidence = {
   evidence_id: string;
 
   source:
-    | "commitment_tracking"
-    | "quarter_understanding"
-    | "trust_signal";
+    | "quarter_understanding";
+
+  replayability_refs: string[];
 
   summary: string;
 
@@ -273,6 +279,9 @@ type TrustEvidence = {
 
 No evidence → no trust assessment.
 
+Q3 evidence is derived from Quarter Understanding trust interpretation and
+approved Investor Intelligence replayability references.
+
 ---
 
 # Confidence Model
@@ -284,9 +293,9 @@ Q3 never self-assesses confidence.
 Confidence inputs:
 
 - Quarter Understanding trust depth
-- Trust Signals fallback coverage
-- Commitment Tracking longitudinal depth
+- Trust coverage availability
 - evidence density
+- Historical continuity when available
 
 ```typescript
 type Q3Confidence = {
@@ -376,13 +385,10 @@ trust_assessment must be null when:
 quarter_understanding.depth_indicator.trust_dimension = "absent"
 ```
 
-unless Trust Signals are consumed under the conditional fallback rule.
+Q3 may not generate trust verdicts when Quarter Understanding trust
+interpretation is unavailable.
 
-Trust Signals must not be present when:
-
-```text
-quarter_understanding.depth_indicator.trust_dimension = "present"
-```
+Q3 never consumes Trust Signals directly.
 
 ---
 
@@ -390,13 +396,9 @@ quarter_understanding.depth_indicator.trust_dimension = "present"
 
 Regenerate when:
 
-Commitment Tracking changes
-
-Trust Signals change
-
-Company Knowledge changes
-
 Quarter Understanding changes
+
+Prior Investor Intelligence changes
 
 Do not regenerate for:
 
@@ -407,6 +409,12 @@ Market data updates
 Partner Domain changes
 
 Presentation changes
+
+Q3 publishes immutable content only.
+
+Dependency Index owns dependency registration.
+
+Invalidation Engine owns staleness determination and propagation.
 
 ---
 
@@ -432,8 +440,14 @@ not answer prose.
 
 # Architectural Principles
 
-Q3 synthesizes trust understanding,
+Q3 synthesizes investor-facing trust understanding,
 not business quality.
+
+Q3 consumes Quarter Understanding trust interpretation only.
+
+Q3 does not consume Trust Signals directly.
+
+Q3 does not consume Trust Pillars directly.
 
 Q3 does not reinterpret raw trust evidence.
 
@@ -443,3 +457,15 @@ not investment recommendations.
 All trust assessments must be evidence-backed,
 traceable,
 and longitudinally auditable.
+
+Canonical trust chain:
+
+```text
+Trust Pillars
+        ↓
+Trust Signals
+        ↓
+Quarter Understanding
+        ↓
+Investor Intelligence Q3
+```

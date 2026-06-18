@@ -21,11 +21,13 @@ Examples:
 * Structured Intelligence
 * Company Knowledge
 * Business Signals
-* Quarter Understanding
-* Investor Intelligence
 * Commitment Tracking
 * Narrative Consistency
 * Accounting Stability
+* Capital Allocation Tracking
+* Trust Signals
+* Quarter Understanding
+* Investor Intelligence
 
 The Artifact Framework ensures that every artifact follows the same standards for:
 
@@ -35,8 +37,8 @@ The Artifact Framework ensures that every artifact follows the same standards fo
 * Auditability
 * Replayability
 * Storage
-* Invalidation
-* Rollback
+* Invalidation support
+* Rollback mechanics
 
 This framework is the foundation upon which all higher-level intelligence layers operate.
 
@@ -91,9 +93,27 @@ Artifact versions are not software versions.
 Any artifact must be reproducible from:
 
 * Inputs
+* Mandatory Artifact Framework lineage
+* Replayability references required by its domain contract
+
+LLM-assisted artifacts require:
+
 * Prompt lineage
-* Model lineage
+* Prompt version
+* Model provider
+* Model version
+* Prompt snapshot reference
+
+Deterministic artifacts require replayability references appropriate to their
+domain contract, for example:
+
+* Builder version
+* Calibration version
+* Rule version
 * Pipeline version
+
+The Artifact Framework does not require prompt or model references for
+deterministic artifacts.
 
 The platform must be capable of reconstructing how an artifact was produced.
 
@@ -106,9 +126,13 @@ Every artifact must answer:
 * What produced me?
 * When was I produced?
 * Which inputs were used?
-* Which prompt generated me?
-* Which model generated me?
-* Which pipeline version generated me?
+* Which domain replayability references apply?
+
+LLM-assisted artifacts must answer which governed prompt and model generated
+them.
+
+Deterministic artifacts must answer which builder, calibration, rule, or
+pipeline versions generated them, as required by their domain contract.
 
 ---
 
@@ -206,7 +230,9 @@ Artifact identity never changes.
 
 # Artifact Lifecycle
 
-Artifacts move through defined lifecycle states.
+The platform uses defined artifact lifecycle states.
+
+Lifecycle state ownership is separated by platform responsibility.
 
 ---
 
@@ -215,6 +241,8 @@ Artifacts move through defined lifecycle states.
 Latest valid artifact.
 
 Served to downstream consumers.
+
+Owned by the Artifact Framework through current pointer mechanics.
 
 ---
 
@@ -225,6 +253,10 @@ Artifact inputs changed.
 Artifact remains available but is no longer considered current.
 
 Awaiting regeneration.
+
+Stale dependency state is owned by the Dependency Index.
+
+Staleness propagation is owned by the Invalidation Engine.
 
 ---
 
@@ -237,6 +269,11 @@ Typical examples:
 * Company Knowledge promotion review
 * Governance review
 * Trust review
+
+Pending Review, approval states, and review workflow states are owned by
+Governance.
+
+The Artifact Framework does not own governance workflow states.
 
 ---
 
@@ -252,6 +289,8 @@ Used for:
 * Historical comparison
 * Rollback
 * Replayability
+
+Archive/history persistence is owned by the Artifact Framework.
 
 ---
 
@@ -281,6 +320,11 @@ created_at
 updated_at
 ```
 
+The Artifact Framework owns Current and Archived mechanics.
+
+Dependency Index state and Governance workflow state remain owned by their
+respective systems even when referenced by artifact metadata.
+
 ---
 
 ## Pipeline Metadata
@@ -289,20 +333,25 @@ updated_at
 pipeline_version
 ```
 
+Pipeline version is a domain replayability reference when required by the
+artifact's domain contract.
+
 ---
 
 ## Hash Metadata
 
 ```text
-input_hash
-output_hash
+framework_hashes
+content_replayability_hashes
 ```
 
-Used for:
+The Artifact Framework owns framework hashes.
 
-* Invalidation
-* Staleness detection
-* Partial regeneration
+Artifact-producing domains may own content-level input references, output
+hashes, and replayability hashes required by their domain contracts.
+
+Content-level replayability hashes are not Artifact Framework lineage or
+framework hashes.
 
 ---
 
@@ -328,6 +377,39 @@ artifact_identity
 
 for every dependency used during generation.
 
+The Artifact Framework owns lineage mechanics and records the dependency
+references used during generation.
+
+Artifact-producing domains own replayability references, including:
+
+LLM-assisted artifacts:
+
+```text
+prompt lineage
+model lineage
+```
+
+Deterministic artifacts:
+
+```text
+builder version
+calibration version
+rule version
+pipeline version
+```
+
+These domain replayability references are not Artifact Framework lineage.
+
+The Artifact Framework does not:
+
+* Register dependencies
+* Own dependency graph state
+* Determine staleness
+
+The Dependency Index owns dependency graph state and dependency registration.
+
+The Invalidation Engine owns staleness determination and propagation.
+
 ---
 
 ## Example
@@ -349,9 +431,9 @@ Business Signals v12
 
 ---
 
-# Prompt Lineage Requirements
+# Replayability Reference Requirements
 
-LLM-generated artifacts must contain prompt lineage.
+LLM-assisted artifacts must contain prompt and model replayability references.
 
 Required information:
 
@@ -370,17 +452,23 @@ Prompt lineage enables:
 * Prompt evaluation
 * Targeted regeneration
 
+Deterministic artifacts do not require prompt lineage or model lineage.
+
+They must contain the builder, calibration, rule, pipeline, or equivalent
+replayability references required by their domain contract.
+
 ---
 
-# Input Hash Requirements
+# Content Replayability Hash Requirements
 
-Every artifact stores an input hash.
+Artifact-producing domains may store content-level input references and
+replayability hashes as required by their domain contracts.
 
 Purpose:
 
-Determine whether upstream state changed.
+Reproduce and validate domain content generation.
 
-Input hash is derived from:
+Content replayability hashes may be derived from:
 
 ```text
 Upstream dependency versions
@@ -394,15 +482,19 @@ Version-based hashing is efficient and scalable.
 
 ---
 
-# Output Hash Requirements
+# Framework Hash Requirements
 
-Every artifact stores an output hash.
+The Artifact Framework stores framework hashes required to validate artifact
+integrity and framework-managed persistence.
 
 Purpose:
 
-Detect whether regenerated output differs from prior output.
+Validate framework-managed artifact state.
 
-Supports:
+Content-level output hashes remain owned by the artifact-producing domain when
+required by its domain contract.
+
+Content-level output hashes support:
 
 * Partial invalidation
 * Content stability checks
@@ -413,6 +505,20 @@ Supports:
 # Storage Requirements
 
 The platform uses a filesystem-first architecture.
+
+The Artifact Framework owns:
+
+* Storage mechanics
+* Current pointer resolution
+* Archive/history persistence
+* Retrieval mechanics
+
+Artifact-producing domains do not own:
+
+* `current.json`
+* Archive layouts
+* Storage trees
+* Persistence structures
 
 ---
 
@@ -464,9 +570,7 @@ Required audit information:
 ```text
 Artifact Produced
 Timestamp
-Pipeline Version
-Prompt Version
-Model Version
+Applicable Replayability References
 Inputs Used
 Output Version
 ```
@@ -475,18 +579,30 @@ Audit records are append-only.
 
 Audit records are separate from artifacts.
 
+The Artifact Framework supports auditability by exposing artifact identity,
+version, lineage, persistence, and pointer transitions.
+
+Operational Systems own audit storage, audit records, and audit workflow.
+
+The Artifact Framework does not own audit storage, audit records, or audit
+workflow.
+
 ---
 
 # Rollback Requirements
 
 Rollback is a first-class operation.
 
-Rollback:
+Rollback ownership:
 
-1. Restores a prior artifact version.
-2. Creates a new current version.
-3. Writes an audit record.
-4. Triggers downstream invalidation.
+1. Governance approves rollback.
+2. Artifact Framework creates a new immutable version.
+3. Artifact Framework updates the current pointer.
+4. Operational Systems record rollback execution and audit events.
+5. Invalidation Engine determines and propagates downstream staleness.
+
+The Artifact Framework does not approve rollback, create audit records, or
+make invalidation decisions.
 
 Rollback never deletes history.
 
@@ -506,9 +622,13 @@ Topic Assignment
 Structured Intelligence
 Company Knowledge
 Business Signals
+Commitment Tracking
+Narrative Consistency
+Accounting Stability
+Capital Allocation Tracking
+Trust Signals
 Quarter Understanding
 Investor Intelligence
-Trust Artifacts
 Future Artifacts
 ```
 
@@ -526,6 +646,10 @@ The Artifact Framework does not define:
 * Presentation formatting
 * Evaluation logic
 * Scheduling logic
+* Governance workflow states
+* Dependency graph state
+* Staleness propagation
+* Audit storage and workflow
 
 Those responsibilities belong to other platform components.
 
@@ -543,17 +667,26 @@ Artifact Identity:
 Hybrid Identity
 (Artifact ID + Business Identity + Storage Identity)
 
-Artifact Lifecycle:
+Artifact Framework Lifecycle Ownership:
 Current
-Stale
-Pending Review
 Archived
+
+Dependency Index Lifecycle Ownership:
+Stale dependency state
+
+Governance Lifecycle Ownership:
+Pending Review
+Approval states
+Review workflow states
 
 Artifact Lineage:
 Mandatory
 
-Prompt Lineage:
-Mandatory
+Replayability References:
+Domain Contract Specific
+
+LLM Prompt And Model References:
+Mandatory For LLM-Assisted Artifacts
 
 Rollback:
 First-Class Operation

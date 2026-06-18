@@ -13,12 +13,12 @@ Q4 Answer
 Depends On:
 
 - Company Knowledge
-- Quarter Understanding
 - Investor Intelligence Q1
 - Investor Intelligence Q2
 - Investor Intelligence Q3
-- Market Data (Deferred)
-- Valuation Inputs (Future Layer)
+- Market Data (optional)
+- Valuation Data (optional)
+- Peer Data (optional)
 
 ---
 
@@ -73,14 +73,18 @@ Q5 Ownership Thesis
 Q4 answers:
 
 ```text
-Does the current valuation
-appear supported by
-the business story?
+Can valuation be assessed?
+
+If not, why not?
 ```
 
 ---
 
 # Architectural Principle
+
+Future-state only.
+
+Not executed during Sprint 11.
 
 Q4 evaluates:
 
@@ -98,11 +102,14 @@ Investment Attractiveness
 
 # Ownership
 
-Q4 owns:
+Sprint 11 Q4 owns:
 
-- expectation framing
 - market-data limitation reporting
 - valuation-depth limitation reporting
+
+Future-state Q4 ownership additionally includes:
+
+- expectation framing
 
 Q4 does NOT own:
 
@@ -115,6 +122,10 @@ Q4 does NOT own:
 ---
 
 # Core Responsibility
+
+Future-state only.
+
+Not executed during Sprint 11.
 
 Transform:
 
@@ -138,43 +149,60 @@ Price Question Output
 
 ---
 
-# Optional Layer
+# Sprint 11 Presence
 
-Q4 is optional.
+Q4 is always present.
 
-The platform must continue operating when:
+Q4 returns:
 
-```text
-Valuation Inputs
+```typescript
+status = "insufficient_data";
+
+absent_reason = "market_data_unavailable";
 ```
 
-are unavailable.
+Q4 is not omitted.
 
 ---
 
 # Input Contract
 
-Required When Available:
+Required:
 
 ```typescript
 type Q4PromptInput = {
+  company_knowledge:
+    CompanyKnowledgeArtifact;
+
   q1: Q1Answer;
 
   q2: Q2Answer;
 
   q3: Q3Answer;
+};
+```
 
-  valuation_inputs:
-    ValuationInputArtifact | null;
+Optional:
+
+```typescript
+type Q4PromptEnrichmentInput = {
+  market_data?:
+    MarketDataArtifact;
+
+  valuation_data?:
+    ValuationDataArtifact;
+
+  peer_data?:
+    PeerDataArtifact;
 };
 ```
 
 Sprint 11 behavior:
 
-```text
-Q4.status = "insufficient_data"
+```typescript
+status = "insufficient_data";
 
-Q4.absent_reason = "market_data_unavailable"
+absent_reason = "market_data_unavailable";
 ```
 
 Market data integration is deferred.
@@ -183,21 +211,57 @@ Valuation methodology is future work and is not implemented in Sprint 11.
 
 ---
 
-# Allowed Inputs
+# Sprint 11 Execution Inputs
 
 Prompt may consume:
 
 ```text
+Company Knowledge
+
 Q1
 
 Q2
 
 Q3
-
-Market Data (deferred in Sprint 11)
-
-Valuation Inputs (future)
 ```
+
+---
+
+# Future-State Valuation Architecture Inputs
+
+Future-state only.
+
+Not executed during Sprint 11.
+
+```text
+Market Data, when available
+
+Valuation Data, when available
+
+Peer Data, when available
+```
+
+---
+
+# Sprint 11 Execution Boundary
+
+During Sprint 11, the prompt may generate only:
+
+- valuation limitations
+- insufficient-data reporting
+- evidence references
+
+During Sprint 11, the prompt must not generate:
+
+- valuation synthesis
+- expectation context
+- valuation drivers
+- cheap or expensive conclusions
+- demanding, reasonable, or conservative conclusions
+- fair value
+- intrinsic value
+- target prices
+- return expectations
 
 ---
 
@@ -238,7 +302,11 @@ External Opinion Contamination
 ```typescript
 type Q4Answer = {
   status:
-    Q4Status;
+    | "answered"
+    | "insufficient_data";
+
+  absent_reason?:
+    Q4AbsentReason;
 
   valuation_summary: string;
 
@@ -253,6 +321,14 @@ type Q4Answer = {
   evidence_package:
     Q4EvidencePackage;
 };
+```
+
+```typescript
+type Q4AbsentReason =
+  | "market_data_unavailable"
+  | "insufficient_peer_data"
+  | "valuation_pipeline_disabled"
+  | "data_quality_failure";
 ```
 
 ---
@@ -304,6 +380,10 @@ when inputs are unavailable.
 
 # Valuation Summary
 
+Future-state only.
+
+Not executed during Sprint 11.
+
 Purpose:
 
 Explain:
@@ -344,6 +424,10 @@ The stock should rise.
 
 # Valuation Support Schema
 
+Future-state only.
+
+Not executed during Sprint 11.
+
 ```typescript
 type ValuationSupport = {
   title: string;
@@ -353,6 +437,21 @@ type ValuationSupport = {
   evidence_refs: string[];
 };
 ```
+
+During Sprint 11:
+
+```typescript
+valuation_summary = "Market data is unavailable; valuation cannot be assessed.";
+
+valuation_supports = [];
+
+valuation_concerns = [];
+```
+
+`valuation_summary` contains limitation reporting only.
+
+`valuation_supports` and `valuation_concerns` are future-state fields and remain
+empty during Sprint 11.
 
 ---
 
@@ -381,6 +480,10 @@ High Switching Costs
 ---
 
 # Valuation Concern Schema
+
+Future-state only.
+
+Not executed during Sprint 11.
 
 ```typescript
 type ValuationConcern = {
@@ -425,6 +528,10 @@ Narrative Dependence
 ---
 
 # Valuation Interpretation Rules
+
+Future-state only.
+
+Not executed during Sprint 11.
 
 Q4 may discuss:
 
@@ -482,9 +589,22 @@ type Q4EvidencePackage = {
 };
 ```
 
+During Sprint 11:
+
+```typescript
+valuation_refs = [];
+```
+
+`valuation_refs` is future-state only and does not imply valuation data exists
+during Sprint 11.
+
 ---
 
 # Grounding Rules
+
+Future-state only.
+
+Not executed during Sprint 11.
 
 Every valuation statement must trace to:
 
@@ -520,6 +640,10 @@ not present in inputs.
 
 # Business Dependency Rule
 
+Future-state only.
+
+Not executed during Sprint 11.
+
 Q4 must connect valuation to:
 
 ```text
@@ -547,6 +671,10 @@ of the cloud expansion strategy.
 ---
 
 # Trust Dependency Rule
+
+Future-state only.
+
+Not executed during Sprint 11.
 
 Q4 must incorporate:
 
@@ -817,27 +945,22 @@ required.
 
 ---
 
-# Q4 Optionality Invariant
+# Replayability Ownership
 
-Critical.
+Q4 owns only content-level replayability metadata.
 
-Q5 must remain valid when:
+Artifact Framework owns:
 
-```text
-Q4 = null
-```
+- artifact identity
+- artifact metadata
+- framework lineage
+- artifact versioning
+- persistence
+- current pointers
+- archive/history
+- framework hashes
 
----
-
-# Therefore
-
-Q4 must never become:
-
-```text
-Required
-```
-
-for Investor Intelligence generation.
+Q4 content-level replayability metadata is not Artifact Framework lineage.
 
 ---
 
@@ -851,8 +974,8 @@ Target:
 
 Must support:
 
-- optional valuation architecture
-- deterministic valuation interpretation
+- required Q4 presence
+- Sprint 11 insufficient-data reporting
 - replayability
 - auditability
 - recommendation-free outputs
@@ -863,15 +986,15 @@ Must support:
 
 LOCKED.
 
-1. Q4 is optional.
-2. Q4 evaluates valuation context, not investment attractiveness.
-3. Q4 may return insufficient_data.
-4. Q5 must remain valid without Q4.
-5. Q4 must connect valuation to business, growth, and trust.
+1. Q4 is always present.
+2. Sprint 11 Q4 returns insufficient_data with market_data_unavailable.
+3. Q4 is not omitted.
+4. Sprint 11 Q4 generates limitations, insufficient-data reporting, and evidence references only.
+5. Future-state Q4 evaluates valuation context, not investment attractiveness.
 6. Q4 cannot generate price targets.
 7. Q4 cannot generate return forecasts.
 8. Confidence is builder-generated.
 9. Recommendation language is forbidden.
-10. Q4 is the sole owner of valuation understanding within Investor Intelligence.
+10. Q4 owns valuation-context reporting within Investor Intelligence; full valuation synthesis is deferred in Sprint 11.
 
 End of Specification.

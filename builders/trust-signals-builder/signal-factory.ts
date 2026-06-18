@@ -1,5 +1,6 @@
 import type { Artifact } from "../../contracts/artifacts/artifact.js";
 import { BuilderValidationError } from "../../packages/builder-framework/src/builder-errors.js";
+import { TRUST_SIGNALS_CALIBRATION } from "./calibration-contract.js";
 import type { TrustPillarArtifactType } from "./contract.js";
 import { ruleByRef } from "./rules.js";
 import type {
@@ -95,8 +96,10 @@ function normalizeIdPart(value: string): string {
 
 function clampConfidence(value: number): number {
   if (!Number.isFinite(value)) {
-    return 0.5;
+    return TRUST_SIGNALS_CALIBRATION.NON_FINITE_CONFIDENCE_FALLBACK;
   }
 
-  return Math.max(0, Math.min(1, Number(value.toFixed(4))));
+  return Math.max(0, Math.min(1, Number(value.toFixed(
+    TRUST_SIGNALS_CALIBRATION.CONFIDENCE_ROUNDING_DECIMAL_PLACES,
+  ))));
 }

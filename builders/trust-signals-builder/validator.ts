@@ -1,5 +1,6 @@
 import type { Artifact } from "../../contracts/artifacts/artifact.js";
 import { BuilderDependencyError, BuilderValidationError } from "../../packages/builder-framework/src/builder-errors.js";
+import { TRUST_SIGNALS_CALIBRATION } from "./calibration-contract.js";
 import {
   DEPTH_LEVELS,
   PILLAR_ARTIFACT_TYPES,
@@ -260,7 +261,9 @@ function validateDimensionDepth(value: unknown, field: string): void {
 
 function validateCoverageSemantics(content: TrustSignalsArtifactContent): void {
   const availableCount = availablePillarCount(content.enrichment_status);
-  const expectedDepth = availableCount === 4 ? "full" : availableCount >= 2 ? "standard" : "base";
+  const expectedDepth = availableCount === TRUST_SIGNALS_CALIBRATION.SUPPORTED_PILLAR_COUNT
+    ? "full"
+    : availableCount >= TRUST_SIGNALS_CALIBRATION.STANDARD_DEPTH_MIN_PILLAR_COUNT ? "standard" : "base";
 
   if (content.depth_indicator.overall !== expectedDepth) {
     throw new BuilderValidationError("trust_signals.depth_indicator.overall does not match pillar coverage.");

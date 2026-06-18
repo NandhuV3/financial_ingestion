@@ -1,4 +1,5 @@
 import { BuilderValidationError } from "../../packages/builder-framework/src/builder-errors.js";
+import { TRUST_SIGNALS_CALIBRATION } from "./calibration-contract.js";
 import { buildTrustSignal, sourceRef } from "./signal-factory.js";
 import type {
   CapitalAllocationGapInput,
@@ -50,13 +51,13 @@ function ruleForGap(gapType: CapitalAllocationGapInput["gap_type"]): string {
 }
 
 function confidenceForGap(gap: CapitalAllocationGapInput): number {
-  if (gap.evidence_refs.length >= 2) {
-    return 0.85;
+  if (gap.evidence_refs.length >= TRUST_SIGNALS_CALIBRATION.CAPITAL_ALLOCATION_MULTI_EVIDENCE_MIN_REFS) {
+    return TRUST_SIGNALS_CALIBRATION.CAPITAL_ALLOCATION_MULTI_EVIDENCE_CONFIDENCE;
   }
 
-  if (gap.evidence_refs.length === 1) {
-    return 0.7;
+  if (gap.evidence_refs.length === TRUST_SIGNALS_CALIBRATION.CAPITAL_ALLOCATION_SINGLE_EVIDENCE_REFS) {
+    return TRUST_SIGNALS_CALIBRATION.CAPITAL_ALLOCATION_SINGLE_EVIDENCE_CONFIDENCE;
   }
 
-  return 0.5;
+  return TRUST_SIGNALS_CALIBRATION.CAPITAL_ALLOCATION_NO_EVIDENCE_CONFIDENCE;
 }

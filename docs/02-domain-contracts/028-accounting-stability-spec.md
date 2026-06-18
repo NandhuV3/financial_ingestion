@@ -26,13 +26,34 @@ This is the third pillar of the Trust Architecture.
 Commitment Tracking
 Narrative Consistency
 Accounting Stability
+Capital Allocation Tracking
         ↓
 Trust Signals
         ↓
 Quarter Understanding
         ↓
-Q3 Trust Assessment
+Investor Intelligence Q3
 ```
+
+Accounting Stability is a Trust Pillar artifact.
+
+Its canonical trust flow is:
+
+```text
+Accounting Stability
+        ↓
+Trust Signals
+        ↓
+Quarter Understanding
+        ↓
+Investor Intelligence Q3
+```
+
+Accounting Stability does not bypass Trust Signals.
+
+Accounting Stability does not bypass Quarter Understanding.
+
+LOCKED.
 
 ---
 
@@ -49,18 +70,27 @@ Track changes in:
 
 across time.
 
+Accounting Stability executes deterministically.
+
+It does not perform LLM reasoning or trust interpretation.
+
 ---
 
 # What Accounting Stability Owns
 
 Owns:
 
-- accounting policy changes
-- segment definition changes
-- non-GAAP evolution
-- reporting consistency
-- restatement history
-- comparability impacts
+- accounting policy change detection
+- accounting policy tracking
+- segment redefinition detection
+- non-GAAP exclusion tracking
+- non-GAAP gap computation
+- non-GAAP gap trend tracking
+- restatement detection
+- proactive disclosure evidence
+- coverage status
+- depth indicators
+- accounting-level extraction, change-detection, and computation confidence
 
 ---
 
@@ -69,11 +99,27 @@ Owns:
 Does NOT own:
 
 - trust verdicts
+- trust observations
+- trust dimensions
+- trust severity
+- trust direction
+- trust confidence
+- trust interpretation
+- investor synthesis
+- recommendations
+- valuation opinions
+- LLM reasoning
 - fraud detection
 - management credibility conclusions
 - investment risk assessment
 
-Those belong downstream.
+Trust observations, dimensions, severity, direction, and trust confidence belong
+to Trust Signals.
+
+Trust interpretation belongs to Quarter Understanding.
+
+Investor-facing trust synthesis and trust verdicts belong to Investor
+Intelligence Q3.
 
 ---
 
@@ -115,10 +161,10 @@ That belongs nowhere unless supported by governance review.
 
 ---
 
-# Artifact Schema
+# Artifact Content Schema
 
 ```typescript
-type AccountingStabilityArtifact = {
+type AccountingStabilityArtifactContent = {
   artifact_type: "accounting_stability";
 
   company: string;
@@ -136,12 +182,17 @@ type AccountingStabilityArtifact = {
   summary: AccountingSummary;
 
   confidence: AccountingStabilityConfidence;
-
-  metadata: ArtifactMetadata;
-
-  lineage: ArtifactLineage;
 };
 ```
+
+Artifact identity, metadata, Artifact Framework lineage, versioning, persistence,
+current pointer, archive/history, and framework-owned hashes belong to:
+
+```text
+Artifact Framework
+```
+
+LOCKED.
 
 ---
 
@@ -653,7 +704,9 @@ Amount of longitudinal evidence.
 
 Accounting Stability never emits trust verdicts.
 
-It emits structured observations.
+It emits deterministic accounting evidence and pillar-specific observations.
+
+It does not emit Trust Signals or deterministic trust observations.
 
 ---
 
@@ -767,7 +820,7 @@ Stable Longitudinal Tracking
 
 # Invalidation Rules
 
-Regenerate when:
+Accounting Stability publishes a new immutable artifact version when:
 
 ```text
 New Filing Arrives
@@ -791,17 +844,14 @@ Restatement Detected
 
 When Accounting Stability changes:
 
-Mark stale:
+- Accounting Stability publishes a new artifact version.
+- Dependency Index records dependency relationships.
+- Invalidation Engine determines downstream staleness and propagation.
 
-```text
-Trust Signals
+Accounting Stability does not mark Trust Signals, Quarter Understanding,
+Investor Intelligence Q3, or any other downstream consumer stale directly.
 
-Quarter Understanding
-
-Investor Intelligence (Q3)
-
-Partner Domain
-```
+Accounting Stability does not own invalidation decisions.
 
 ---
 
@@ -823,15 +873,15 @@ Governed Annotation Layer
 
 ---
 
-# Archive Strategy
+# Storage Ownership
 
-```text
-current.json
+Artifact Framework owns storage mechanics, persistence, current pointer
+resolution, archive/history, and framework hashes.
 
-archive/
-```
+Accounting Stability does not own storage structure.
 
-Required.
+Accounting Stability does not define storage trees, archive layouts,
+`current.json` layouts, persistence structures, or filesystem paths.
 
 ---
 
@@ -867,35 +917,42 @@ All preserved.
 
 ---
 
-# Metadata
+# Replayability Metadata
 
 ```typescript
-type ArtifactMetadata = {
+type AccountingStabilityReplayabilityMetadata = {
   schema_version: string;
 
   generated_at: string;
 
-  artifact_version: number;
+  source_references: string[];
+
+  evidence_references: string[];
+
+  accounting_change_references: string[];
+
+  coverage_status: string;
+
+  depth_indicators: string[];
+
+  builder_version?: string;
+
+  calibration_version?: string;
+
+  rule_version?: string;
 };
 ```
 
----
+This is content-owned replayability metadata when emitted by Accounting
+Stability. It is not Artifact Framework metadata, Artifact Framework lineage, or
+artifact versioning.
 
-# Lineage
+Accounting Stability is deterministic and does not require prompt lineage or
+model lineage.
 
-```typescript
-type ArtifactLineage = {
-  source_filings: string[];
-
-  source_periods: string[];
-
-  prompt_version: string;
-
-  model_version: string;
-
-  input_hash: string;
-};
-```
+Artifact Framework owns artifact identity, artifact metadata, framework
+lineage, artifact versioning, persistence, current pointers, archive/history,
+and framework hashes.
 
 ---
 
@@ -938,8 +995,10 @@ LOCKED.
 5. Non-GAAP tracking measures gaps, not intent.
 6. Reporting stability score is informational only.
 7. Trust Signals consume this artifact.
-8. Q3 consumes trust signals, not raw accounting observations.
+8. Quarter Understanding consumes Trust Signals and produces trust interpretation.
 9. Historical timelines are mandatory.
 10. Every accounting observation remains traceable to source filings.
+11. Investor Intelligence Q3 consumes Quarter Understanding trust interpretation.
+12. Accounting Stability does not own invalidation decisions or storage mechanics.
 
 End of Specification.

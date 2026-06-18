@@ -1,4 +1,5 @@
 import type { BusinessSignal } from "../business-signals-builder/types.js";
+import { QUARTER_UNDERSTANDING_CALIBRATION } from "./calibration-contract.js";
 import type { QuarterUnderstandingBuildContext, UnderstandingSeed } from "./types.js";
 
 export function buildBusinessInterpretations(context: QuarterUnderstandingBuildContext): UnderstandingSeed[] {
@@ -135,11 +136,12 @@ function buildCompetitionInterpretation(
 }
 
 export function importanceFromSignals(signals: BusinessSignal[]): "low" | "medium" | "high" {
-  if (signals.some((signal) => signal.magnitude === "high")) {
+  if (signals.some((signal) =>
+    includesCalibrationValue(QUARTER_UNDERSTANDING_CALIBRATION.HIGH_IMPORTANCE_SIGNAL_MAGNITUDES, signal.magnitude))) {
     return "high";
   }
 
-  if (signals.length > 0) {
+  if (signals.length >= QUARTER_UNDERSTANDING_CALIBRATION.MEDIUM_IMPORTANCE_MIN_SIGNAL_COUNT) {
     return "medium";
   }
 
@@ -147,8 +149,10 @@ export function importanceFromSignals(signals: BusinessSignal[]): "low" | "mediu
 }
 
 export function directionFromSignals(signals: BusinessSignal[]): "improving" | "stable" | "deteriorating" | "mixed" {
-  const improving = signals.filter((signal) => signal.direction === "improving").length;
-  const deteriorating = signals.filter((signal) => signal.direction === "deteriorating").length;
+  const improving = signals.filter((signal) =>
+    includesCalibrationValue(QUARTER_UNDERSTANDING_CALIBRATION.IMPROVING_BUSINESS_SIGNAL_DIRECTIONS, signal.direction)).length;
+  const deteriorating = signals.filter((signal) =>
+    includesCalibrationValue(QUARTER_UNDERSTANDING_CALIBRATION.DETERIORATING_BUSINESS_SIGNAL_DIRECTIONS, signal.direction)).length;
 
   if (improving > 0 && deteriorating > 0) {
     return "mixed";
@@ -163,4 +167,8 @@ export function directionFromSignals(signals: BusinessSignal[]): "improving" | "
   }
 
   return "stable";
+}
+
+function includesCalibrationValue(values: readonly string[], value: string): boolean {
+  return values.includes(value);
 }

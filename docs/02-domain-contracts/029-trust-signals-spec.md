@@ -23,7 +23,10 @@ They do NOT answer:
 Can management be trusted?
 ```
 
-That belongs to Quarter Understanding and Q3.
+Quarter Understanding owns trust interpretation.
+
+Investor Intelligence Q3 owns investor-facing trust synthesis and trust
+verdicts.
 
 ---
 
@@ -39,8 +42,18 @@ Trust Signals
         ↓
 Quarter Understanding
         ↓
-Q3 Trust Assessment
+Investor Intelligence Q3
 ```
+
+This is the canonical trust flow.
+
+Trust Signals is the only trust observation layer.
+
+Trust Signals does not perform interpretation.
+
+Trust Signals does not perform investor synthesis.
+
+LOCKED.
 
 ---
 
@@ -100,26 +113,73 @@ That belongs downstream.
 
 Trust Signals owns:
 
-- trust signal generation
-- trust signal classification
-- trust signal lifecycle
-- trust signal evidence linking
+- trust observation generation
 - trust dimension assignment
 - severity classification
-- direction derivation
-- confidence calculation
+- direction classification
+- confidence computation
+- lifecycle classification
 - enrichment status
 - depth indicators
+- missing dimension coverage
+- evaluation hooks
 
 Trust Signals does NOT own:
 
+- trust evidence
+- commitment lifecycle ownership
+- narrative evidence ownership
+- accounting evidence ownership
+- capital allocation evidence ownership
+- trust interpretation
+- trust significance assessment
 - trust verdicts
-- confidence in management
-- credibility assessment
-- investor interpretation
-- evidence collection
+- investor synthesis
 - recommendations
-- valuation
+- valuation opinions
+- LLM reasoning
+
+Trust Pillars own evidence.
+
+Quarter Understanding owns trust interpretation and trust significance
+assessment.
+
+Investor Intelligence Q3 owns investor-facing trust synthesis and trust
+verdicts.
+
+Trust Signals remains deterministic.
+
+LOCKED.
+
+---
+
+# Dependency Boundary
+
+Required input:
+
+- At least one Trust Pillar artifact
+
+Enrichment inputs:
+
+- Additional Trust Pillar artifacts
+
+Trust Signals consumes Trust Pillars only:
+
+- Commitment Tracking
+- Narrative Consistency
+- Accounting Stability
+- Capital Allocation Tracking
+
+Trust Signals does NOT consume:
+
+- Quarter Understanding
+- Investor Intelligence
+- Company Knowledge
+- Business Signals
+- Quarter Change
+- Topic Evolution
+
+LOCKED.
 
 ---
 
@@ -190,10 +250,10 @@ LOCKED.
 
 ---
 
-# Artifact Schema
+# Artifact Content Schema
 
 ```typescript
-type TrustSignalsArtifact = {
+type TrustSignalsArtifactContent = {
   artifact_type: "trust_signals";
 
   company: string;
@@ -211,12 +271,17 @@ type TrustSignalsArtifact = {
   depth_indicator: DepthIndicator;
 
   missing_dimensions: TrustDimension[];
-
-  metadata: ArtifactMetadata;
-
-  lineage: ArtifactLineage;
 };
 ```
+
+Artifact identity, metadata, Artifact Framework lineage, versioning, persistence,
+current pointer, archive/history, and framework-owned hashes belong to:
+
+```text
+Artifact Framework
+```
+
+LOCKED.
 
 ---
 
@@ -592,7 +657,7 @@ Those belong downstream.
 type EnrichmentInputStatus = {
   available: boolean;
 
-  artifact_path: string | null;
+  artifact_ref: string | null;
 
   artifact_version: number | null;
 
@@ -923,7 +988,7 @@ Stable Signal Lifecycle Tracking
 
 # Invalidation Rules
 
-Regenerate when:
+Trust Signals publishes a new immutable artifact version when:
 
 ```text
 Commitment Tracking Changes
@@ -947,15 +1012,14 @@ Trust Signal Rules Change
 
 When Trust Signals change:
 
-Mark stale:
+- Trust Signals publishes a new artifact version.
+- Dependency Index records dependency relationships.
+- Invalidation Engine determines downstream staleness and propagation.
 
-```text
-Quarter Understanding
+Trust Signals does not mark Quarter Understanding, Investor Intelligence Q3,
+or any other downstream consumer stale directly.
 
-Investor Intelligence (Q3)
-
-Partner Domain
-```
+Trust Signals does not own invalidation decisions.
 
 ---
 
@@ -985,15 +1049,15 @@ LLM-Based Trust Signal Generation
 
 ---
 
-# Archive Strategy
+# Storage Ownership
 
-```text
-current.json
+Artifact Framework owns storage mechanics, persistence, current pointer
+resolution, archive/history, retrieval mechanics, and framework hashes.
 
-archive/
-```
+Trust Signals does not own storage structure.
 
-Required.
+Trust Signals does not define storage trees, archive layouts, `current.json`
+layouts, persistence structures, or filesystem paths.
 
 ---
 
@@ -1023,45 +1087,45 @@ Both remain.
 
 ---
 
-# Metadata
+# Replayability Metadata
 
 ```typescript
-type ArtifactMetadata = {
+type TrustSignalsReplayabilityMetadata = {
   schema_version: string;
 
   generated_at: string;
 
-  artifact_version: number;
+  source_artifact_references: string[];
+
+  source_record_references: string[];
+
+  evidence_references: string[];
+
+  enrichment_status: EnrichmentStatus;
+
+  depth_indicators: DepthIndicator;
+
+  evaluation_hooks: TrustSignalEvaluationHooks;
+
+  calibration_version?: string;
+
+  rule_version: string;
 };
 ```
 
----
+This is content-owned replayability metadata when emitted by Trust Signals. It
+is not Artifact Framework metadata, Artifact Framework lineage, or artifact
+versioning.
 
-# Lineage
+These are content replayability references. They are not Artifact Framework
+lineage.
 
-```typescript
-type ArtifactLineage = {
-  commitment_tracking_version: number | null;
+Source artifact availability must match `enrichment_status` and
+`depth_indicators`.
 
-  narrative_consistency_version: number | null;
-
-  accounting_stability_version: number | null;
-
-  capital_allocation_tracking_version: number | null;
-
-  signal_rules_version: string;
-
-  input_hash: string;
-};
-```
-
-Unavailable pillar versions must be recorded as:
-
-```text
-null
-```
-
-and must match enrichment_status.
+Artifact Framework owns artifact identity, artifact metadata, framework
+lineage, artifact versioning, persistence, current pointers, archive/history,
+and framework hashes.
 
 LOCKED.
 
@@ -1111,5 +1175,8 @@ LOCKED.
 10. Q3 consumes trust interpretations, not raw signals.
 11. Trust Signals follows the Artifact Enrichment Pattern.
 12. Trust Signals may emit observations only for dimensions whose owning pillar artifact exists.
+13. Trust Signals consumes Trust Pillar artifacts only.
+14. Trust Signals does not own invalidation decisions or storage mechanics.
+15. Trust Signals is the only deterministic trust observation layer.
 
 End of Specification.

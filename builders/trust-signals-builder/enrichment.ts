@@ -1,4 +1,5 @@
 import type { Artifact } from "../../contracts/artifacts/artifact.js";
+import { TRUST_SIGNALS_CALIBRATION } from "./calibration-contract.js";
 import type { TrustDimension } from "./contract.js";
 import type { DepthIndicator, EnrichmentInputStatus, EnrichmentStatus } from "./types.js";
 
@@ -23,7 +24,9 @@ export function buildTrustDepthIndicator(enrichmentStatus: EnrichmentStatus): De
   const availableCount = availablePillarCount(enrichmentStatus);
 
   return {
-    overall: availableCount === 4 ? "full" : availableCount >= 2 ? "standard" : "base",
+    overall: availableCount === TRUST_SIGNALS_CALIBRATION.SUPPORTED_PILLAR_COUNT
+      ? "full"
+      : availableCount >= TRUST_SIGNALS_CALIBRATION.STANDARD_DEPTH_MIN_PILLAR_COUNT ? "standard" : "base",
     commitment_dimension: enrichmentStatus.commitment_tracking.available ? "present" : "absent",
     narrative_dimension: enrichmentStatus.narrative_consistency.available ? "present" : "absent",
     explanation_dimension: enrichmentStatus.narrative_consistency.available ? "present" : "absent",

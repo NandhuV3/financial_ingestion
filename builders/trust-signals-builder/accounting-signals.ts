@@ -1,4 +1,5 @@
 import { BuilderValidationError } from "../../packages/builder-framework/src/builder-errors.js";
+import { TRUST_SIGNALS_CALIBRATION } from "./calibration-contract.js";
 import { buildTrustSignal, sourceRef } from "./signal-factory.js";
 import type {
   PolicyChangeInput,
@@ -36,7 +37,9 @@ function policyChangeSignal(context: TrustSignalBuildContext, change: PolicyChan
     source_artifact_refs: [sourceRef(artifact)],
     source_record_refs: [change.policy_change_id],
     observation: `Accounting policy change observed with ${change.comparability_impact} comparability impact.`,
-    confidence: change.confidence ?? artifact.content.confidence?.overall ?? 0.6,
+    confidence: change.confidence
+      ?? artifact.content.confidence?.overall
+      ?? TRUST_SIGNALS_CALIBRATION.ACCOUNTING_CONFIDENCE_FALLBACK,
   });
 }
 
@@ -55,7 +58,9 @@ function segmentChangeSignal(context: TrustSignalBuildContext, change: SegmentCh
     source_artifact_refs: [sourceRef(artifact)],
     source_record_refs: [change.segment_change_id],
     observation: `Segment reporting change observed: ${change.change_type}.`,
-    confidence: change.confidence ?? artifact.content.confidence?.overall ?? 0.6,
+    confidence: change.confidence
+      ?? artifact.content.confidence?.overall
+      ?? TRUST_SIGNALS_CALIBRATION.ACCOUNTING_CONFIDENCE_FALLBACK,
   });
 }
 
@@ -71,7 +76,9 @@ function restatementSignal(context: TrustSignalBuildContext, restatement: Restat
     source_artifact_refs: [sourceRef(artifact)],
     source_record_refs: [restatement.restatement_id],
     observation: `Restatement observed with ${restatement.materiality} materiality.`,
-    confidence: restatement.confidence ?? artifact.content.confidence?.overall ?? 0.6,
+    confidence: restatement.confidence
+      ?? artifact.content.confidence?.overall
+      ?? TRUST_SIGNALS_CALIBRATION.ACCOUNTING_CONFIDENCE_FALLBACK,
   });
 }
 
@@ -94,7 +101,9 @@ function nonGaapSignal(context: TrustSignalBuildContext): TrustSignal[] {
     source_artifact_refs: [sourceRef(artifact)],
     source_record_refs: ["non_gaap_analysis"],
     observation: `Non-GAAP gap trend observed as ${direction}.`,
-    confidence: artifact.content.non_gaap_analysis?.confidence ?? artifact.content.confidence?.overall ?? 0.6,
+    confidence: artifact.content.non_gaap_analysis?.confidence
+      ?? artifact.content.confidence?.overall
+      ?? TRUST_SIGNALS_CALIBRATION.ACCOUNTING_CONFIDENCE_FALLBACK,
   })];
 }
 
@@ -114,7 +123,8 @@ function reportingStabilitySignal(context: TrustSignalBuildContext): TrustSignal
     source_artifact_refs: [sourceRef(artifact)],
     source_record_refs: ["accounting_summary"],
     observation: "Reporting stability decrease observed.",
-    confidence: artifact.content.confidence?.overall ?? 0.6,
+    confidence: artifact.content.confidence?.overall
+      ?? TRUST_SIGNALS_CALIBRATION.ACCOUNTING_CONFIDENCE_FALLBACK,
   })];
 }
 

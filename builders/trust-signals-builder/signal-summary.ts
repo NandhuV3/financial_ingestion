@@ -1,4 +1,5 @@
 import { availablePillarCount } from "./enrichment.js";
+import { TRUST_SIGNALS_CALIBRATION } from "./calibration-contract.js";
 import type {
   EnrichmentStatus,
   TrustSignal,
@@ -22,7 +23,8 @@ export function buildTrustSignalConfidence(
   signals: TrustSignal[],
   enrichmentStatus: EnrichmentStatus,
 ): TrustSignalConfidence {
-  const sourceDataConfidence = availablePillarCount(enrichmentStatus) / 4;
+  const sourceDataConfidence = availablePillarCount(enrichmentStatus)
+    / TRUST_SIGNALS_CALIBRATION.SUPPORTED_PILLAR_COUNT;
   const evidenceCompleteness = signals.length === 0
     ? sourceDataConfidence
     : signals.filter((signal) =>
@@ -34,7 +36,10 @@ export function buildTrustSignalConfidence(
     : signals.reduce((sum, signal) => sum + signal.confidence, 0) / signals.length;
 
   return {
-    overall: round((sourceDataConfidence + evidenceCompleteness + ruleEvaluationConfidence) / 3),
+    overall: round(
+      (sourceDataConfidence + evidenceCompleteness + ruleEvaluationConfidence)
+        / TRUST_SIGNALS_CALIBRATION.OVERALL_CONFIDENCE_COMPONENT_COUNT,
+    ),
     source_data_confidence: round(sourceDataConfidence),
     rule_evaluation_confidence: round(ruleEvaluationConfidence),
     evidence_completeness_score: round(evidenceCompleteness),
@@ -55,5 +60,5 @@ export function buildTrustSignalsEvaluationHooks(input: {
 }
 
 function round(value: number): number {
-  return Number(value.toFixed(4));
+  return Number(value.toFixed(TRUST_SIGNALS_CALIBRATION.CONFIDENCE_ROUNDING_DECIMAL_PLACES));
 }

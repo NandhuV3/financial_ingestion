@@ -47,16 +47,28 @@ Interpretation
 
 Quarter Understanding owns:
 
-- trust synthesis
-- significance
-- contextual meaning
+- trust interpretation
+- trust significance assessment
+- trust context assessment
+- trust pattern assessment
+- trust narrative coherence assessment
+- trust direction interpretation
+- trust limitation reporting
+- trust depth reporting
+- trust confidence reporting
 
 Trust Signals does not own:
 
-- trust conclusions
-- management credibility conclusions
-- recommendations
-- valuation
+- trust interpretation
+- trust significance assessment
+- trust verdicts
+- investor synthesis
+
+Quarter Understanding is the only trust interpretation layer.
+
+Quarter Understanding does not generate trust observations.
+
+Quarter Understanding does not generate trust verdicts.
 
 LOCKED.
 
@@ -72,12 +84,16 @@ Capital Allocation Tracking
         ↓
 Trust Signals
         ↓
-Quarter Understanding Trust Extension
-        ↓
-Trust Interpretation
+Quarter Understanding Trust Interpretation
         ↓
 Investor Intelligence Q3
 ```
+
+This is the canonical trust flow.
+
+All trust observations arrive through Trust Signals.
+
+LOCKED.
 
 ---
 
@@ -87,10 +103,6 @@ Transform:
 
 ```text
 Trust Signals
-+
-Company Knowledge
-+
-Historical Context
 ```
 
 into:
@@ -123,43 +135,57 @@ Trust verdicts belong to Q3.
 
 Quarter Understanding Trust Extension owns:
 
-- trust signal clustering
-- trust pattern detection
-- narrative coherence analysis
-- business context calibration
-- trust direction assessment
+- trust interpretation
+- trust significance assessment
+- trust context assessment
+- trust pattern assessment
+- trust narrative coherence assessment
+- trust direction interpretation
+- trust limitation reporting
+- trust depth reporting
+- trust confidence reporting
 
 Quarter Understanding does NOT own:
 
-- final trust verdict
-- investor trust recommendation
-- Q3 answer generation
+- trust evidence extraction
+- commitment lifecycle ownership
+- narrative evidence ownership
+- accounting evidence ownership
+- capital allocation evidence ownership
+- trust observation generation
+- trust dimension assignment
+- trust severity classification
+- trust lifecycle classification
+- trust verdicts
+- investor synthesis
+- recommendations
+- valuation opinions
+
+Trust Pillars own evidence.
+
+Trust Signals owns trust observations, dimensions, severity, and lifecycle
+classification.
+
+Investor Intelligence Q3 owns investor-facing trust synthesis and trust
+verdicts.
+
+LOCKED.
 
 ---
 
 # Inputs
 
-For the Trust Extension, Quarter Understanding receives:
+Required trust input:
 
-```typescript
-TrustSignalsArtifact
-```
+- Trust Signals
 
-```typescript
-CompanyKnowledgeArtifact
-```
+Optional enrichment:
 
-```typescript
-TopicEvolutionArtifact
-```
+- Topic Evolution
+- Concept Registry, when trust concepts are referenced
 
-```typescript
-PriorQuarterUnderstandingArtifacts
-```
-
-TrustSignalsArtifact is an enrichment input for Quarter Understanding.
-
-Quarter Understanding receives quarter-over-quarter observations exclusively through Business Signals movement signals and must not consume QuarterChangeArtifact directly.
+Base Quarter Understanding may remain valid without Trust Signals, but the
+Trust Extension requires Trust Signals to produce trust interpretation.
 
 When TrustSignalsArtifact is absent, Quarter Understanding remains valid but must record:
 
@@ -182,30 +208,40 @@ Missing dimensions represent trust dimensions whose owning pillar artifact was u
 
 Quarter Understanding and Investor Intelligence must propagate those coverage limitations.
 
+When Trust Signals are absent or incomplete:
+
+- Reduced depth must be recorded.
+- Trust limitations must be recorded.
+- Missing dimensions and coverage status must be preserved.
+
+Quarter Understanding must not fabricate trust conclusions when trust coverage
+is absent.
+
+LOCKED.
+
 ---
 
 # Explicit Non-Inputs
 
 Quarter Understanding must NOT read:
 
-```text
-Raw Filings
-```
+- Commitment Tracking directly
+- Narrative Consistency directly
+- Accounting Stability directly
+- Capital Allocation Tracking directly
+- Investor Intelligence
+- Raw filing content
 
-```text
-Investor Intelligence
-```
+All trust observations arrive through Trust Signals.
 
-```text
-Partner Domain
-```
+LOCKED.
 
 ---
 
-# Trust Interpretation Artifact
+# Trust Interpretation Content
 
 ```typescript
-type TrustInterpretationArtifact = {
+type TrustInterpretationArtifactContent = {
   artifact_type: "trust_interpretation";
 
   company: string;
@@ -215,12 +251,25 @@ type TrustInterpretationArtifact = {
   trust_interpretation: TrustInterpretation;
 
   confidence: TrustInterpretationConfidence;
-
-  metadata: ArtifactMetadata;
-
-  lineage: ArtifactLineage;
 };
 ```
+
+Artifact Framework owns:
+
+```text
+artifact identity
+artifact metadata
+framework lineage
+artifact versioning
+persistence
+current pointers
+archive/history
+framework hashes
+```
+
+Trust Interpretation content must not model those responsibilities.
+
+LOCKED.
 
 ---
 
@@ -231,7 +280,7 @@ Quarter Understanding artifacts using this extension must expose trust availabil
 ```typescript
 type EnrichmentInputStatus = {
   available: boolean;
-  artifact_path: string | null;
+  artifact_ref: string | null;
   artifact_version: number | null;
   absent_reason: string | null;
 };
@@ -883,8 +932,23 @@ They provide observations.
 Quarter Understanding Trust Extension is:
 
 ```text
-LLM Layer
+LLM-assisted
+
+Interpretation-only
 ```
+
+Trust interpretation is not deterministic synthesis and is not rule-only
+reasoning.
+
+Execution requirements:
+
+```text
+temperature = 0
+model version = pinned
+prompt version = pinned
+```
+
+Prompt and model execution references must be retained for replayability.
 
 ---
 
@@ -973,16 +1037,15 @@ across periods.
 
 # Invalidation Rules
 
-Regenerate when:
+Quarter Understanding publishes a new immutable artifact version when trust
+interpretation changes because:
 
 ```text
 Trust Signals Change
 
-Company Knowledge Changes
-
-Business Signals Change
-
 Topic Evolution Changes
+
+Concept Registry Changes When Referenced
 ```
 
 ---
@@ -991,13 +1054,14 @@ Topic Evolution Changes
 
 When Trust Interpretation changes:
 
-Mark stale:
+- Quarter Understanding publishes a new artifact version.
+- Dependency Index records dependency relationships.
+- Invalidation Engine determines downstream staleness and propagation.
 
-```text
-Investor Intelligence (Q3)
+Quarter Understanding does not mark Investor Intelligence Q3 or any other
+downstream consumer stale directly.
 
-Partner Domain
-```
+Quarter Understanding does not own invalidation decisions.
 
 ---
 
@@ -1029,15 +1093,15 @@ Avoid
 
 ---
 
-# Archive Strategy
+# Storage Ownership
 
-```text
-current.json
+Artifact Framework owns storage mechanics, persistence, current pointer
+resolution, archive/history, retrieval mechanics, and framework hashes.
 
-archive/
-```
+Quarter Understanding Trust Extension does not own storage structure.
 
-Required.
+Quarter Understanding Trust Extension does not define storage trees, archive
+layouts, `current.json` layouts, persistence structures, or filesystem paths.
 
 ---
 
@@ -1073,39 +1137,46 @@ Preserved forever.
 
 ---
 
-# Metadata
+# Replayability Metadata
 
 ```typescript
-type ArtifactMetadata = {
+type TrustInterpretationReplayabilityMetadata = {
   schema_version: string;
 
   generated_at: string;
 
-  artifact_version: number;
+  trust_interpretation_references: string[];
+
+  source_trust_signal_references: string[];
+
+  enrichment_status: EnrichmentStatus;
+
+  depth_indicators: DepthIndicator;
+
+  limitation_reporting: string[];
+
+  prompt_lineage: PromptLineage;
+
+  prompt_versions: string[];
+
+  model_versions: string[];
+
+  input_hashes: string[];
+
+  output_hashes: string[];
+
+  evaluation_hooks: TrustInterpretationEvaluationHooks;
 };
 ```
 
----
+This is content-level replayability metadata for trust interpretation.
 
-# Lineage
+It is not Artifact Framework metadata, framework lineage, artifact versioning,
+persistence, current pointers, archive/history, or framework hash ownership.
 
-```typescript
-type ArtifactLineage = {
-  trust_signals_version: number;
-
-  company_knowledge_version: number;
-
-  topic_evolution_version: number;
-
-  business_signals_version: number;
-
-  prompt_version: string;
-
-  model_version: string;
-
-  input_hash: string;
-};
-```
+Artifact Framework owns artifact identity, artifact metadata, framework
+lineage, artifact versioning, persistence, current pointers, archive/history,
+and framework hashes.
 
 ---
 
@@ -1150,6 +1221,10 @@ LOCKED.
 7. Historical context is mandatory for recurring/escalating trust patterns.
 8. All interpretations must be evidence grounded.
 9. No recommendation language allowed.
-10. Trust Interpretation is the only trust input consumed by Q3 when trust enrichment is present.
+10. Quarter Understanding trust interpretation is always the trust input consumed by Investor Intelligence Q3.
+11. Quarter Understanding is the only trust interpretation layer.
+12. Quarter Understanding does not generate trust observations or trust verdicts.
+13. Quarter Understanding Trust Extension is LLM-assisted and interpretation-only.
+14. Quarter Understanding does not own invalidation decisions or storage mechanics.
 
 End of Specification.

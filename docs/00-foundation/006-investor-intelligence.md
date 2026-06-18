@@ -2,7 +2,8 @@
 
 # Purpose
 
-Investor Intelligence is the ownership understanding layer of the platform.
+Investor Intelligence is the LLM-assisted synthesis layer and investor-facing
+reasoning layer of the platform.
 
 It answers:
 
@@ -12,7 +13,10 @@ Investor Intelligence is not a filing interpretation layer.
 
 Investor Intelligence is not a presentation layer.
 
-Investor Intelligence is the company-level synthesis layer.
+Investor Intelligence owns Q1-Q5 synthesis.
+
+Investor Intelligence synthesis is LLM-assisted. It is not deterministic
+synthesis.
 
 ---
 
@@ -36,14 +40,30 @@ Required inputs:
 - Company Knowledge
 - Quarter Understanding
 
-Enrichment inputs:
+Optional enrichment:
 
 - Business Signals (Q2 only)
-- Trust Signals (conditional exception only)
-- Commitment Tracking (Q3 longitudinal depth only)
 - Topic Evolution
 - Prior Investor Intelligence
 - Market Data
+
+Trust input for Q3:
+
+- Quarter Understanding trust interpretation
+
+Trust follows the strict governed flow:
+
+```text
+Trust Pillars
+        ↓
+Trust Signals
+        ↓
+Quarter Understanding
+        ↓
+Investor Intelligence Q3
+```
+
+Investor Intelligence consumes trust interpretation, not trust observations.
 
 ---
 
@@ -73,7 +93,7 @@ Investor Intelligence owns:
 - Q4 Valuation Understanding
 - Q5 Ownership Thesis
 
-Investor Intelligence owns company-level synthesis.
+Investor Intelligence owns investor-facing Q1-Q5 synthesis.
 
 ---
 
@@ -137,6 +157,10 @@ Enrichment Inputs:
 - Business Signals (Q2 only)
 - Topic Evolution
 
+Business Signals are optional enrichment for Q2. They are not required inputs.
+
+Business Signals are not consumed by Q1, Q3, Q4, or Q5.
+
 Purpose:
 
 Identify:
@@ -155,12 +179,7 @@ Requires synthesis.
 
 Primary Inputs:
 
-- Trust Interpretation
-
-Conditional Inputs:
-
-- Trust Signals only when Quarter Understanding trust dimension is absent
-- Commitment Tracking only for longitudinal depth
+- Quarter Understanding trust interpretation
 
 Purpose:
 
@@ -176,13 +195,19 @@ Management credibility versus observable reality.
 
 Trust is NOT risk.
 
-Investor Intelligence does not consume trust pillar artifacts directly.
+Investor Intelligence does not consume trust observations or trust pillar
+artifacts directly.
 
-Quarter Understanding remains the sole trust interpretation source when:
+Q3 must not consume:
 
-```text
-quarter_understanding.depth_indicator.trust_dimension = "present"
-```
+- Trust Signals
+- Generic Trust Artifacts
+- Commitment Tracking
+- Narrative Consistency
+- Accounting Stability
+- Capital Allocation Tracking
+
+Quarter Understanding is the sole trust interpretation source for Q3.
 
 LOCKED.
 
@@ -227,6 +252,9 @@ Market data integration is deferred.
 
 Valuation methodology is future work and is not implemented in Sprint 11.
 
+Q4 may not transition to `answered` status until a valuation methodology is
+formally defined and locked.
+
 LOCKED.
 
 ---
@@ -263,6 +291,13 @@ Q5 only reads:
 - Q3
 - Q4
 
+Q5 must not consume upstream artifacts directly, including:
+
+- Company Knowledge
+- Quarter Understanding
+- Trust Signals
+- Business Signals
+
 This ensures:
 
 - Traceability
@@ -281,6 +316,7 @@ Investor Intelligence does not:
 
 - generate signals
 - reinterpret raw trust evidence
+- consume Trust Signals directly
 - consume trust pillar artifacts
 - consume Quarter Change directly
 - produce buy/sell/hold recommendations
@@ -288,14 +324,24 @@ Investor Intelligence does not:
 
 ---
 
-# Replayability
+# Replayability Metadata
 
-Investor Intelligence must record:
+Investor Intelligence owns generation of content-level replayability metadata:
 
-- per-question input hashes
+- `prompt_version`
+- `model_version`
+- prompt lineage
+- input hashes, including section input hashes
+- output hashes
 - coherence hash
-- prompt lineage and replayability references for required inputs and used enrichment inputs
-- deterministic context assembly rules
+- evaluation metadata
+
+Prompt lineage and input hashes must reference required inputs and every
+optional enrichment input actually used.
+
+Context assembly rules must be deterministic and replayable. These fields are
+replayability fields; they are not Artifact Framework identity, lineage,
+versioning, or lifecycle metadata.
 
 ---
 
@@ -303,7 +349,8 @@ Investor Intelligence must record:
 
 Investor Intelligence is a single artifact.
 
-Per-question versioning exists internally.
+Each Q1-Q5 section carries section replayability metadata to support partial
+invalidation and replay.
 
 ---
 
@@ -323,26 +370,24 @@ type InvestorIntelligenceArtifactContent = {
     q5: Q5Answer;
   };
 
-  prompt_lineage: InvestorPromptLineage;
-
-  prompt_versions: PromptVersions;
-
-  model_versions: ModelVersions;
-
-  per_question_input_hashes: PerQuestionInputHashes;
-
-  coherence_hash: string;
-
-  output_hash: string;
-
-  evaluation_hooks: InvestorIntelligenceEvaluationHooks;
+  replayability_metadata: {
+    prompt_lineage: InvestorPromptLineage;
+    prompt_versions: PromptVersions;
+    model_versions: ModelVersions;
+    section_input_hashes: SectionInputHashes;
+    section_output_hashes: SectionOutputHashes;
+    coherence_hash: string;
+    output_hash: string;
+    evaluation_metadata: InvestorIntelligenceEvaluationMetadata;
+  };
 }
 ```
 
-This is Investor Intelligence content. Artifact Framework wraps this content
-and owns artifact identity, artifact_id, metadata, Artifact Framework lineage,
-versioning, artifact_version, persistence, current pointer, archive/history,
-and framework-level hashes.
+This is Investor Intelligence content and content-level replayability metadata.
+
+The Artifact Framework owns artifact identity, artifact metadata, framework
+lineage, artifact versioning, persistence, current pointers, archive/history,
+and framework hashes.
 
 ---
 
@@ -352,7 +397,7 @@ Chosen Architecture:
 
 Single Artifact
 
-Internal Question Versioning
+Section Replayability Metadata
 
 Reason:
 
@@ -373,27 +418,33 @@ LOCKED.
 
 ---
 
-# Question Versioning
+# Section Replayability Metadata
 
-Each question maintains its own version.
+Each question records the replayability fields required to reproduce and
+validate that section.
 
 ```typescript
 type QuestionSection = {
   answer: string;
 
-  question_version: number;
-
   input_hash: string;
+
+  output_hash: string;
 
   prompt_version: string;
 
   model_version: string;
 
-  confidence: StructuredConfidence;
+  prompt_lineage: PromptLineage;
 
-  generated_at: string;
+  evaluation_metadata: SectionEvaluationMetadata;
+
+  confidence: StructuredConfidence;
 }
 ```
+
+These are section replayability metadata fields. They are not artifact
+versioning or Artifact Framework metadata.
 
 ---
 
@@ -501,9 +552,9 @@ type ChangeCondition = {
 
 # Q4 Dependency
 
-Q5 can operate without Q4.
+Q5 always consumes the Q4 output.
 
-When Q4 is unavailable:
+When Q4 has Sprint 11 insufficient-data status:
 
 ```text
 Status = PARTIAL
@@ -541,7 +592,8 @@ LOCKED.
 
 # LLM Usage
 
-Investor Intelligence uses LLMs.
+Investor Intelligence is an LLM-assisted synthesis layer and investor-facing
+reasoning layer.
 
 Reason:
 
@@ -554,6 +606,27 @@ Trust synthesis.
 Growth synthesis.
 
 No deterministic system can perform this reliably.
+
+---
+
+# Prompt Governance
+
+The Prompt Registry owns Investor Intelligence prompts and prompt versions.
+
+Every Q1-Q5 execution resolves its governed prompt through the Prompt Registry.
+
+Execution requirements:
+
+```text
+temperature = 0
+model version = pinned
+prompt version = pinned
+```
+
+Prompt lineage and the pinned prompt/model versions must be recorded in
+replayability metadata.
+
+LOCKED.
 
 ---
 
@@ -619,28 +692,30 @@ Are thesis-breaking conditions explicit?
 
 ---
 
-# Storage Structure
+# Artifact Framework Ownership
 
-Artifact Framework:
-├── identity
-├── metadata
-├── lineage
-├── versioning
-├── persistence
-├── current pointer
-└── archive/history
+Investor Intelligence provides:
 
-Investor Intelligence content:
-├── q1-q5 answers
-├── evidence packages
-├── confidence
-├── enrichment/depth
-├── prompt lineage
-├── prompt/model versions
-├── per-question input hashes
-├── coherence hash
-├── output hash
-└── evaluation hooks
+- Q1-Q5 answers
+- Evidence packages
+- Confidence
+- Enrichment and depth information
+- Content-level replayability metadata
+
+The Artifact Framework exclusively owns storage mechanics and artifact
+lifecycle concerns, including:
+
+- Artifact identity
+- Artifact metadata
+- Framework lineage
+- Artifact versioning
+- Persistence
+- Current pointers
+- Archive and history
+- Framework hashes
+
+Investor Intelligence does not define storage trees, archive layouts,
+`current.json` layouts, or persistence structures.
 
 ---
 

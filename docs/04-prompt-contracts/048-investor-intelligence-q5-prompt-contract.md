@@ -15,7 +15,7 @@ Depends On:
 - Q1 Answer
 - Q2 Answer
 - Q3 Answer
-- Q4 Answer (Optional)
+- Q4 Answer
 
 ---
 
@@ -40,7 +40,7 @@ Growth Understanding
 
 Trust Understanding
 
-Valuation Understanding
+Valuation Context
 ```
 
 into:
@@ -65,7 +65,7 @@ Q2 Growth
 Q3 Trust
       ↓
 
-Q4 Valuation
+Q4 Valuation Context
       ↓
 
 Q5 Prompt
@@ -145,7 +145,7 @@ Q5 does NOT own:
 - business understanding
 - growth understanding
 - trust understanding
-- valuation understanding
+- valuation context
 
 Q5 consumes them.
 
@@ -168,7 +168,7 @@ Q3
 
 +
 
-Q4 (optional)
+Q4
 ```
 
 into:
@@ -191,7 +191,7 @@ type Q5PromptInput = {
 
   q3: Q3Answer;
 
-  q4: Q4Answer | null;
+  q4: Q4Answer;
 };
 ```
 
@@ -210,6 +210,16 @@ Q3
 
 Q4
 ```
+
+---
+
+# Q1–Q4 Ownership Boundary
+
+Q5 consumes Q1–Q4 outputs only.
+
+Q5 may not independently reinterpret upstream artifacts.
+
+Q5 may not bypass Q1–Q4 reasoning layers.
 
 ---
 
@@ -251,21 +261,16 @@ Market Narrative Leakage
 
 ```typescript
 type Q5Answer = {
-  ownership_thesis: string;
-
-  thesis_strength:
-    ThesisStrength;
-
-  key_dependencies:
-    ThesisDependency[];
+  ownership_thesis:
+    OwnershipThesis;
 
   change_conditions:
     ChangeCondition[];
 
-  input_confidence_summary:
-    InputConfidenceSummary;
-
-  confidence: null;
+  status:
+    | "answered"
+    | "partial"
+    | "insufficient_inputs";
 
   evidence_package:
     Q5EvidencePackage;
@@ -285,6 +290,27 @@ Single Coherent Explanation
 ```
 
 for ownership reasoning.
+
+```typescript
+type OwnershipThesis = {
+  summary: string;
+
+  grounded_in: {
+    q1_contribution: string;
+
+    q2_contribution: string;
+
+    q3_contribution: string;
+
+    q4_contribution: string;
+  };
+
+  thesis_strength:
+    ThesisStrength;
+
+  thesis_strength_rationale: string;
+};
+```
 
 ---
 
@@ -479,33 +505,38 @@ Invalid.
 
 ---
 
-# Q4 Optionality
+# Q4 Dependency
 
 Critical.
 
-Q5 must operate when:
+Q4 is always present.
 
 ```typescript
-q4 == null
+Q4.status = "insufficient_data";
+
+Q4.absent_reason = "market_data_unavailable";
 ```
 
----
+Q5 always consumes Q4 output.
 
-# Rule
+When:
 
-Q4 absence must NOT prevent:
-
-```text
-Ownership Thesis Generation.
+```typescript
+Q4.status = "insufficient_data"
 ```
+
+Q5 must:
+
+- propagate valuation limitations
+- avoid valuation conclusions
+
+Q5 may not fabricate valuation conclusions.
 
 ---
 
 # Q4 Integration
 
-When available:
-
-Q4 may:
+When Q4 has sufficient valuation data, Q4 may:
 
 ```text
 Strengthen
@@ -516,6 +547,41 @@ Challenge
 ```
 
 the thesis.
+
+When `Q4.status = "insufficient_data"`, Q5 must use Q4 only to propagate
+valuation limitations.
+
+---
+
+# valuation_threshold Governance
+
+When:
+
+```typescript
+Q4.status = "insufficient_data"
+```
+
+Q5 may not emit:
+
+```text
+valuation_threshold
+```
+
+change conditions.
+
+---
+
+# Status Semantics
+
+Q5 may return:
+
+```typescript
+status = "partial"
+```
+
+only when one or more optional enrichments are unavailable.
+
+Q4 insufficient-data status does not cause partial status.
 
 ---
 
@@ -641,6 +707,15 @@ Q3
 Q4
 ```
 
+The ownership thesis must explicitly identify:
+
+- Q1 contribution
+- Q2 contribution
+- Q3 contribution
+- Q4 contribution
+
+These contributions must be populated in `ownership_thesis.grounded_in`.
+
 ---
 
 # Hallucination Prevention
@@ -723,11 +798,16 @@ Investors should own this stock.
 
 # Confidence Rules
 
-Prompt does NOT generate confidence.
+The Q5 prompt must not generate:
+
+- `confidence`
+- `input_confidence_summary`
+
+These are builder-computed outputs.
 
 ---
 
-# Builder Computes
+# Builder-Owned Confidence Metadata
 
 ```typescript
 type Q5Confidence = {
@@ -743,38 +823,24 @@ type Q5Confidence = {
 };
 ```
 
----
-
-# Input Confidence Summary
-
-Purpose:
-
-Explain:
-
-```text
-Quality of Inputs
-```
-
-used by Q5.
-
----
-
-# Schema
-
 ```typescript
-type InputConfidenceSummary = {
+type Q5InputConfidenceSummary = {
   q1_confidence: number;
 
   q2_confidence: number;
 
   q3_confidence: number;
 
-  q4_confidence: number | null;
+  q4_confidence: number;
+
+  q4_has_sufficient_data: boolean;
 
   weakest_input:
     string;
 };
 ```
+
+Confidence and input-confidence metadata are not prompt-generated content.
 
 ---
 
@@ -784,6 +850,8 @@ Prompt must NOT generate:
 
 ```text
 Confidence
+
+Input Confidence Summary
 
 Price Targets
 
@@ -881,6 +949,10 @@ Produces unsupported thesis logic
 
 Creates vague change conditions
 
+Fabricates valuation conclusions when Q4 has insufficient-data status
+
+Creates valuation_threshold conditions when Q4 has insufficient-data status
+
 ---
 
 # Recommendation Boundary Enforcement
@@ -933,9 +1005,34 @@ Production execution:
 
 ```text
 Temperature = 0
+
+Prompt Version Pinned
+
+Model Version Pinned
+
+Replayable Generation
 ```
 
 required.
+
+---
+
+# Replayability Ownership
+
+Q5 owns only content-level replayability metadata.
+
+Artifact Framework owns:
+
+- artifact identity
+- artifact metadata
+- framework lineage
+- artifact versioning
+- persistence
+- current pointers
+- archive/history
+- framework hashes
+
+Q5 content-level replayability metadata is not Artifact Framework lineage.
 
 ---
 
@@ -964,12 +1061,14 @@ LOCKED.
 1. Q5 is the final synthesis layer.
 2. Q5 owns the ownership thesis.
 3. Q5 is not investment advice.
-4. Q5 must operate without Q4.
+4. Q5 always consumes Q4 output.
 5. Q3 trust constrains thesis strength.
 6. Every change condition requires an observable signal.
 7. Every thesis requires grounding.
 8. Confidence is builder-generated.
 9. Recommendation language is forbidden.
 10. Q5 is the sole owner of ownership reasoning.
+11. Q5 propagates Q4 limitations and does not fabricate valuation conclusions.
+12. Q5 may not emit valuation_threshold conditions when Q4 has insufficient-data status.
 
 End of Specification.

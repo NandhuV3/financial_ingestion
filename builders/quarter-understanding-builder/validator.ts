@@ -94,6 +94,10 @@ export function validateQuarterUnderstandingArtifactContent(
     throw new BuilderValidationError("quarter_understanding.proposed_concepts must be an array.");
   }
 
+  for (const [index, proposedConcept] of content.proposed_concepts.entries()) {
+    validateProposedConcept(proposedConcept, index);
+  }
+
   validateEnrichmentStatus(content);
   validateDepthIndicator(content);
   validateDepthConsistency(content);
@@ -105,6 +109,20 @@ export function validateQuarterUnderstandingArtifactContent(
   }
 
   validateEvaluationHooks(content);
+}
+
+function validateProposedConcept(
+  proposedConcept: QuarterUnderstandingArtifactContent["proposed_concepts"][number],
+  index: number,
+): void {
+  requireText(proposedConcept.proposed_concept_id, `proposed_concepts[${index}].proposed_concept_id`);
+  requireText(proposedConcept.title, `proposed_concepts[${index}].title`);
+  requireText(proposedConcept.description, `proposed_concepts[${index}].description`);
+  requireText(proposedConcept.rationale, `proposed_concepts[${index}].rationale`);
+  validateStringArray(proposedConcept.evidence_refs, `proposed_concepts[${index}].evidence_refs`);
+  validateForbiddenLanguage(proposedConcept.title, `proposed_concepts[${index}].title`);
+  validateForbiddenLanguage(proposedConcept.description, `proposed_concepts[${index}].description`);
+  validateForbiddenLanguage(proposedConcept.rationale, `proposed_concepts[${index}].rationale`);
 }
 
 function validateUnderstanding(
@@ -349,8 +367,12 @@ function validateEvaluationHooks(content: QuarterUnderstandingArtifactContent): 
 
 function validateForbiddenLanguage(value: string, field: string): void {
   const forbiddenPatterns = [
+    /\bshould\s+(buy|sell|hold)\b/i,
     /\b(buy|sell|hold|accumulate|reduce)\b/i,
-    /\b(target price|fair value|intrinsic value|margin of safety|upside|downside|valuation)\b/i,
+    /\b(target price|target prices|price target|price targets)\b/i,
+    /\b(expected return|expected returns)\b/i,
+    /\b(fair value|intrinsic value|margin of safety|upside|downside|valuation)\b/i,
+    /\bvaluation recommendation\b/i,
     /\binvestor conclusion\b/i,
     /\brecommendation\b/i,
     /\bportfolio (allocation|decision)\b/i,

@@ -12,7 +12,8 @@ Investor Intelligence converts business understanding into investor-facing intel
 
 Investor Intelligence owns the Q1–Q5 framework.
 
-Investor Intelligence is the final intelligence layer in the platform.
+Investor Intelligence is the final LLM-assisted synthesis layer in the
+platform.
 
 Partner Domain presents Investor Intelligence.
 
@@ -28,9 +29,6 @@ LOCKED.
 Company Knowledge
         ↓
 
-Business Signals
-        ↓
-
 Quarter Understanding
         ↓
 
@@ -39,6 +37,23 @@ Investor Intelligence
 
 Partner Domain
 ```
+
+Business Signals may enrich Investor Intelligence Q2 only. It is not part of
+the required Investor Intelligence input path.
+
+Trust follows the canonical flow:
+
+```text
+Trust Pillars
+        ↓
+Trust Signals
+        ↓
+Quarter Understanding
+        ↓
+Investor Intelligence Q3
+```
+
+Quarter Understanding trust interpretation is the only trust input to Q3.
 
 LOCKED.
 
@@ -161,16 +176,9 @@ LOCKED.
 Optional:
 
 ```text
-Business Signals
-
-Trust Signals
-
-Commitment Tracking
-
+Business Signals (Q2 only)
 Topic Evolution
-
 Prior Investor Intelligence
-
 Market Data
 ```
 
@@ -178,10 +186,6 @@ Enrichment scope:
 
 ```text
 Business Signals: Q2 only
-
-Trust Signals: conditional exception only
-
-Commitment Tracking: Q3 longitudinal depth only
 
 Topic Evolution: longitudinal context
 
@@ -215,7 +219,7 @@ LOCKED.
 ```ts
 type EnrichmentInputStatus = {
   available: boolean;
-  artifact_path: string | null;
+  artifact_ref: string | null;
   artifact_version: number | null;
   absent_reason: string | null;
 };
@@ -224,13 +228,14 @@ type EnrichmentInputStatus = {
 ```ts
 type EnrichmentStatus = {
   business_signals: EnrichmentInputStatus;
-  trust_signals: EnrichmentInputStatus;
-  commitment_tracking: EnrichmentInputStatus;
   topic_evolution: EnrichmentInputStatus;
   prior_investor_intelligence: EnrichmentInputStatus;
   market_data: EnrichmentInputStatus;
 };
 ```
+
+`artifact_ref` and `artifact_version` are Artifact Framework-provided
+references.
 
 LOCKED.
 
@@ -443,25 +448,12 @@ Q3 consumes trust interpretation from Quarter Understanding.
 
 Q3 does not generate Trust Signals.
 
-Q3 may consume Trust Signals directly only when:
+Q3 must not consume Trust Signals directly.
 
-```text
-quarter_understanding.depth_indicator.trust_dimension = "absent"
-```
+Q3 must not consume Commitment Tracking or any other Trust Pillar artifact
+directly.
 
-When:
-
-```text
-quarter_understanding.depth_indicator.trust_dimension = "present"
-```
-
-Trust Signals must not be consumed directly.
-
-Quarter Understanding remains the sole trust interpretation source.
-
-Commitment Tracking may be consumed only for Q3 longitudinal depth enrichment.
-
-Investor Intelligence must not consume Trust pillar artifacts other than the explicit Commitment Tracking longitudinal-depth exception.
+Longitudinal trust context must arrive through Quarter Understanding.
 
 LOCKED.
 
@@ -494,11 +486,11 @@ Trust Depth Limitation
 Validation must enforce:
 
 ```text
-If quarter_understanding.depth_indicator.trust_dimension = "present",
-trust_signals must not be present in the Q3 context.
+Quarter Understanding trust interpretation is the only trust input in the Q3
+context.
 
-If quarter_understanding.depth_indicator.trust_dimension = "absent",
-trust_signals may be present only as the conditional fallback source.
+Trust Signals and Trust Pillar artifacts must never be present in the Q3
+context.
 ```
 
 LOCKED.
@@ -595,7 +587,8 @@ Investor Intelligence does not:
 
 * Generate signals
 * Reinterpret raw trust evidence
-* Consume trust pillar artifacts except Commitment Tracking for Q3 longitudinal depth
+* Consume Trust Signals directly
+* Consume Trust Pillar artifacts directly
 * Consume Quarter Change directly
 * Produce buy/sell/hold recommendations
 * Produce price targets
@@ -604,7 +597,7 @@ LOCKED.
 
 ---
 
-# Replayability
+# Replayability Metadata
 
 Investor Intelligence must support replay through:
 
@@ -613,7 +606,7 @@ per_question_input_hashes
 
 coherence_hash
 
-artifact lineage
+content-level replayability references
 
 deterministic context assembly
 ```
@@ -622,9 +615,13 @@ Each Q1-Q5 section must record the input hash for the exact question context use
 
 The artifact must record a coherence hash over the assembled Q1-Q5 outputs and shared context.
 
-Lineage must include required inputs and every enrichment input actually used.
+Content-level replayability references must include required inputs and every
+optional enrichment input actually used.
 
 Context assembly must be deterministic and must not depend on unordered input traversal.
+
+These replayability references and hashes are not Artifact Framework lineage or
+framework hashes.
 
 LOCKED.
 
@@ -693,7 +690,7 @@ Examples:
 Q3:
 
 ```text
-Trust Signals unavailable.
+Quarter Understanding trust interpretation unavailable.
 ```
 
 Q4:
@@ -739,8 +736,6 @@ before generating conclusions dependent on:
 
 ```text
 Business Signals
-Trust Signals
-Commitment Tracking
 Topic Evolution
 Prior Investor Intelligence
 Market Data
@@ -862,7 +857,7 @@ type InvestorIntelligenceEvaluationHooks = {
 };
 ```
 
-Evaluation hooks are metadata only.
+Evaluation hooks are content-level replayability metadata only.
 
 Evaluation hooks do not execute evaluation.
 
@@ -900,21 +895,21 @@ type InvestorIntelligenceArtifactContent = {
 };
 ```
 
-Artifact ownership belongs to:
+Artifact Framework owns:
 
 ```text
-Artifact Framework
-```
-
-Investor Intelligence does not own:
-
-```text
-artifact_id
-metadata
-lineage
-versioning
+artifact identity
+artifact metadata
+framework lineage
+artifact versioning
 persistence
+current pointers
+archive/history
+framework hashes
 ```
+
+Investor Intelligence owns artifact content and content-level replayability
+metadata only.
 
 LOCKED.
 
@@ -938,11 +933,11 @@ LOCKED.
 
 ---
 
-# Replayability
+# Replayability References
 
 Investor Intelligence must be replayable.
 
-Required lineage:
+Required content-level replayability references:
 
 ```text
 Company Knowledge
@@ -950,16 +945,18 @@ Company Knowledge
 Quarter Understanding
 ```
 
-Optional lineage:
+Optional content-level replayability references:
 
 ```text
-Business Signals
-Trust Signals
-Commitment Tracking
+Business Signals (Q2 only)
 Topic Evolution
 Prior Investor Intelligence
 Market Data
 ```
+
+These are content-level replayability references.
+
+They are not Artifact Framework lineage.
 
 LOCKED.
 
@@ -1003,6 +1000,7 @@ Q5 Reason
 
 Partner Domain presents Investor Intelligence.
 
-Investor Intelligence remains the final intelligence layer of the platform.
+Investor Intelligence remains the final LLM-assisted synthesis layer of the
+platform.
 
 LOCKED.

@@ -42,6 +42,28 @@ Q2 does NOT recommend investments.
 
 ---
 
+# Classification
+
+Q2 is:
+
+- an Investor Intelligence Q2 section
+- an LLM-assisted investor-facing synthesis
+- a growth-understanding synthesis layer
+
+Q2 is not:
+
+- a deterministic observation layer
+- a Business Signals producer
+
+Generation requirements:
+
+- `temperature = 0`
+- pinned prompt version
+- pinned model version
+- replayable generation
+
+---
+
 # Core Responsibility
 
 Transform:
@@ -100,15 +122,19 @@ Company Knowledge
 
 Quarter Understanding
 
-## Enrichment
+## Optional
 
 Business Signals
 
 Topic Evolution
 
-Historical Investor Intelligence
-
 Prior Investor Intelligence
+
+Business Signals are Q2-only enrichment.
+
+Topic Evolution provides longitudinal context.
+
+Missing enrichment reduces depth but does not block generation.
 
 ---
 
@@ -207,6 +233,22 @@ Capacity Expansion
 
 Market Share Gains
 ```
+
+---
+
+# Business Signals Boundary
+
+Q2 may consume Business Signals.
+
+Q2 does not generate Business Signals.
+
+Q2 does not own Business Signals.
+
+Q2 does not reinterpret Business Signals as deterministic observations.
+
+Business Signals remain the deterministic observation layer.
+
+Q2 remains the investor-facing growth synthesis layer.
 
 ---
 
@@ -360,9 +402,24 @@ type Q2EvidencePackage = {
 
   company_knowledge_refs: string[];
 
-  supporting_artifacts: string[];
+  supporting_artifacts: Array<{
+    artifact_ref: string;
+
+    artifact_version: number;
+  }>;
 };
 ```
+
+`artifact_ref` and `artifact_version` are Artifact Framework-provided
+references.
+
+Q2 does not own:
+
+- artifact identity
+- artifact versioning
+- persistence
+- storage mechanics
+- framework lineage
 
 ---
 
@@ -372,6 +429,9 @@ Every revenue driver must trace to:
 
 - Company Knowledge
 - Quarter Understanding
+
+When used, enrichment must trace to:
+
 - Business Signals
 - Topic Evolution
 
@@ -517,6 +577,12 @@ Temporary Demand Surges
 
 # Evaluation Metrics
 
+Evaluation metadata is content-level replayability metadata.
+
+Evaluation execution belongs to Evaluation Architecture.
+
+Q2 does not execute evaluations.
+
 ---
 
 ## Revenue Driver Grounding
@@ -623,6 +689,14 @@ Business Signals change
 Topic Evolution changes
 ```
 
+Q2 publishes immutable content only.
+
+Dependency Index owns dependency registration.
+
+Invalidation Engine owns staleness determination and propagation.
+
+Q2 does not make invalidation decisions.
+
 ---
 
 # No Regeneration Required
@@ -685,28 +759,53 @@ type Q2ReplayabilityMetadata = {
 
   quarter_understanding_version: number;
 
-  business_signals_version: number;
+  business_signals_version: number | null;
 
-  topic_evolution_version: number;
+  topic_evolution_version: number | null;
+
+  prompt_lineage: string;
 
   prompt_version: string;
 
   model_version: string;
 
-  input_hash: string;
+  section_input_hash: string;
+
+  section_output_hash: string;
+
+  evaluation_metadata: Record<string, unknown>;
 };
 ```
 
-This is replayability metadata owned by Investor Intelligence and is not
-Artifact Framework lineage.
+Q2 may own:
+
+- `prompt_lineage`
+- `prompt_version`
+- `model_version`
+- `section_input_hash`
+- `section_output_hash`
+- `evaluation_metadata`
+
+These are content-level replayability metadata.
+
+They are not Artifact Framework lineage.
 
 ---
 
 # Artifact Framework Metadata
 
-Metadata, artifact_version, Artifact Framework lineage, artifact-level hashes,
-persistence, current pointer, and archive/history are provided by Artifact
-Framework and are not part of Q2 content.
+Artifact Framework owns:
+
+- artifact identity
+- artifact metadata
+- framework lineage
+- artifact versioning
+- persistence
+- current pointers
+- archive/history
+- framework hashes
+
+These are not part of Q2 content-level replayability metadata.
 
 ---
 

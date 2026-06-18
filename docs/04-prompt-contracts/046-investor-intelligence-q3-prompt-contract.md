@@ -12,10 +12,8 @@ Q3 Answer
 
 Depends On:
 
-- Company Knowledge
 - Quarter Understanding
-- Trust Signals (conditional exception only)
-- Commitment Tracking (longitudinal depth only)
+- Prior Investor Intelligence (optional)
 
 ---
 
@@ -33,8 +31,7 @@ Its responsibility is to synthesize:
 
 - trust understanding from Quarter Understanding
 - trust-depth limitations
-- longitudinal depth when Commitment Tracking is available
-- conditional fallback trust evidence when Quarter Understanding trust depth is absent
+- longitudinal context when Prior Investor Intelligence is available
 
 using observable evidence.
 
@@ -43,6 +40,12 @@ using observable evidence.
 # Architectural Position
 
 ```text
+Trust Pillars
+          ↓
+
+Trust Signals
+          ↓
+
 Quarter Understanding
           ↓
 
@@ -139,17 +142,17 @@ Required:
 
 ```typescript
 type Q3PromptInput = {
-  company_knowledge:
-    CompanyKnowledgeArtifact;
-
   quarter_understanding:
     QuarterUnderstandingArtifact;
+};
+```
 
-  commitment_tracking:
-    CommitmentTrackingArtifact | null;
+Optional:
 
-  trust_signals:
-    TrustSignalArtifact[] | null;
+```typescript
+type Q3PromptEnrichmentInput = {
+  prior_investor_intelligence?:
+    InvestorIntelligenceArtifact;
 };
 ```
 
@@ -162,20 +165,28 @@ Prompt may consume:
 ```text
 Quarter Understanding
 
-Company Knowledge
-
-Commitment Tracking (longitudinal depth only)
-
-Trust Signals (only when Quarter Understanding trust_dimension = absent)
+Prior Investor Intelligence, when available
 ```
 
-Trust Signals must not be consumed directly when:
+Quarter Understanding is the sole trust interpretation source.
 
-```text
-quarter_understanding.depth_indicator.trust_dimension = "present"
-```
+Q3 synthesizes investor-facing trust understanding.
 
-Quarter Understanding remains the sole trust interpretation source in that mode.
+Q3 does not reinterpret raw trust evidence.
+
+Prior Investor Intelligence may be used only for:
+
+- historical context
+- longitudinal comparison
+- trust-assessment evolution tracking
+- confidence trend tracking
+- prior Q3 comparison
+
+Prior Investor Intelligence is not a trust interpretation, trust assessment,
+trust evidence, trust verdict, or trust synthesis source.
+
+Prior Investor Intelligence must not influence trust interpretation
+independently.
 
 ---
 
@@ -201,6 +212,20 @@ Analyst Reports
 Stock Performance
 
 Partner Domain
+
+Trust Signals
+
+Commitment Tracking
+
+Narrative Consistency
+
+Accounting Stability
+
+Capital Allocation Tracking
+
+Trust Pillar artifacts
+
+Raw trust evidence
 ```
 
 ---
@@ -294,7 +319,7 @@ Quarter Understanding trust_dimension is absent.
 Used when:
 
 ```text
-Quarter Understanding or Trust Signals indicate incomplete trust coverage.
+Quarter Understanding indicates incomplete trust coverage.
 ```
 
 ---
@@ -433,113 +458,17 @@ therefore management is trustworthy.
 
 ---
 
-# Commitment Tracking Usage
+# Trust Interpretation Rules
 
-Required.
+Quarter Understanding is the sole trust interpretation source.
 
----
+Q3 synthesizes investor-facing trust understanding.
 
-# Purpose
+Q3 does not reinterpret raw trust evidence.
 
-Evaluate:
-
-```text
-Promises
-
-Guidance
-
-Strategic Commitments
-```
-
-against:
-
-```text
-Subsequent Outcomes
-```
-
----
-
-# Failure Condition
-
-Using Commitment Tracking for anything other than longitudinal depth:
-
-```text
-Prompt Failure
-```
-
----
-
-# Narrative Consistency Usage
-
-Direct Narrative Consistency artifact consumption is forbidden in Sprint 11.
-
-Narrative consistency may be reflected only through Quarter Understanding trust interpretation.
-
----
-
-# Accounting Stability Usage
-
-Direct Accounting Stability artifact consumption is forbidden in Sprint 11.
-
-Accounting stability may be reflected only through Quarter Understanding trust interpretation.
-
----
-
-# Examples
-
-Signals:
-
-```text
-Restatements
-
-Aggressive Adjustments
-
-Accounting Volatility
-```
-
----
-
-# Trust Signal Usage
-
-Required.
-
----
-
-# Purpose
-
-Provide:
-
-```text
-Deterministic Trust Evidence
-```
-
-for interpretation.
-
----
-
-# Example Signals
-
-```text
-COMMITMENT_OVERDUE
-
-COMMITMENT_ABANDONED
-
-LANGUAGE_SHIFT_SIGNIFICANT
-
-RESTATEMENT_ISSUED
-
-NON_GAAP_GAP_WIDENING
-```
-
----
-
-# Signal Ignoring Rule
-
-Material trust signal ignored:
-
-```text
-Prompt Failure
-```
+Q3 may not consume Trust Signals, Commitment Tracking, Narrative Consistency,
+Accounting Stability, Capital Allocation Tracking, Trust Pillar artifacts, or
+raw trust evidence directly.
 
 ---
 
@@ -548,12 +477,11 @@ Prompt Failure
 Every trust claim must trace to:
 
 ```text
-Quarter Understanding
-
-Trust Signals when quarter_understanding.depth_indicator.trust_dimension = "absent"
-
-Commitment Tracking for longitudinal depth only
+Quarter Understanding trust interpretation
 ```
+
+Prior Investor Intelligence may contextualize comparison over time but may not
+independently ground or alter a trust claim.
 
 ---
 
@@ -719,22 +647,16 @@ Required.
 
 ```typescript
 type Q3EvidencePackage = {
-  commitment_refs:
-    string[];
-
-  narrative_refs:
-    string[];
-
-  accounting_refs:
-    string[];
-
-  trust_signal_refs:
-    string[];
-
   understanding_refs:
     string[];
 };
 ```
+
+Evidence references may only reference Quarter Understanding trust
+interpretation.
+
+Direct Trust Signals, Commitment Tracking, and Trust Pillar references are
+forbidden.
 
 ---
 
@@ -745,24 +667,14 @@ Supports:
 ```text
 Trust Calibration
 
-Commitment Depth Usage
-
 Trust Coverage Limitation Handling
+
+Historical Context Usage
 ```
 
 ---
 
 # Evaluation Metrics
-
-## Commitment Depth Usage
-
-Measures:
-
-```text
-Correct use of Commitment Tracking for longitudinal depth only.
-```
-
----
 
 ## Trust Calibration
 
@@ -779,17 +691,7 @@ Appropriate trust assessment or limitation.
 Measures:
 
 ```text
-Use of available history.
-```
-
----
-
-## Signal Coverage
-
-Measures:
-
-```text
-Use of trust signals.
+Use of Prior Investor Intelligence for longitudinal comparison only.
 ```
 
 ---
@@ -815,11 +717,15 @@ Assesses valuation
 
 Creates ownership thesis
 
-Ignores trust signals
-
-Ignores commitment tracking
-
 Uses unsupported trust claims
+
+Consumes Trust Signals directly
+
+Consumes Commitment Tracking directly
+
+Consumes Trust Pillar artifacts directly
+
+Reinterprets raw trust evidence
 
 Generates recommendation language
 
@@ -875,6 +781,25 @@ required.
 
 ---
 
+# Replayability Ownership
+
+Q3 owns only content-level replayability metadata.
+
+Artifact Framework owns:
+
+- identity
+- metadata
+- lineage
+- versioning
+- persistence
+- current pointers
+- archive/history
+- framework hashes
+
+Q3 content-level replayability metadata is not Artifact Framework lineage.
+
+---
+
 # Scaling Requirements
 
 Target:
@@ -899,10 +824,10 @@ LOCKED.
 
 1. Trust = management credibility vs observable reality.
 2. Trust is not risk.
-3. Company Knowledge is mandatory.
-4. Quarter Understanding is mandatory.
-5. Trust Signals are conditional fallback only.
-6. Commitment Tracking is Q3 longitudinal depth enrichment only.
+3. Quarter Understanding is mandatory.
+4. Prior Investor Intelligence is optional.
+5. Quarter Understanding is the sole trust interpretation source.
+6. Q3 may not consume Trust Signals or Trust Pillar artifacts directly.
 7. Trust assessments must be evidence-based.
 8. Confidence is builder-generated.
 9. Q3 does not assess valuation.
