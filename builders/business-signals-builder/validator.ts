@@ -172,7 +172,7 @@ function validateEnrichmentInputStatus(status: EnrichmentInputStatus, field: str
   }
 
   if (status.available) {
-    requireText(status.artifact_path, `${field}.artifact_path`);
+    requireText(status.artifact_ref, `${field}.artifact_ref`);
 
     if (!Number.isSafeInteger(status.artifact_version)
       || status.artifact_version === null
@@ -187,8 +187,8 @@ function validateEnrichmentInputStatus(status: EnrichmentInputStatus, field: str
     return;
   }
 
-  if (status.artifact_path !== null && status.artifact_path !== undefined) {
-    throw new BuilderValidationError(`${field}.artifact_path must be absent when unavailable.`);
+  if (status.artifact_ref !== null && status.artifact_ref !== undefined) {
+    throw new BuilderValidationError(`${field}.artifact_ref must be absent when unavailable.`);
   }
 
   if (status.artifact_version !== null && status.artifact_version !== undefined) {

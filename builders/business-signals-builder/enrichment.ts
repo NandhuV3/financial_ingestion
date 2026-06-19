@@ -42,7 +42,7 @@ function statusFor(artifact: Artifact<unknown> | undefined, absentReason: string
   if (artifact === undefined) {
     return {
       available: false,
-      artifact_path: null,
+      artifact_ref: null,
       artifact_version: null,
       absent_reason: absentReason,
     };
@@ -50,7 +50,7 @@ function statusFor(artifact: Artifact<unknown> | undefined, absentReason: string
 
   return {
     available: true,
-    artifact_path: artifact.identity.artifact_id,
+    artifact_ref: artifact.identity.artifact_id,
     artifact_version: artifact.identity.version,
     absent_reason: null,
   };

@@ -41,7 +41,7 @@ export type BusinessSignal = {
 
 export type EnrichmentInputStatus = {
   available: boolean;
-  artifact_path: string | null;
+  artifact_ref: string | null;
   artifact_version: number | null;
   absent_reason: string | null;
 };
@@ -135,4 +135,3 @@ export type SignalBuildContext = {
   quarterChangeArtifact: Artifact<QuarterChangeArtifactContent> | null;
   topicEvolutionArtifact: Artifact<TopicEvolutionArtifactContent> | null;
 };
-

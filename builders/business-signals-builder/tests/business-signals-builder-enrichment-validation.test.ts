@@ -41,7 +41,7 @@ describe("business signals enrichment validation", () => {
     const content = validBusinessSignalsContent();
     content.enrichment_status.quarter_change = {
       available: true,
-      artifact_path: null,
+      artifact_ref: null,
       artifact_version: 1,
       absent_reason: null,
     };
@@ -119,7 +119,7 @@ describe("business signals enrichment validation", () => {
 function availableStatus(artifactId: string): BusinessSignalsArtifactContent["enrichment_status"]["quarter_change"] {
   return {
     available: true,
-    artifact_path: artifactId,
+    artifact_ref: artifactId,
     artifact_version: 1,
     absent_reason: null,
   };

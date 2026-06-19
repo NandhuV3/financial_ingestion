@@ -203,13 +203,13 @@ export function validBusinessSignalsContent(): BusinessSignalsArtifactContent {
     enrichment_status: {
       quarter_change: {
         available: false,
-        artifact_path: null,
+        artifact_ref: null,
         artifact_version: null,
         absent_reason: "Quarter Change enrichment was not provided.",
       },
       topic_evolution: {
         available: false,
-        artifact_path: null,
+        artifact_ref: null,
         artifact_version: null,
         absent_reason: "Topic Evolution enrichment was not provided.",
       },
@@ -235,4 +235,3 @@ export function validBusinessSignalsContent(): BusinessSignalsArtifactContent {
     },
   };
 }
-
