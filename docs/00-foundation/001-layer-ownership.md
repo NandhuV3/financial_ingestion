@@ -16,14 +16,11 @@ This document is considered a foundational architecture specification.
 
 ```text
 Themes
-    ↓
-Topic Assignment
-    ↓
-Topic Evolution
-    ↓
-Quarter Change
-    ↓
-Structured Intelligence
+    ├──→ Topic Assignment
+    │        ├──→ Topic Evolution
+    │        └──→ Quarter Change
+    │
+    └──→ Structured Intelligence
     ↓
 Company Knowledge
     ↓
@@ -34,6 +31,18 @@ Quarter Understanding
 Investor Intelligence
     ↓
 Partner Domain
+
+Trust Pillars
+    ├── Commitment Tracking
+    ├── Narrative Consistency
+    ├── Accounting Stability
+    └── Capital Allocation Tracking
+    ↓
+Trust Signals
+    ↓
+Quarter Understanding
+    ↓
+Investor Intelligence Q3
 ```
 
 Each layer has a single primary responsibility.
@@ -293,11 +302,7 @@ REVENUE_ACCELERATION
 
 MARGIN_DETERIORATION
 
-COMMITMENT_OVERDUE
-
 STRATEGIC_PRIORITY_DROPPED
-
-ACCOUNTING_POLICY_CHANGED
 ```
 
 ## Does Not Own
@@ -306,12 +311,14 @@ ACCOUNTING_POLICY_CHANGED
 * Recommendations
 * Investor conclusions
 
-## Inputs
+## Required Inputs
 
 * Company Knowledge
-* Topic Evolution
+
+## Enrichment Inputs
+
 * Quarter Change
-* Trust Artifacts
+* Topic Evolution
 
 ## Outputs
 
@@ -342,12 +349,16 @@ What happened this period and why does it matter?
 * Durable company facts
 * Investor-facing Q1–Q5 answers
 
-## Inputs
+## Required Inputs
 
-* Business Signals
 * Company Knowledge
-* Topic Evolution
+* Business Signals
+
+## Enrichment Inputs
+
 * Trust Signals
+* Topic Evolution
+* Concept Registry
 
 ## Outputs
 
@@ -395,13 +406,21 @@ Why would I hold it and what would change that?
 * Filing analysis
 * Presentation formatting
 
-## Inputs
+## Required Inputs
 
 * Company Knowledge
 * Quarter Understanding
+
+## Enrichment Inputs
+
 * Business Signals
 * Topic Evolution
-* Trust Artifacts
+
+## Trust Input
+
+* Quarter Understanding trust interpretation
+
+Investor Intelligence does not consume generic Trust Artifacts.
 
 ## Outputs
 
@@ -439,7 +458,6 @@ How should intelligence be presented to the end user?
 ## Inputs
 
 * Investor Intelligence
-* Company Knowledge
 
 ## Outputs
 
@@ -492,16 +510,25 @@ All intelligence must exist upstream.
 The following ownership model is considered locked:
 
 ```text
-Themes
-→ Topic Assignment
-→ Topic Evolution
-→ Quarter Change
-→ Structured Intelligence
+Structured Intelligence
 → Company Knowledge
 → Business Signals
 → Quarter Understanding
 → Investor Intelligence
 → Partner Domain
+```
+
+Trust follows a separate governed flow:
+
+```text
+Trust Pillars
+├── Commitment Tracking
+├── Narrative Consistency
+├── Accounting Stability
+└── Capital Allocation Tracking
+→ Trust Signals
+→ Quarter Understanding
+→ Investor Intelligence Q3
 ```
 
 Any future change requires explicit architectural review.

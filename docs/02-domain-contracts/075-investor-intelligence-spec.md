@@ -12,7 +12,8 @@ Investor Intelligence converts business understanding into investor-facing intel
 
 Investor Intelligence owns the Q1–Q5 framework.
 
-Investor Intelligence is the final intelligence layer in the platform.
+Investor Intelligence is the final LLM-assisted synthesis layer in the
+platform.
 
 Partner Domain presents Investor Intelligence.
 
@@ -28,9 +29,6 @@ LOCKED.
 Company Knowledge
         ↓
 
-Business Signals
-        ↓
-
 Quarter Understanding
         ↓
 
@@ -39,6 +37,23 @@ Investor Intelligence
 
 Partner Domain
 ```
+
+Business Signals may enrich Investor Intelligence Q2 only. It is not part of
+the required Investor Intelligence input path.
+
+Trust follows the canonical flow:
+
+```text
+Trust Pillars
+        ↓
+Trust Signals
+        ↓
+Quarter Understanding
+        ↓
+Investor Intelligence Q3
+```
+
+Quarter Understanding trust interpretation is the only trust input to Q3.
 
 LOCKED.
 
@@ -139,10 +154,18 @@ LOCKED.
 Required:
 
 ```text
+Company Knowledge
+
 Quarter Understanding
 ```
 
-Investor Intelligence may not generate an artifact without Quarter Understanding.
+Investor Intelligence may not generate an artifact without:
+
+```text
+Company Knowledge
+
+Quarter Understanding
+```
 
 LOCKED.
 
@@ -153,18 +176,22 @@ LOCKED.
 Optional:
 
 ```text
-Market Context
-Industry Context
-Valuation Context
-Cross-Company Context
+Business Signals (Q2 only)
+Topic Evolution
+Prior Investor Intelligence
+Market Data
 ```
 
-Future enrichment:
+Enrichment scope:
 
 ```text
-Macro Context
-Alternative Data
-Portfolio Context
+Business Signals: Q2 only
+
+Topic Evolution: longitudinal context
+
+Prior Investor Intelligence: historical continuity
+
+Market Data: Q4 only
 ```
 
 Missing enrichment reduces depth.
@@ -192,7 +219,7 @@ LOCKED.
 ```ts
 type EnrichmentInputStatus = {
   available: boolean;
-  artifact_path: string | null;
+  artifact_ref: string | null;
   artifact_version: number | null;
   absent_reason: string | null;
 };
@@ -200,12 +227,15 @@ type EnrichmentInputStatus = {
 
 ```ts
 type EnrichmentStatus = {
-  market_context: EnrichmentInputStatus;
-  industry_context: EnrichmentInputStatus;
-  valuation_context: EnrichmentInputStatus;
-  cross_company_context: EnrichmentInputStatus;
+  business_signals: EnrichmentInputStatus;
+  topic_evolution: EnrichmentInputStatus;
+  prior_investor_intelligence: EnrichmentInputStatus;
+  market_data: EnrichmentInputStatus;
 };
 ```
+
+`artifact_ref` and `artifact_version` are Artifact Framework-provided
+references.
 
 LOCKED.
 
@@ -377,7 +407,23 @@ Q2 owns:
 * Capital efficiency synthesis
 * Financial durability synthesis
 
-Q2 must be grounded in Quarter Understanding.
+Q2 must be grounded in:
+
+```text
+Company Knowledge
+
+Quarter Understanding
+```
+
+Q2 may consume:
+
+```text
+Business Signals
+```
+
+only as Q2 enrichment.
+
+Q2 does not generate Business Signals.
 
 LOCKED.
 
@@ -401,6 +447,13 @@ Q3 owns:
 Q3 consumes trust interpretation from Quarter Understanding.
 
 Q3 does not generate Trust Signals.
+
+Q3 must not consume Trust Signals directly.
+
+Q3 must not consume Commitment Tracking or any other Trust Pillar artifact
+directly.
+
+Longitudinal trust context must arrive through Quarter Understanding.
 
 LOCKED.
 
@@ -428,6 +481,16 @@ Q3 must explicitly record:
 
 ```text
 Trust Depth Limitation
+```
+
+Validation must enforce:
+
+```text
+Quarter Understanding trust interpretation is the only trust input in the Q3
+context.
+
+Trust Signals and Trust Pillar artifacts must never be present in the Q3
+context.
 ```
 
 LOCKED.
@@ -479,10 +542,22 @@ LOCKED.
 
 # Q4 Valuation Context Rule
 
+Sprint 11 behavior:
+
+```text
+Q4.status = "insufficient_data"
+
+Q4.absent_reason = "market_data_unavailable"
+```
+
+Market data integration is deferred.
+
+Valuation methodology is future work and is not implemented in Sprint 11.
+
 When:
 
 ```text
-valuation_context.available = false
+market_data.available = false
 ```
 
 Q4 must:
@@ -498,6 +573,55 @@ Q4 may not generate:
 * Valuation-sensitive conclusions
 * Cheap/Expensive conclusions
 * Mispricing conclusions
+* Price targets
+
+LOCKED.
+
+---
+
+# Ownership Boundary
+
+Investor Intelligence synthesizes.
+
+Investor Intelligence does not:
+
+* Generate signals
+* Reinterpret raw trust evidence
+* Consume Trust Signals directly
+* Consume Trust Pillar artifacts directly
+* Consume Quarter Change directly
+* Produce buy/sell/hold recommendations
+* Produce price targets
+
+LOCKED.
+
+---
+
+# Replayability Metadata
+
+Investor Intelligence must support replay through:
+
+```text
+per_question_input_hashes
+
+coherence_hash
+
+content-level replayability references
+
+deterministic context assembly
+```
+
+Each Q1-Q5 section must record the input hash for the exact question context used.
+
+The artifact must record a coherence hash over the assembled Q1-Q5 outputs and shared context.
+
+Content-level replayability references must include required inputs and every
+optional enrichment input actually used.
+
+Context assembly must be deterministic and must not depend on unordered input traversal.
+
+These replayability references and hashes are not Artifact Framework lineage or
+framework hashes.
 
 LOCKED.
 
@@ -566,13 +690,13 @@ Examples:
 Q3:
 
 ```text
-Trust Signals unavailable.
+Quarter Understanding trust interpretation unavailable.
 ```
 
 Q4:
 
 ```text
-Valuation Context unavailable.
+Market Data unavailable.
 ```
 
 Q1:
@@ -611,10 +735,10 @@ enrichment_status
 before generating conclusions dependent on:
 
 ```text
-Market Context
-Industry Context
-Valuation Context
-Cross-Company Context
+Business Signals
+Topic Evolution
+Prior Investor Intelligence
+Market Data
 ```
 
 LOCKED.
@@ -733,7 +857,7 @@ type InvestorIntelligenceEvaluationHooks = {
 };
 ```
 
-Evaluation hooks are metadata only.
+Evaluation hooks are content-level replayability metadata only.
 
 Evaluation hooks do not execute evaluation.
 
@@ -771,21 +895,21 @@ type InvestorIntelligenceArtifactContent = {
 };
 ```
 
-Artifact ownership belongs to:
+Artifact Framework owns:
 
 ```text
-Artifact Framework
-```
-
-Investor Intelligence does not own:
-
-```text
-artifact_id
-metadata
-lineage
-versioning
+artifact identity
+artifact metadata
+framework lineage
+artifact versioning
 persistence
+current pointers
+archive/history
+framework hashes
 ```
+
+Investor Intelligence owns artifact content and content-level replayability
+metadata only.
 
 LOCKED.
 
@@ -809,24 +933,30 @@ LOCKED.
 
 ---
 
-# Replayability
+# Replayability References
 
 Investor Intelligence must be replayable.
 
-Required lineage:
+Required content-level replayability references:
 
 ```text
+Company Knowledge
+
 Quarter Understanding
 ```
 
-Optional lineage:
+Optional content-level replayability references:
 
 ```text
-Market Context
-Industry Context
-Valuation Context
-Cross-Company Context
+Business Signals (Q2 only)
+Topic Evolution
+Prior Investor Intelligence
+Market Data
 ```
+
+These are content-level replayability references.
+
+They are not Artifact Framework lineage.
 
 LOCKED.
 
@@ -870,6 +1000,7 @@ Q5 Reason
 
 Partner Domain presents Investor Intelligence.
 
-Investor Intelligence remains the final intelligence layer of the platform.
+Investor Intelligence remains the final LLM-assisted synthesis layer of the
+platform.
 
 LOCKED.

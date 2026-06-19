@@ -22,8 +22,10 @@ Consumes:
 
 - Company Knowledge Artifact
 - Quarter Understanding Artifact
-- Trust Artifacts
-- Market Data (Q4 only)
+- Business Signals Artifact (Q2 enrichment only)
+- Topic Evolution Artifact
+- Prior Investor Intelligence Artifact
+- Market Data Artifact (Q4 enrichment only)
 
 Produces:
 
@@ -56,7 +58,9 @@ Q5
 Investor Intelligence is:
 
 ```text
-The Final Intelligence Layer
+The Final LLM-Assisted Synthesis Layer
+
+An Investor-Facing Reasoning Layer
 ```
 
 of the platform.
@@ -70,9 +74,6 @@ Company Knowledge
             ↓
 
 Quarter Understanding
-            ↓
-
-Trust Artifacts
             ↓
 
 Investor Intelligence Builder
@@ -189,23 +190,47 @@ another question's responsibility.
 
 Investor Intelligence Builder owns:
 
-- dependency resolution
-- question orchestration
+- orchestration
+- dependency validation
+- context assembly
 - prompt execution
-- boundary enforcement
+- response parsing
 - confidence computation
 - artifact assembly
-- lineage generation
+- artifact content assembly
+- replayability metadata emission
+- validation
+
+Artifact Framework owns:
+
+- artifact identity
+- artifact metadata
+- framework lineage
+- framework hashes
 - persistence
+- artifact versioning
+- current pointer management
+- archival/history
+
+Dependency Index owns:
+
 - dependency registration
+- dependency graph management
+- dependency graph state
 
 Builder does NOT own:
 
 - business memory
 - signal generation
 - trust signals
+- Trust Pillar artifacts
+- raw trust evidence reinterpretation
 - company knowledge
 - partner presentation
+- Quarter Change processing
+- valuation methodology
+- buy/sell/hold recommendations
+- price targets
 
 ---
 
@@ -248,17 +273,17 @@ type InvestorIntelligenceBuilderInput = {
 
 12. Validate Boundaries
 
-13. Assemble Artifact
+13. Assemble Artifact Content
 
 14. Compute Confidence
 
-15. Persist
+15. Return BuilderResult<InvestorIntelligenceArtifactContent>
 
-16. Register Dependencies
+16. Artifact Framework Persistence/Versioning
 
-17. Execute Evaluation
+17. Dependency Index Registration
 
-18. Publish
+18. Evaluation Hook And Metadata Emission
 ```
 
 ---
@@ -285,27 +310,61 @@ Company Knowledge
 Quarter Understanding
 ```
 
----
-
-# Required Trust Artifacts
+# Enrichment Artifacts
 
 ```text
+Business Signals (Q2 only)
+Topic Evolution
+Prior Investor Intelligence
+Market Data (Q4 only)
+```
+
+Business Signals is available to Q2 only.
+
+Investor Intelligence Q3 consumes Quarter Understanding trust interpretation
+only.
+
+```text
+Trust Pillars
+        ↓
+Trust Signals
+        ↓
+Quarter Understanding
+        ↓
+Investor Intelligence Q3
+```
+
+Investor Intelligence never consumes directly:
+
+```text
+Trust Signals
 Commitment Tracking
-
 Narrative Consistency
-
 Accounting Stability
+Capital Allocation Tracking
 ```
 
----
+Quarter Understanding remains the sole trust interpretation source.
 
-# Optional
+Longitudinal trust context arrives through Quarter Understanding.
+
+Topic Evolution is longitudinal enrichment.
+
+Prior Investor Intelligence supports continuity.
+
+Market Data is Q4 enrichment only.
+
+Sprint 11 Q4 behavior:
 
 ```text
-Market Data
+Q4.status = "insufficient_data"
+
+Q4.absent_reason = "market_data_unavailable"
 ```
 
-for Q4.
+Market data integration is deferred.
+
+Valuation methodology is future work and is not implemented in Sprint 11.
 
 ---
 
@@ -319,17 +378,17 @@ type UpstreamArtifacts = {
   quarter_understanding:
     QuarterUnderstandingArtifact;
 
-  commitment_tracking:
-    CommitmentTrackingArtifact;
+  business_signals:
+    BusinessSignalsArtifactContent | null;
 
-  narrative_consistency:
-    NarrativeConsistencyArtifact;
+  topic_evolution:
+    TopicEvolutionArtifact | null;
 
-  accounting_stability:
-    AccountingStabilityArtifact;
+  prior_investor_intelligence:
+    InvestorIntelligenceArtifactContent | null;
 
   market_data:
-    MarketDataArtifact | null;
+    unknown | null;
 };
 ```
 
@@ -354,6 +413,11 @@ Not Stale
 ```text
 Build Failure
 ```
+
+Enrichment artifacts must not be treated as mandatory.
+
+Validation must fail if Trust Signals or any Trust Pillar artifact is supplied
+directly to Investor Intelligence Builder.
 
 ---
 
@@ -421,6 +485,10 @@ Quarter Understanding
 Company Knowledge
 
 Quarter Understanding
+
+Business Signals, when available
+
+Topic Evolution, when available
 ```
 
 ---
@@ -428,23 +496,48 @@ Quarter Understanding
 # Q3 Context
 
 ```text
-Trust Artifacts
+Quarter Understanding trust interpretation
 
-Quarter Understanding
+Prior Investor Intelligence, when available, for historical comparison,
+trend tracking, longitudinal context, and prior Q3 comparison only
 ```
+
+Q3 may not consume:
+
+```text
+Trust Signals
+Trust Pillars
+Commitment Tracking
+Raw trust evidence
+```
+
+Quarter Understanding is the sole trust interpretation source.
+
+Prior Investor Intelligence must not independently ground or alter trust
+interpretation.
 
 ---
 
 # Q4 Context
 
 ```text
-Market Data
+Company Knowledge
 
 Q1
 
 Q2
 
 Q3
+
+Market Data (deferred in Sprint 11)
+```
+
+Sprint 11 sets:
+
+```text
+Q4.status = "insufficient_data"
+
+Q4.absent_reason = "market_data_unavailable"
 ```
 
 ---
@@ -460,6 +553,31 @@ Q3
 
 Q4
 ```
+
+When:
+
+```text
+Q4.status = "insufficient_data"
+```
+
+Q5 must:
+
+- propagate valuation limitations
+- not fabricate valuation conclusions
+- not emit `valuation_threshold` conditions
+
+Violation of any rule is a builder failure.
+
+Q5 prompt execution consumes Q1-Q4 only.
+
+After prompt parsing, the builder determines Q5 status:
+
+```text
+partial
+```
+
+only when Historical Investor Intelligence or Topic Evolution enrichment is
+unavailable. Q4 insufficient-data status alone does not produce partial status.
 
 ---
 
@@ -491,6 +609,16 @@ resolvePrompt("investor_q1");
 
 ---
 
+# Model Resolution
+
+The pinned model version is supplied by the governed Builder Framework job
+execution configuration defined by 062-job-execution-spec.md.
+
+The same resolved model version is recorded in each question's prompt lineage.
+A missing model version causes build failure.
+
+---
+
 # Execution Requirements
 
 ```text
@@ -508,7 +636,7 @@ Prompt Version Pinned
 ```text
 Replayability
 
-Determinism
+Deterministic orchestration
 
 Content Hash Stability
 ```
@@ -711,20 +839,31 @@ Artifact Rejected
 
 # Step 13
 
-Assemble Artifact
+Assemble Artifact Content
+
+---
+
+# Pre-Assembly Metadata
+
+Before artifact content assembly, the builder creates evaluation hooks,
+evaluation metadata, and replayability metadata.
+
+Step 18 emits the already-assembled hooks and metadata to Evaluation
+Architecture; it does not create them after persistence.
 
 ---
 
 # Output
 
 ```typescript
-type InvestorIntelligenceArtifact = {
-  artifact_id: string;
+type InvestorIntelligenceArtifactContent = {
+  company_id:
+    string;
 
-  artifact_type:
-    "investor_intelligence";
+  period_id:
+    string;
 
-  business_key: {
+  business_key?: {
     company_id: string;
 
     period_id: string;
@@ -740,18 +879,46 @@ type InvestorIntelligenceArtifact = {
     Q3Answer;
 
   q4:
-    Q4Answer | null;
+    Q4Answer;
 
   q5:
     Q5Answer;
 
-  lineage:
-    InvestorIntelligenceLineage;
+  confidence:
+    InvestorConfidence;
 
-  metadata:
-    ArtifactMetadata;
+  enrichment_status:
+    EnrichmentStatus;
+
+  depth_indicator:
+    DepthIndicator;
+
+  per_question_input_hashes:
+    PerQuestionInputHashes;
+
+  coherence_hash:
+    string;
+
+  output_hash:
+    string;
+
+  prompt_lineage:
+    InvestorPromptLineage;
+
+  evaluation_hooks:
+    InvestorIntelligenceEvaluationHooks;
+
+  replayability_metadata:
+    InvestorIntelligenceReplayabilityMetadata;
 };
 ```
+
+Artifact Framework provides artifact identity, artifact type, artifact metadata,
+framework lineage, artifact versioning, framework hashes, persistence, current
+pointers, and archive/history.
+
+Investor Intelligence Builder provides only artifact content and
+content-level replayability metadata.
 
 ---
 
@@ -789,6 +956,12 @@ Compute Confidence
 
 Builder owns confidence.
 
+The active confidence calculation source is:
+
+```text
+builders/investor-intelligence-builder/confidence-contract.ts
+```
+
 ---
 
 # Question Confidence
@@ -807,7 +980,7 @@ type InvestorConfidence = {
 
   q3_confidence: number;
 
-  q4_confidence: number | null;
+  q4_confidence: number;
 
   q5_confidence: number;
 
@@ -839,26 +1012,36 @@ Evaluation Architecture
 
 # Step 15
 
-Persistence
+Return BuilderResult<InvestorIntelligenceArtifactContent>
 
 ---
 
-# Storage
+# Step 16
 
 ```text
-Artifact Store
+Artifact Framework Persistence/Versioning
 ```
 
 ---
 
-# Persisted Objects
+# Artifact Framework Owns
 
 ```text
-Artifact
+Artifact identity
 
-Lineage
+Artifact metadata
 
-Metadata
+Framework lineage
+
+Artifact versioning
+
+Framework hashes
+
+Persistence
+
+Current pointer
+
+Archive/history
 ```
 
 ---
@@ -879,7 +1062,7 @@ Rollback
 
 ---
 
-# Step 16
+# Step 17
 
 Dependency Registration
 
@@ -892,12 +1075,16 @@ type DependencyNode = {
   artifact_type:
     "investor_intelligence";
 
-  upstream: [
+  required_upstream: [
     "company_knowledge",
-    "quarter_understanding",
-    "commitment_tracking",
-    "narrative_consistency",
-    "accounting_stability"
+    "quarter_understanding"
+  ];
+
+  enrichment_upstream: [
+    "business_signals",
+    "topic_evolution",
+    "prior_investor_intelligence",
+    "market_data"
   ];
 
   downstream: [
@@ -908,75 +1095,44 @@ type DependencyNode = {
 
 ---
 
-# Step 17
-
-Evaluation Execution
-
----
-
-# Purpose
-
-Run:
-
-```text
-Investor Intelligence Evaluation
-```
-
----
-
-# Categories
-
-```text
-Q1 Evaluation
-
-Q2 Evaluation
-
-Q3 Evaluation
-
-Q4 Evaluation
-
-Q5 Evaluation
-
-Cross-Question Coherence
-```
-
----
-
-# Evaluation Contract
-
-```text
-017-evaluation-architecture-spec.md
-```
-
----
-
-# Failure Handling
-
-Evaluation failures:
-
-```text
-Flagged
-
-Not Deleted
-```
-
----
-
 # Step 18
 
-Publish
+Evaluation Hook And Metadata Emission
 
 ---
 
-# Consumers
+# Builder May
+
+- publish evaluation hooks
+- publish evaluation metadata
+- publish replayability references
+
+---
+
+# Builder May NOT
+
+- execute evaluations
+- compute evaluation scores
+- run evaluation pipelines
+
+Evaluation execution belongs exclusively to Evaluation Architecture.
+
+---
+
+# Consumer Availability
 
 ```text
 Partner Domain
 ```
 
+Investor Intelligence Builder does not publish artifacts directly.
+
+Artifact Framework persistence and current-pointer updates make the resulting
+artifact available to downstream consumers.
+
 ---
 
-# Publication Event
+# Artifact Publication Event
 
 ```typescript
 type ArtifactPublishedEvent = {
@@ -989,54 +1145,59 @@ type ArtifactPublishedEvent = {
 };
 ```
 
+Artifact publication events are emitted by platform ownership boundaries, not
+by Investor Intelligence Builder.
+
 ---
 
-# Q4 Optionality
+# Q4 Sprint 11 Presence
 
 Critical.
 
 ---
 
-# Rule
-
-Q4 may be:
+Sprint 11 behavior:
 
 ```text
-Missing
+Q4.status = "insufficient_data"
+
+Q4.absent_reason = "market_data_unavailable"
 ```
 
----
+Q4 remains present.
 
-# Builder must still generate:
+Q4 is not omitted.
+
+Q5 consumes Q4 output even when Q4 has insufficient-data status.
+
+When:
 
 ```text
-Q5
+Q4.status = "insufficient_data"
 ```
 
----
+Q5 must:
 
-# Missing Q4 Handling
+- propagate valuation limitations
+- not fabricate valuation conclusions
+- not emit `valuation_threshold` conditions
 
-```typescript
-q4 = null
-```
-
----
-
-# Q5 receives:
-
-```text
-Reduced Confidence
-```
+Violation of any rule is a builder failure.
 
 ---
 
 # Trust Architecture Integration
 
-Q3 is the sole owner of:
+Q3 owns investor trust synthesis.
+
+Q3 is not the owner of:
 
 ```text
-Trust Verdict
+Trust Signal generation
+
+Trust pillar artifact processing
+
+Raw trust evidence reinterpretation
 ```
 
 ---
@@ -1044,40 +1205,31 @@ Trust Verdict
 # Trust Inputs
 
 ```text
-Commitment Tracking
-
-Narrative Consistency
-
-Accounting Stability
+Quarter Understanding trust interpretation
 ```
 
+Quarter Understanding is the sole trust interpretation source.
+
+Q3 may not consume Trust Signals, Trust Pillars, Commitment Tracking, or raw
+trust evidence.
+
 ---
 
-# Q3 may interpret.
-
----
-
-# Other Questions may consume.
+# Q3 may synthesize.
 
 ---
 
 # Other Questions may NOT:
 
 ```text
-Create Trust Verdicts
+Create Trust Signals
+
+Consume Trust pillar artifacts
 ```
 
 ---
 
 # Invalidation Integration
-
-Uses:
-
-```text
-Hybrid Invalidation
-```
-
----
 
 # Trigger Events
 
@@ -1086,7 +1238,11 @@ Quarter Understanding Changed
 
 Company Knowledge Changed
 
-Trust Artifacts Changed
+Business Signals Changed
+
+Topic Evolution Changed
+
+Prior Investor Intelligence Changed
 
 Prompt Changed
 
@@ -1095,23 +1251,19 @@ Market Data Changed
 
 ---
 
-# Candidate Staleness
-
-Uses:
+# Ownership
 
 ```text
-Version Hash
+Builder publishes immutable artifact content.
+
+Artifact Framework persists immutable artifact versions.
+
+Dependency Index records dependency relationships.
+
+Invalidation Engine determines and propagates staleness.
 ```
 
----
-
-# Propagation
-
-Uses:
-
-```text
-Content Hash
-```
+Investor Intelligence Builder does not determine invalidation decisions.
 
 ---
 
@@ -1120,13 +1272,23 @@ Content Hash
 Must record:
 
 ```text
+Prompt Lineage
+
 Prompt Versions
 
 Model Versions
 
-Input Hashes
+Per-Question Input Hashes
 
-Output Hashes
+Section Output Hashes
+
+Coherence Hash
+
+Evaluation Metadata
+
+Enrichment Status
+
+Depth Indicators
 ```
 
 for:
@@ -1145,27 +1307,90 @@ Q5
 
 ---
 
-# Lineage Schema
+# Replayability Metadata Schema
 
 ```typescript
-type InvestorIntelligenceLineage = {
+type ModelVersions = {
+  q1: string;
+  q2: string;
+  q3: string;
+  q4: string;
+  q5: string;
+};
+
+type InvestorIntelligenceEvaluationMetadata =
+  Record<string, unknown>;
+```
+
+```typescript
+type InvestorIntelligenceReplayabilityMetadata = {
+  prompt_lineage: InvestorPromptLineage;
+
   q1_prompt_version: string;
 
   q2_prompt_version: string;
 
   q3_prompt_version: string;
 
-  q4_prompt_version: string | null;
+  q4_prompt_version: string;
 
   q5_prompt_version: string;
 
-  input_hash: string;
+  per_question_input_hashes: {
+    q1: string;
+    q2: string;
+    q3: string;
+    q4: string;
+    q5: string;
+  };
 
-  output_hash: string;
+  section_output_hashes: {
+    q1: string;
+    q2: string;
+    q3: string;
+    q4: string;
+    q5: string;
+  };
 
-  evaluation_version: string;
+  coherence_hash: string;
+
+  model_versions: ModelVersions;
+
+  evaluation_metadata: InvestorIntelligenceEvaluationMetadata;
+
+  enrichment_status: EnrichmentStatus;
+
+  depth_indicators: DepthIndicator;
 };
 ```
+
+This structure is content-level replayability metadata owned by Investor
+Intelligence Builder.
+
+`replayability_metadata` is the source of truth for replayability values.
+
+For compatibility, duplicated top-level fields must equal their corresponding
+replayability values:
+
+```text
+prompt_lineage = replayability_metadata.prompt_lineage
+
+per_question_input_hashes =
+  replayability_metadata.per_question_input_hashes
+
+coherence_hash = replayability_metadata.coherence_hash
+
+enrichment_status = replayability_metadata.enrichment_status
+
+depth_indicator = replayability_metadata.depth_indicators
+```
+
+Any mismatch causes artifact validation failure.
+
+It is not Artifact Framework lineage.
+
+Artifact Framework continues to own framework lineage, artifact identity,
+artifact versioning, persistence, and storage mechanics.
 
 ---
 
@@ -1178,9 +1403,9 @@ Question Execution
 
 Boundary Validation
 
-Assembly
+Content Assembly
 
-Persistence
+Artifact Framework Handoff
 
 Evaluation
 ```
@@ -1203,7 +1428,7 @@ type BuilderMetrics = {
 
   validation_ms: number;
 
-  persistence_ms: number;
+  artifact_framework_handoff_ms: number;
 
   evaluation_ms: number;
 
@@ -1239,7 +1464,21 @@ Wait
 Prompt Failure:
 
 ```text
-Retry
+Maximum attempts = 3
+
+Retryable:
+Transient Failure
+Infrastructure Failure
+Timeout
+
+Not retryable:
+Schema Failure
+Validation Failure
+Governance Failure
+
+After attempts are exhausted:
+Return QUESTION_EXECUTION_FAILURE
+Do not assemble or persist artifact content
 ```
 
 Boundary Violation:
@@ -1254,10 +1493,10 @@ Recommendation Violation:
 Reject Artifact
 ```
 
-Persistence Failure:
+Artifact Framework Handoff Failure:
 
 ```text
-Rollback
+Return failure to Builder Framework
 ```
 
 ---
@@ -1272,7 +1511,8 @@ Target:
 
 Must support:
 
-- deterministic generation
+- deterministic orchestration
+- LLM-assisted synthesis
 - Q1-Q5 governance
 - auditability
 - replayability
@@ -1284,15 +1524,18 @@ Must support:
 
 LOCKED.
 
-1. Investor Intelligence is the final intelligence layer.
+1. Investor Intelligence is the final LLM-assisted synthesis layer and investor-facing reasoning layer.
 2. Investor Intelligence owns Q1-Q5.
 3. Q1-Q5 ownership boundaries are mandatory.
-4. Q3 is the sole owner of trust verdicts.
+4. Q3 owns investor trust synthesis.
 5. Q5 is the sole owner of ownership reasoning.
 6. Investor Intelligence must never produce investment advice.
-7. Q4 is optional.
-8. Q5 must function without Q4.
+7. Q4 remains present with Sprint 11 insufficient-data status.
+8. Q5 consumes Q4 output even when Q4 has insufficient-data status.
 9. Confidence is builder-generated.
 10. Partner Domain consumes Investor Intelligence but never generates intelligence.
+11. Investor Intelligence Q3 consumes Quarter Understanding trust interpretation only.
+12. Investor Intelligence Builder does not consume Trust Signals or Trust Pillars directly.
+13. Investor Intelligence synthesis is LLM-assisted; builder orchestration may be deterministic.
 
 End of Specification.

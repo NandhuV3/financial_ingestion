@@ -51,10 +51,13 @@ Enrichment inputs when available
 Quarter Understanding is the first:
 
 ```text
-Interpretation Layer
+LLM-Assisted Interpretation Layer
 ```
 
 in the platform.
+
+Quarter Understanding Builder is the first interpretation builder in the
+platform.
 
 ---
 
@@ -128,15 +131,21 @@ What investors should do.
 
 Quarter Understanding Builder owns:
 
+- orchestration
 - dependency resolution
-- concept registry loading
+- dependency validation
+- context assembly
 - prompt execution
+- LLM-assisted interpretation execution
+- interpretation generation
+- concept registry enrichment
 - concept validation
 - proposal extraction
 - confidence computation
-- persistence
-- lineage generation
-- dependency registration
+- replayability metadata
+- evaluation hooks
+- content assembly
+- BuilderResult<QuarterUnderstandingArtifactContent>
 
 Builder does NOT own:
 
@@ -144,6 +153,32 @@ Builder does NOT own:
 - company memory
 - concept governance
 - investor reasoning
+- artifact identity
+- artifact versioning
+- metadata
+- Artifact Framework lineage
+- persistence
+- current pointer management
+- archive/history
+- dependency registration
+- dependency graph state
+
+Artifact Framework owns:
+
+- artifact_id
+- artifact_version
+- metadata
+- Artifact Framework lineage
+- persistence
+- current pointer
+- archive/history
+- framework hashes
+
+Dependency Index owns:
+
+- dependency registration
+- dependency graph
+- dependency state
 
 ---
 
@@ -166,27 +201,27 @@ type QuarterUnderstandingBuilderInput = {
 
 2. Resolve Enrichment Inputs
 
-3. Resolve Prompt
+3. Build Interpretation Context
 
-4. Build Prompt Context
+4. Execute Quarter Understanding Prompt
 
-5. Execute Prompt
+5. Validate Concepts
 
-6. Validate Concepts
+6. Extract Concept Proposals
 
-7. Extract Concept Proposals
+7. Compute Confidence
 
-8. Compute Confidence
+8. Assemble Artifact Content
 
-9. Create Artifact
+9. Return BuilderResult<QuarterUnderstandingArtifactContent>
 
-10. Persist Artifact
+10. Artifact Framework Persists Artifact
 
-11. Register Dependencies
+11. Dependency Index Registers Dependencies
 
-12. Execute Evaluation
+12. Evaluation Hook And Metadata Emission
 
-13. Publish Artifact
+13. Artifact Framework Updates Current Pointer
 ```
 
 ---
@@ -246,7 +281,7 @@ type UpstreamArtifacts = {
 ```typescript
 type QuarterUnderstandingEnrichmentArtifacts = {
   trust_signals?:
-    TrustSignalArtifact[];
+    TrustSignalsArtifactContent;
 
   topic_evolution?:
     TopicEvolutionArtifact;
@@ -371,77 +406,102 @@ Rejected Concepts
 
 # Step 3
 
-Prompt Resolution
+Build Interpretation Context
 
 ---
 
 # Source
 
 ```text
+Company Knowledge
+Business Signals
+Enrichment Inputs
+```
+
+---
+
+# Prompt Registry Integration
+
+Quarter Understanding Builder resolves:
+
+```text
+043-quarter-understanding-prompt-contract.md
+```
+
+through:
+
+```text
 Prompt Registry
 ```
 
----
+Resolution must return the governed prompt snapshot and pinned prompt version
+used for execution.
 
-# Query
+Failure to resolve the governed prompt causes build failure.
 
-```typescript
-resolvePrompt(
-  artifactType =
-    "quarter_understanding"
-);
-```
+The pinned model version is supplied by the governed Builder Framework job
+execution configuration defined by 062-job-execution-spec.md.
 
----
-
-# Output
-
-```typescript
-type PromptResolution = {
-  prompt_id: string;
-
-  prompt_version: string;
-
-  template: string;
-};
-```
-
----
-
-# Failure
-
-```text
-Build Failure
-```
+The resolved model version must be recorded in prompt lineage. A missing model
+version causes build failure.
 
 ---
 
 # Step 4
 
-Prompt Context Construction
+Execute Quarter Understanding Prompt
 
 ---
 
-# Context
+# Execution Boundary
 
-```typescript
-type QuarterUnderstandingContext = {
-  company_knowledge:
-    CompanyKnowledgeArtifact;
+```text
+Quarter Understanding is an LLM-assisted interpretation layer.
 
-  business_signals:
-    BusinessSignalArtifact[];
-
-  trust_signals?:
-    TrustSignalArtifact[];
-
-  topic_evolution?:
-    TopicEvolutionArtifact;
-
-  active_concepts?:
-    ConceptRegistryEntry[];
-};
+Quarter Understanding Builder executes governed prompt-based interpretation.
 ```
+
+---
+
+# Execution Requirements
+
+```text
+temperature = 0
+prompt version = pinned
+model version = pinned
+```
+
+Prompt lineage must be recorded.
+
+Prompt execution must be replayable.
+
+---
+
+# Prompt Context
+
+The prompt context contains:
+
+```text
+Company Knowledge
+Business Signals
+Available enrichment inputs
+Active Concept Registry concepts when available
+Depth indicators
+Enrichment status
+```
+
+---
+
+# Prompt Output Boundary
+
+Prompt output must conform to:
+
+```text
+043-quarter-understanding-prompt-contract.md
+074-quarter-understanding-spec.md
+```
+
+The prompt produces interpretation content only.
 
 ---
 
@@ -450,68 +510,21 @@ type QuarterUnderstandingContext = {
 Builder may:
 
 ```text
-Provide Context
+Interpret approved observations
 ```
 
 Builder may NOT:
 
 ```text
-Interpret Signals
+Generate observations
+Generate recommendations
+Generate valuation opinions
+Generate investor conclusions
 ```
 
 ---
 
 # Step 5
-
-Prompt Execution
-
----
-
-# Purpose
-
-Generate:
-
-```text
-Business Understanding
-```
-
----
-
-# Execution Requirements
-
-```text
-Temperature = 0
-
-Model Version Pinned
-
-Prompt Version Pinned
-```
-
----
-
-# Output Contract
-
-Must conform to:
-
-```text
-043-quarter-understanding-prompt-contract.md
-```
-
----
-
-# Output Contains
-
-```text
-Understanding Entries
-
-Concept References
-
-Concept Proposals
-```
-
----
-
-# Step 6
 
 Validate Concepts
 
@@ -567,7 +580,7 @@ validateConcept(
 
 ---
 
-# Step 7
+# Step 6
 
 Extract Concept Proposals
 
@@ -581,28 +594,28 @@ Capture:
 Unregistered Concepts
 ```
 
-identified by prompt.
+identified by governed prompt-based interpretation.
 
 ---
 
 # Output
 
 ```typescript
-type ConceptProposal = {
-  proposal_id: string;
+type ProposedConcept = {
+  proposed_concept_id: string;
 
   title: string;
 
-  definition: string;
+  description: string;
 
-  topic_ref: string;
+  evidence_refs: string[];
 
   rationale: string;
-
-  source_artifact:
-    string;
 };
 ```
+
+Prompt-emitted proposed concepts are copied directly into
+`artifact.proposed_concepts`.
 
 ---
 
@@ -638,7 +651,7 @@ Separate workflow.
 
 ---
 
-# Step 8
+# Step 7
 
 Confidence Calculation
 
@@ -647,6 +660,12 @@ Confidence Calculation
 # Ownership
 
 Builder owns confidence.
+
+The active confidence calculation source is:
+
+```text
+builders/quarter-understanding-builder/calibration-contract.ts
+```
 
 ---
 
@@ -708,29 +727,35 @@ Evidence Per Understanding
 
 ---
 
-# Step 9
+# Step 8
 
-Artifact Creation
+Artifact Content Assembly
+
+---
+
+# Pre-Assembly Metadata
+
+Before artifact content assembly, the builder creates evaluation hooks,
+evaluation metadata, and replayability metadata.
+
+Step 12 emits the already-assembled hooks and metadata to Evaluation
+Architecture; it does not create them after persistence.
 
 ---
 
 # Output
 
 ```typescript
-type QuarterUnderstandingArtifact = {
-  artifact_id: string;
+type QuarterUnderstandingArtifactContent = {
+  company_id: string;
 
-  artifact_type:
-    "quarter_understanding";
-
-  business_key: {
-    company_id: string;
-
-    period_id: string;
-  };
+  period_id: string;
 
   understandings:
     UnderstandingEntry[];
+
+  proposed_concepts:
+    ProposedConcept[];
 
   enrichment_status:
     EnrichmentStatus;
@@ -741,13 +766,36 @@ type QuarterUnderstandingArtifact = {
   confidence:
     QuarterUnderstandingConfidence;
 
-  lineage:
-    QuarterUnderstandingLineage;
+  limitations:
+    QuarterUnderstandingLimitations;
 
-  metadata:
-    ArtifactMetadata;
+  evaluation_hooks:
+    QuarterUnderstandingEvaluationHooks;
+
+  replayability_metadata:
+    QuarterUnderstandingReplayabilityMetadata;
 };
 ```
+
+---
+
+# Step 9
+
+Return BuilderResult
+
+---
+
+Builder returns:
+
+```text
+BuilderResult<QuarterUnderstandingArtifactContent>
+```
+
+Artifact Framework creates and persists the artifact wrapper, including artifact
+identity, metadata, Artifact Framework lineage, versioning, hashes, current
+pointer, and archive/history.
+
+Dependency Index owns dependency registration and graph state.
 
 ---
 
@@ -756,7 +804,7 @@ type QuarterUnderstandingArtifact = {
 ```typescript
 type EnrichmentInputStatus = {
   available: boolean;
-  artifact_path: string | null;
+  artifact_ref: string | null;
   artifact_version: number | null;
   absent_reason: string | null;
 };
@@ -809,12 +857,14 @@ Artifact Store
 ```text
 Artifact
 
-Concept Proposals
-
 Lineage
 
 Metadata
 ```
+
+Concept proposals are persisted as `artifact.proposed_concepts`.
+
+No separate concept-proposal write payload is produced.
 
 ---
 
@@ -868,53 +918,25 @@ type DependencyNode = {
 
 # Step 12
 
-Evaluation Execution
+Evaluation Hook And Metadata Emission
 
 ---
 
-# Purpose
+# Builder May
 
-Run:
-
-```text
-Quarter Understanding Evaluation
-```
+- publish evaluation hooks
+- publish evaluation metadata
+- publish replayability references
 
 ---
 
-# Evaluation Categories
+# Builder May NOT
 
-```text
-Signal Utilization
+- execute evaluations
+- compute evaluation scores
+- run evaluation pipelines
 
-Concept Compliance
-
-Grounding
-
-Interpretation Quality
-
-Importance Calibration
-```
-
----
-
-# Evaluation Contract
-
-```text
-017-evaluation-architecture-spec.md
-```
-
----
-
-# Failure Handling
-
-Evaluation failure:
-
-```text
-Flagged
-
-Not Deleted
-```
+Evaluation execution belongs exclusively to Evaluation Architecture.
 
 ---
 
@@ -1078,6 +1100,12 @@ Topic Evolution Changed
 Concept Registry Changed
 
 Prompt Changed
+
+Model Changed
+
+Deterministic Rules Changed
+
+Calibration Contract Changed
 ```
 
 ---
@@ -1133,6 +1161,8 @@ Interpretation Changes
 Must record:
 
 ```text
+Prompt Lineage
+
 Prompt Version
 
 Model Version
@@ -1142,15 +1172,30 @@ Concept Registry Version
 Input Hash
 
 Output Hash
+
+Evaluation Hooks
+
+Enrichment Status
+
+Depth Indicators
+
+Builder Version
+
+Calibration Contract Version
 ```
 
 ---
 
-# Lineage Schema
+# Replayability Metadata Schema
 
 ```typescript
-type QuarterUnderstandingLineage = {
-  prompt_id: string;
+type QuarterUnderstandingEvaluationMetadata =
+  Record<string, unknown>;
+```
+
+```typescript
+type QuarterUnderstandingReplayabilityMetadata = {
+  prompt_lineage: PromptLineage;
 
   prompt_version: string;
 
@@ -1162,9 +1207,25 @@ type QuarterUnderstandingLineage = {
 
   output_hash: string;
 
-  evaluation_version: string;
+  evaluation_hooks: QuarterUnderstandingEvaluationHooks;
+
+  evaluation_metadata: QuarterUnderstandingEvaluationMetadata;
+
+  enrichment_status: EnrichmentStatus;
+
+  depth_indicators: DepthIndicator;
+
+  builder_version: string;
+
+  calibration_contract_version: string;
 };
 ```
+
+Builder and calibration versions support builder-owned validation and
+confidence logic.
+
+This is content-level replayability metadata when emitted. It is not Artifact
+Framework lineage.
 
 ---
 
@@ -1180,8 +1241,6 @@ Registry Load
 Prompt Execution
 
 Concept Validation
-
-Persistence
 
 Evaluation
 ```
@@ -1200,11 +1259,7 @@ type BuilderMetrics = {
 
   concept_validation_ms: number;
 
-  persistence_ms: number;
-
   evaluation_ms: number;
-
-  token_usage: number;
 };
 ```
 
@@ -1222,6 +1277,9 @@ type BuilderError =
   | "PERSISTENCE_FAILURE"
   | "DEPENDENCY_REGISTRATION_FAILURE";
 ```
+
+`PROMPT_RESOLUTION_FAILURE` and `PROMPT_EXECUTION_FAILURE` are valid governed
+LLM execution failures.
 
 ---
 
@@ -1265,7 +1323,7 @@ Must support:
 
 - concept governance
 - trust interpretation
-- deterministic generation
+- LLM-assisted interpretation generation
 - replayability
 - auditability
 
@@ -1275,7 +1333,7 @@ Must support:
 
 LOCKED.
 
-1. Quarter Understanding is an interpretation layer.
+1. Quarter Understanding is an LLM-assisted interpretation layer.
 2. Company Knowledge is mandatory.
 3. Business Signals are mandatory.
 4. Trust Signals are enrichment inputs.
@@ -1285,5 +1343,8 @@ LOCKED.
 8. Trust can be interpreted but not judged.
 9. Confidence is builder-generated.
 10. Quarter Understanding is the final intelligence layer before Investor Intelligence.
+11. Quarter Understanding Builder executes governed prompt-based interpretation.
+12. Temperature is zero and prompt/model versions are pinned.
+13. This is a locked architecture decision.
 
 End of Specification.

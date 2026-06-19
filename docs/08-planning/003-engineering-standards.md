@@ -157,6 +157,25 @@ Every threshold must have:
 * ownership
 * justification
 
+Exception:
+
+Mathematical, type-system, and language-level invariants are not considered magic numbers.
+
+Examples:
+- 0
+- 1
+- -1
+- true
+- false
+- null
+- index bounds checks
+- array length checks
+- normalized confidence/probability validation (`0 <= value <= 1`)
+
+These may be used directly when they represent universal validation constraints rather than business behavior.
+
+If changing a value would change scoring, classification, confidence calibration, severity, ranking, thresholds, or platform behavior, it must be contract-owned and documented.
+
 LOCKED.
 
 ---

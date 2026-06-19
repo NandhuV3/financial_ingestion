@@ -24,13 +24,34 @@ This is the first pillar of the Trust Architecture.
 Commitment Tracking
 Narrative Consistency
 Accounting Stability
+Capital Allocation Tracking
         ↓
 Trust Signals
         ↓
 Quarter Understanding
         ↓
-Q3 Trust Assessment
+Investor Intelligence Q3
 ```
+
+Commitment Tracking is a Trust Pillar artifact.
+
+Its canonical trust flow is:
+
+```text
+Commitment Tracking
+        ↓
+Trust Signals
+        ↓
+Quarter Understanding
+        ↓
+Investor Intelligence Q3
+```
+
+Commitment Tracking does not bypass Trust Signals.
+
+Commitment Tracking does not bypass Quarter Understanding.
+
+LOCKED.
 
 ---
 
@@ -47,6 +68,10 @@ Detect:
 - commitments abandoned
 - commitments modified
 
+Commitment Tracking executes deterministically.
+
+It does not perform LLM reasoning or trust interpretation.
+
 ---
 
 # What Commitment Tracking Owns
@@ -54,10 +79,16 @@ Detect:
 Owns:
 
 - commitment extraction
-- commitment lifecycle
-- commitment status
-- commitment resolution
-- commitment confidence
+- commitment lifecycle tracking
+- open commitments
+- fulfilled commitments
+- revised commitments
+- abandoned commitments
+- overdue commitments
+- resolution evidence
+- coverage status
+- depth indicators
+- commitment-level extraction, linkage, and resolution confidence
 
 ---
 
@@ -66,11 +97,26 @@ Owns:
 Does NOT own:
 
 - trust verdicts
+- trust observations
+- trust dimensions
+- trust severity
+- trust direction
+- trust confidence
+- trust interpretation
+- investor synthesis
 - business quality assessment
-- investor recommendations
+- recommendations
+- valuation opinions
+- LLM reasoning
 - management credibility conclusions
 
-Those belong to Q3.
+Trust observations, dimensions, severity, direction, and trust confidence belong
+to Trust Signals.
+
+Trust interpretation belongs to Quarter Understanding.
+
+Investor-facing trust synthesis and trust verdicts belong to Investor
+Intelligence Q3.
 
 ---
 
@@ -114,10 +160,10 @@ That belongs to Q3.
 
 ---
 
-# Artifact Schema
+# Artifact Content Schema
 
 ```typescript
-type CommitmentTrackingArtifact = {
+type CommitmentTrackingArtifactContent = {
   artifact_type: "commitment_tracking";
 
   company: string;
@@ -129,12 +175,17 @@ type CommitmentTrackingArtifact = {
   summary: CommitmentSummary;
 
   confidence: CommitmentTrackingConfidence;
-
-  metadata: ArtifactMetadata;
-
-  lineage: ArtifactLineage;
 };
 ```
+
+Artifact identity, metadata, Artifact Framework lineage, versioning, persistence,
+current pointer, archive/history, and framework-owned hashes belong to:
+
+```text
+Artifact Framework
+```
+
+LOCKED.
 
 ---
 
@@ -596,7 +647,10 @@ type CommitmentTimelineEvent = {
 
 Commitment Tracking does NOT emit trust verdicts.
 
-It emits structured observations.
+It emits deterministic commitment lifecycle content and pillar-specific
+observations.
+
+It does not emit Trust Signals or deterministic trust observations.
 
 ---
 
@@ -711,7 +765,7 @@ Stable Tracking Across Time
 
 # Invalidation Rules
 
-Regenerate when:
+Commitment Tracking publishes a new immutable artifact version when:
 
 ```text
 New Filing Arrives
@@ -729,17 +783,14 @@ Prior Filing Amended
 
 When Commitment Tracking changes:
 
-Mark stale:
+- Commitment Tracking publishes a new artifact version.
+- Dependency Index records dependency relationships.
+- Invalidation Engine determines downstream staleness and propagation.
 
-```text
-Trust Signals
+Commitment Tracking does not mark Trust Signals, Quarter Understanding,
+Investor Intelligence Q3, or any other downstream consumer stale directly.
 
-Quarter Understanding
-
-Investor Intelligence (Q3)
-
-Partner Domain
-```
+Commitment Tracking does not own invalidation decisions.
 
 ---
 
@@ -761,15 +812,15 @@ Governed Annotation Layer
 
 ---
 
-# Archive Strategy
+# Storage Ownership
 
-```text
-current.json
+Artifact Framework owns storage mechanics, persistence, current pointer
+resolution, archive/history, and framework hashes.
 
-archive/
-```
+Commitment Tracking does not own storage structure.
 
-Required.
+Commitment Tracking does not define storage trees, archive layouts,
+`current.json` layouts, persistence structures, or filesystem paths.
 
 ---
 
@@ -811,35 +862,42 @@ All preserved.
 
 ---
 
-# Metadata
+# Replayability Metadata
 
 ```typescript
-type ArtifactMetadata = {
+type CommitmentTrackingReplayabilityMetadata = {
   schema_version: string;
 
   generated_at: string;
 
-  artifact_version: number;
+  evidence_references: string[];
+
+  source_references: string[];
+
+  lifecycle_references: string[];
+
+  coverage_status: string;
+
+  depth_indicators: string[];
+
+  builder_version?: string;
+
+  calibration_version?: string;
+
+  rule_version?: string;
 };
 ```
 
----
+This is content-owned replayability metadata when emitted by Commitment
+Tracking. It is not Artifact Framework metadata, Artifact Framework lineage, or
+artifact versioning.
 
-# Lineage
+Commitment Tracking is deterministic and does not require prompt lineage or
+model lineage.
 
-```typescript
-type ArtifactLineage = {
-  source_filings: string[];
-
-  source_periods: string[];
-
-  prompt_version: string;
-
-  model_version: string;
-
-  input_hash: string;
-};
-```
+Artifact Framework owns artifact identity, artifact metadata, framework
+lineage, artifact versioning, persistence, current pointers, archive/history,
+and framework hashes.
 
 ---
 
@@ -882,8 +940,10 @@ LOCKED.
 5. Trust verdicts are not generated here.
 6. Historical timelines are mandatory.
 7. Trust Signals consume this artifact.
-8. Q3 consumes trust signals, not raw commitments.
+8. Quarter Understanding consumes Trust Signals and produces trust interpretation.
 9. Fulfillment rate is informational, not a trust score.
 10. Every commitment remains traceable to source evidence.
+11. Investor Intelligence Q3 consumes Quarter Understanding trust interpretation.
+12. Commitment Tracking does not own invalidation decisions or storage mechanics.
 
 End of Specification.

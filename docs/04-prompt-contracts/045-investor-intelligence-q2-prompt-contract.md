@@ -14,8 +14,8 @@ Depends On:
 
 - Company Knowledge
 - Quarter Understanding
-- Business Signals
-- Topic Evolution
+- Business Signals (Q2 enrichment only)
+- Topic Evolution (enrichment)
 
 ---
 
@@ -155,10 +155,10 @@ type Q2PromptInput = {
     QuarterUnderstandingArtifact;
 
   business_signals:
-    BusinessSignalArtifact[];
+    BusinessSignalArtifact[] | null;
 
   topic_evolution:
-    TopicEvolutionArtifact;
+    TopicEvolutionArtifact | null;
 };
 ```
 
@@ -177,6 +177,10 @@ Business Signals
 
 Topic Evolution
 ```
+
+Business Signals and Topic Evolution are enrichment inputs.
+
+Q2 must still produce a valid output when either enrichment input is absent, with limitations recorded.
 
 ---
 
@@ -237,6 +241,9 @@ type Q2Answer = {
 
   revenue_direction:
     RevenueDirection;
+
+  limitations:
+    string[];
 
   confidence: null;
 
@@ -309,7 +316,11 @@ Every driver must trace to:
 Company Knowledge
 
 Quarter Understanding
+```
 
+When used, enrichment evidence must trace to:
+
+```text
 Business Signals
 
 Topic Evolution
@@ -433,10 +444,11 @@ type RevenueDirection =
 Must be supported by:
 
 ```text
-Business Signals
-
 Quarter Understanding
 ```
+
+When Business Signals are available and used, revenue direction must also
+reference them.
 
 ---
 
@@ -476,7 +488,7 @@ next quarter.
 
 # Evidence Package
 
-Required.
+Enrichment.
 
 ---
 
@@ -508,7 +520,11 @@ Every growth claim must trace to:
 Company Knowledge
 
 Quarter Understanding
+```
 
+When used, enrichment evidence must trace to:
+
+```text
 Business Signals
 
 Topic Evolution
@@ -584,7 +600,7 @@ Most Material Constraints
 
 # Topic Evolution Usage
 
-Required.
+When available.
 
 ---
 
@@ -604,13 +620,21 @@ of themes.
 
 ---
 
-# Failure Condition
+# Missing Enrichment Condition
 
-Ignoring Topic Evolution:
+When Topic Evolution is unavailable:
 
 ```text
-Prompt Failure
+Record limitation in limitations[].
 ```
+
+When Business Signals are unavailable:
+
+```text
+Record limitation in limitations[].
+```
+
+Missing enrichment must not cause prompt failure.
 
 ---
 
@@ -813,7 +837,7 @@ Creates ownership theses
 
 Uses unsupported growth drivers
 
-Ignores Topic Evolution
+Ignores available Topic Evolution without recording a limitation
 
 Produces recommendation language
 
@@ -894,7 +918,7 @@ LOCKED.
 1. Q2 explains future revenue drivers.
 2. Q2 remains evidence-grounded.
 3. Q2 is forward-looking but not predictive.
-4. Topic Evolution is mandatory input.
+4. Topic Evolution is enrichment input.
 5. Growth durability must be explicit.
 6. Constraints must be evidence-based.
 7. Q2 does not assess trust.

@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, it } from "node:test";
 import type { ArtifactRepository } from "../../../packages/artifact-framework/src/artifact-repository.js";
 import { ArtifactService } from "../../../packages/artifact-framework/src/artifact-service.js";
@@ -6,6 +8,7 @@ import { BuilderExecutor } from "../../../packages/builder-framework/src/builder
 import { BuilderDependencyError, BuilderValidationError } from "../../../packages/builder-framework/src/builder-errors.js";
 import { BuilderRegistry } from "../../../packages/builder-framework/src/builder-registry.js";
 import { QuarterUnderstandingBuilder } from "../builder.js";
+import { QUARTER_UNDERSTANDING_CALIBRATION } from "../calibration-contract.js";
 import {
   QUARTER_UNDERSTANDING_BUILDER_TYPE,
   QUARTER_UNDERSTANDING_BUILDER_VERSION,
@@ -340,6 +343,93 @@ describe("quarter understanding builder", () => {
       () => validateQuarterUnderstandingArtifactContent(content),
       BuilderValidationError,
     );
+  });
+
+  it("rejects forbidden language variants across understanding text", () => {
+    const forbiddenPhrases = [
+      "should buy",
+      "should sell",
+      "should hold",
+      "price target",
+      "price targets",
+      "target price",
+      "target prices",
+      "expected return",
+      "expected returns",
+    ];
+
+    for (const phrase of forbiddenPhrases) {
+      const content = validQuarterUnderstandingContent();
+
+      content.understandings[0] = {
+        ...content.understandings[0] as Understanding,
+        explanation: `This text includes ${phrase}.`,
+      };
+
+      assert.throws(
+        () => validateQuarterUnderstandingArtifactContent(content),
+        BuilderValidationError,
+        phrase,
+      );
+    }
+  });
+
+  it("rejects forbidden language in proposed concept text fields", () => {
+    const conceptFields = [
+      ["title", "price target"],
+      ["description", "expected return"],
+      ["rationale", "should buy"],
+    ] as const;
+
+    for (const [field, phrase] of conceptFields) {
+      const content = validQuarterUnderstandingContent();
+
+      content.proposed_concepts[0] = {
+        ...content.proposed_concepts[0]!,
+        [field]: `Contains ${phrase}.`,
+      };
+
+      assert.throws(
+        () => validateQuarterUnderstandingArtifactContent(content),
+        BuilderValidationError,
+        field,
+      );
+    }
+  });
+
+  it("uses contract constants for deterministic confidence calibration", async () => {
+    const result = await executor(new TestArtifactRepository()).executeBuilder<QuarterUnderstandingBuilderInput, QuarterUnderstandingArtifactContent>({
+      builderType: QUARTER_UNDERSTANDING_BUILDER_TYPE,
+      companyId: "MSFT",
+      periodId: "2026-Q2",
+      executionId: "quarter-understanding-calibration",
+      input: input(),
+      inputHash: "quarter-understanding-input-hash",
+      dependencies: {
+        company_knowledge: companyKnowledgeArtifact(),
+        business_signals: businessSignalsArtifact(),
+      },
+    });
+
+    assert.equal(QUARTER_UNDERSTANDING_CALIBRATION.SUPPORTED_ENRICHMENT_DIMENSION_COUNT, 3);
+    assert.equal(QUARTER_UNDERSTANDING_CALIBRATION.OVERALL_CONFIDENCE_COMPONENT_COUNT, 4);
+    assert.equal(typeof result.content.confidence.overall, "number");
+  });
+
+  it("keeps calibration values out of implementation modules", () => {
+    const implementationFiles = [
+      "../business-interpretation.ts",
+      "../trust-interpretation.ts",
+      "../confidence.ts",
+    ];
+
+    for (const file of implementationFiles) {
+      const source = readFileSync(join(process.cwd(), "builders/quarter-understanding-builder/tests", file), "utf8");
+
+      assert.equal(/\b0\.\d+\b/.test(source), false, `${file} contains a hidden confidence literal.`);
+      assert.equal(/toFixed\(\d+/.test(source), false, `${file} contains hidden rounding precision.`);
+      assert.equal(/\/\s*\d+/.test(source), false, `${file} contains hidden component count.`);
+    }
   });
 
   it("is deterministic for repeated executions with identical inputs", async () => {

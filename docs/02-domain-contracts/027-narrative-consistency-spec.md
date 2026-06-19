@@ -24,13 +24,34 @@ This is the second pillar of the Trust Architecture.
 Commitment Tracking
 Narrative Consistency
 Accounting Stability
+Capital Allocation Tracking
         ↓
 Trust Signals
         ↓
 Quarter Understanding
         ↓
-Q3 Trust Assessment
+Investor Intelligence Q3
 ```
+
+Narrative Consistency is a Trust Pillar artifact.
+
+Its canonical trust flow is:
+
+```text
+Narrative Consistency
+        ↓
+Trust Signals
+        ↓
+Quarter Understanding
+        ↓
+Investor Intelligence Q3
+```
+
+Narrative Consistency does not bypass Trust Signals.
+
+Narrative Consistency does not bypass Quarter Understanding.
+
+LOCKED.
 
 ---
 
@@ -47,18 +68,26 @@ Track how management describes:
 
 across multiple periods.
 
+Narrative Consistency executes deterministically.
+
+It does not perform LLM reasoning or trust interpretation.
+
 ---
 
 # What Narrative Consistency Owns
 
 Owns:
 
-- strategic priorities
-- management narratives
-- business framing
-- language shifts
-- priority persistence
-- priority abandonment
+- strategic priority extraction
+- strategic priority tracking
+- language evolution tracking
+- language shift detection
+- silent drop detection
+- explanation quality evidence
+- persistence tracking
+- coverage status
+- depth indicators
+- narrative-level extraction, linkage, and shift-detection confidence
 
 ---
 
@@ -67,11 +96,27 @@ Owns:
 Does NOT own:
 
 - trust verdicts
+- trust observations
+- trust dimensions
+- trust severity
+- trust direction
+- trust confidence
+- trust interpretation
+- investor synthesis
+- recommendations
+- valuation opinions
+- LLM reasoning
 - management credibility scores
 - risk assessments
 - business quality judgments
 
-Those belong downstream.
+Trust observations, dimensions, severity, direction, and trust confidence belong
+to Trust Signals.
+
+Trust interpretation belongs to Quarter Understanding.
+
+Investor-facing trust synthesis and trust verdicts belong to Investor
+Intelligence Q3.
 
 ---
 
@@ -113,10 +158,10 @@ That belongs to Q3.
 
 ---
 
-# Artifact Schema
+# Artifact Content Schema
 
 ```typescript
-type NarrativeConsistencyArtifact = {
+type NarrativeConsistencyArtifactContent = {
   artifact_type: "narrative_consistency";
 
   company: string;
@@ -132,12 +177,17 @@ type NarrativeConsistencyArtifact = {
   summary: NarrativeSummary;
 
   confidence: NarrativeConfidence;
-
-  metadata: ArtifactMetadata;
-
-  lineage: ArtifactLineage;
 };
 ```
+
+Artifact identity, metadata, Artifact Framework lineage, versioning, persistence,
+current pointer, archive/history, and framework-owned hashes belong to:
+
+```text
+Artifact Framework
+```
+
+LOCKED.
 
 ---
 
@@ -677,7 +727,9 @@ How much historical context exists.
 
 Narrative Consistency never emits trust verdicts.
 
-It emits observations.
+It emits deterministic narrative evidence and pillar-specific observations.
+
+It does not emit Trust Signals or deterministic trust observations.
 
 ---
 
@@ -792,7 +844,7 @@ Stable Longitudinal Tracking
 
 # Invalidation Rules
 
-Regenerate when:
+Narrative Consistency publishes a new immutable artifact version when:
 
 ```text
 New Filing Arrives
@@ -818,17 +870,14 @@ Concept Registry Changes
 
 When Narrative Consistency changes:
 
-Mark stale:
+- Narrative Consistency publishes a new artifact version.
+- Dependency Index records dependency relationships.
+- Invalidation Engine determines downstream staleness and propagation.
 
-```text
-Trust Signals
+Narrative Consistency does not mark Trust Signals, Quarter Understanding,
+Investor Intelligence Q3, or any other downstream consumer stale directly.
 
-Quarter Understanding
-
-Investor Intelligence (Q3)
-
-Partner Domain
-```
+Narrative Consistency does not own invalidation decisions.
 
 ---
 
@@ -850,15 +899,15 @@ Governed Annotation Layer
 
 ---
 
-# Archive Strategy
+# Storage Ownership
 
-```text
-current.json
+Artifact Framework owns storage mechanics, persistence, current pointer
+resolution, archive/history, and framework hashes.
 
-archive/
-```
+Narrative Consistency does not own storage structure.
 
-Required.
+Narrative Consistency does not define storage trees, archive layouts,
+`current.json` layouts, persistence structures, or filesystem paths.
 
 ---
 
@@ -894,37 +943,42 @@ All preserved.
 
 ---
 
-# Metadata
+# Replayability Metadata
 
 ```typescript
-type ArtifactMetadata = {
+type NarrativeConsistencyReplayabilityMetadata = {
   schema_version: string;
 
   generated_at: string;
 
-  artifact_version: number;
+  source_references: string[];
+
+  evidence_references: string[];
+
+  priority_history_references: string[];
+
+  coverage_status: string;
+
+  depth_indicators: string[];
+
+  builder_version?: string;
+
+  calibration_version?: string;
+
+  rule_version?: string;
 };
 ```
 
----
+This is content-owned replayability metadata when emitted by Narrative
+Consistency. It is not Artifact Framework metadata, Artifact Framework lineage,
+or artifact versioning.
 
-# Lineage
+Narrative Consistency is deterministic and does not require prompt lineage or
+model lineage.
 
-```typescript
-type ArtifactLineage = {
-  source_filings: string[];
-
-  source_periods: string[];
-
-  concept_registry_version: number;
-
-  prompt_version: string;
-
-  model_version: string;
-
-  input_hash: string;
-};
-```
+Artifact Framework owns artifact identity, artifact metadata, framework
+lineage, artifact versioning, persistence, current pointers, archive/history,
+and framework hashes.
 
 ---
 
@@ -967,8 +1021,10 @@ LOCKED.
 5. All priorities map to Concept Registry concepts.
 6. Historical timelines are mandatory.
 7. Trust Signals consume this artifact.
-8. Q3 consumes trust signals, not raw narrative changes.
+8. Quarter Understanding consumes Trust Signals and produces trust interpretation.
 9. Stable priority ratio is informational, not a trust score.
 10. Every narrative observation remains traceable to source filings.
+11. Investor Intelligence Q3 consumes Quarter Understanding trust interpretation.
+12. Narrative Consistency does not own invalidation decisions or storage mechanics.
 
 End of Specification.

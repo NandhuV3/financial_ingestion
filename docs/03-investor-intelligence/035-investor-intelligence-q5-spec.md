@@ -21,9 +21,31 @@ Q5 combines:
 - Q1 Business Understanding
 - Q2 Growth Understanding
 - Q3 Trust Understanding
-- Q4 Valuation Understanding (optional)
+- Q4 Valuation Context
 
 into a structured ownership thesis.
+
+---
+
+# Classification
+
+Q5 is:
+
+- an Investor Intelligence Q5 section
+- an LLM-assisted investor-facing synthesis
+- an ownership-thesis synthesis layer
+
+Q5 is not:
+
+- an investment recommendation engine
+- a deterministic observation layer
+
+Generation requirements:
+
+- `temperature = 0`
+- pinned prompt version
+- pinned model version
+- replayable generation
 
 ---
 
@@ -96,19 +118,15 @@ Q3 Answer
 
 Company Knowledge
 
-Topic Evolution
-
-Commitment Tracking Summary
-
-Narrative Consistency Summary
+Q4 Answer
 
 ---
 
 ## Optional
 
-Q4 Answer
-
 Historical Investor Intelligence
+
+Topic Evolution
 
 ---
 
@@ -152,7 +170,7 @@ Raw upstream artifacts
 
 This preserves:
 
-- lineage
+- replayability metadata
 - auditability
 - explainability
 
@@ -169,7 +187,7 @@ Q2
 
 Q3
 
-Q4 (optional)
+Q4
 ```
 
 into:
@@ -206,9 +224,8 @@ type Q5Answer = {
 
   confidence: Q5Confidence;
 
-  metadata: Metadata;
-
-  lineage: Q5Lineage;
+  replayability_metadata:
+    Q5ReplayabilityMetadata;
 };
 ```
 
@@ -227,7 +244,7 @@ type OwnershipThesis = {
 
     q3_contribution: string;
 
-    q4_contribution: string | null;
+    q4_contribution: string;
   };
 
   thesis_strength:
@@ -281,25 +298,33 @@ Significant concerns exist.
 
 # Q4 Dependency Rule
 
-Q4 absence MUST NOT prevent Q5 generation.
+Sprint 11 Q4 is always present.
+
+Q4 returns:
+
+```typescript
+status = "insufficient_data";
+
+absent_reason = "market_data_unavailable";
+```
+
+Q5 always consumes Q4 output.
 
 When:
 
 ```typescript
-Q4.status === "insufficient_data"
+Q4.status = "insufficient_data"
 ```
 
-Q5 becomes:
+Then:
 
-```typescript
-status = "partial"
-```
+- valuation conclusions are limited
+- `valuation_threshold` conditions are forbidden
+- valuation limitations must be propagated
 
-and:
+Q5 still generates normally.
 
-```typescript
-q4_contribution = null
-```
+Q5 may not fabricate valuation conclusions.
 
 ---
 
@@ -370,6 +395,9 @@ LLM may NOT invent new types.
 New types require:
 
 Concept Registry governance process.
+
+When `Q4.status = "insufficient_data"`, Q5 may not emit
+`valuation_threshold` conditions.
 
 ---
 
@@ -454,11 +482,13 @@ must persist.
 
 # Partial Operation
 
-Q5 may operate without:
+Q5 always consumes Q4 output.
 
-Q4
+Q4 may have insufficient-data status.
 
-but not without:
+Q5 may not ignore Q4.
+
+Q5 may not operate without:
 
 Q1
 
@@ -480,11 +510,20 @@ Confidence above threshold.
 
 ### Partial
 
-Q4 unavailable.
+Required inputs are available.
 
-or
+Ownership thesis generation remains possible.
 
-Some non-critical inputs missing.
+One or more optional enrichments are unavailable.
+
+Examples:
+
+- Historical Investor Intelligence unavailable
+- Topic Evolution unavailable
+
+Depth is reduced.
+
+Core thesis generation remains valid.
 
 ---
 
@@ -493,6 +532,44 @@ Some non-critical inputs missing.
 Cannot construct ownership thesis.
 
 Q1/Q2/Q3 unavailable.
+
+---
+
+# Partial Status Rules
+
+Q5 may return:
+
+```typescript
+status = "partial"
+```
+
+only when:
+
+- all required inputs are available
+- at least one optional enrichment is unavailable
+
+Optional enrichments:
+
+```text
+Historical Investor Intelligence
+Topic Evolution
+```
+
+Q4 insufficient-data status alone does not cause:
+
+```typescript
+status = "partial"
+```
+
+because Sprint 11 Q4 is expected to return:
+
+```typescript
+status = "insufficient_data"
+
+absent_reason = "market_data_unavailable"
+```
+
+and Q5 must handle this normally.
 
 ---
 
@@ -506,9 +583,9 @@ type Q5InputConfidenceSummary = {
 
   q3_confidence: number;
 
-  q4_confidence: number | null;
+  q4_confidence: number;
 
-  q4_available: boolean;
+  q4_has_sufficient_data: boolean;
 
   weakest_input:
     | "q1"
@@ -527,6 +604,12 @@ Confidence is derived.
 
 Never self-assessed.
 
+`q4_has_sufficient_data` reflects valuation-data availability only.
+
+It does not indicate whether Q4 exists.
+
+Q4 is always present in Sprint 11.
+
 ```typescript
 type Q5Confidence = {
   overall: number;
@@ -534,7 +617,7 @@ type Q5Confidence = {
   input_completeness: {
     score: number;
 
-    q4_available: boolean;
+    q4_has_sufficient_data: boolean;
 
     minimum_periods_met: boolean;
   };
@@ -582,7 +665,11 @@ plus tolerance.
 If:
 
 ```typescript
-Q3.verdict === "low_trust"
+Q3.trust_assessment === null
+
+or
+
+Q3.trust_depth_limitation !== null
 ```
 
 then:
@@ -644,6 +731,12 @@ type Q5LongitudinalIndex = {
 ---
 
 # Evaluation Metrics
+
+Evaluation metadata is content-level replayability metadata.
+
+Evaluation execution belongs to Evaluation Architecture.
+
+Q5 does not execute evaluations.
 
 ## Thesis Grounding
 
@@ -748,95 +841,80 @@ Governance Failure
 
 # Invalidation Rules
 
-Full Regeneration:
+Regeneration triggers:
 
-```text
-Q1 changes
+- Q1 changes
+- Q2 changes
+- Q3 changes
+- Q4 changes
 
-Q2 changes
+Q5 publishes immutable content only.
 
-Q3 changes
-```
+Dependency Index owns dependency registration.
 
----
+Invalidation Engine owns staleness determination and propagation.
 
-# Partial Regeneration
-
-```text
-Q4 changes
-```
-
-Only:
-
-```text
-valuation_threshold
-```
-
-conditions require update.
+Q5 does not make invalidation decisions.
 
 ---
 
-# Regeneration Trigger
-
-Q5 input hash includes:
-
-```text
-Q1
-
-Q2
-
-Q3
-
-Q4
-```
-
-hashes.
-
-Any change:
-
-```text
-candidate invalidation
-```
-
-Hybrid invalidation determines propagation.
-
----
-
-# Lineage
+# Replayability Metadata
 
 ```typescript
-type Q5Lineage = {
+type Q5ReplayabilityMetadata = {
   q1_version: number;
 
   q2_version: number;
 
   q3_version: number;
 
-  q4_version: number | null;
+  q4_version: number;
 
   company_knowledge_version: number;
+
+  prompt_lineage: string;
 
   prompt_version: string;
 
   model_version: string;
 
-  input_hash: string;
+  section_input_hash: string;
+
+  section_output_hash: string;
+
+  evaluation_metadata: Record<string, unknown>;
 };
 ```
+
+Q5 may own:
+
+- `prompt_lineage`
+- `prompt_version`
+- `model_version`
+- `section_input_hash`
+- `section_output_hash`
+- `evaluation_metadata`
+
+These are content-level replayability metadata.
+
+They are not Artifact Framework lineage.
 
 ---
 
-# Metadata
+# Artifact Framework Metadata
 
-```typescript
-type Metadata = {
-  artifact_version: number;
+Artifact Framework owns:
 
-  generated_at: string;
+- artifact identity
+- artifact metadata
+- framework lineage
+- artifact versioning
+- persistence
+- current pointers
+- archive/history
+- framework hashes
 
-  schema_version: string;
-};
-```
+These are not part of Q5 content-level replayability metadata.
 
 ---
 
@@ -853,8 +931,8 @@ Must support:
 - thesis tracking
 - condition tracking
 - historical comparison
-- partial invalidation
-- Q4-independent operation
+- replayability
+- auditability
 
 ---
 
@@ -864,7 +942,7 @@ LOCKED.
 
 1. Q5 is the final synthesis layer.
 2. Q5 consumes Q1–Q4, not raw artifacts.
-3. Q5 must operate without Q4.
+3. Q5 consumes Q4 output and propagates Q4 limitations.
 4. Q5 produces structured change conditions.
 5. Every condition requires signal linkage.
 6. Q5 must remain auditable.
@@ -872,5 +950,6 @@ LOCKED.
 8. Q5 must not provide recommendations.
 9. Trust limits thesis strength.
 10. Ownership Thesis and Change Conditions are primary artifacts, not prose.
+11. Q5 may not fabricate valuation conclusions when Q4 status is insufficient_data.
 
 End of Specification.

@@ -12,6 +12,8 @@ Quarter Understanding transforms deterministic business observations into period
 
 Quarter Understanding explains what happened during a period and what the observed business developments mean.
 
+Quarter Understanding is the LLM-assisted interpretation layer.
+
 Quarter Understanding does not generate observations.
 
 Quarter Understanding does not generate investor conclusions.
@@ -188,7 +190,7 @@ LOCKED.
 ```ts
 type EnrichmentInputStatus = {
   available: boolean;
-  artifact_path: string | null;
+  artifact_ref: string | null;
   artifact_version: number | null;
   absent_reason: string | null;
 };
@@ -201,6 +203,9 @@ type EnrichmentStatus = {
   concept_registry: EnrichmentInputStatus;
 };
 ```
+
+`artifact_ref` and `artifact_version` are Artifact Framework-provided
+references.
 
 LOCKED.
 
@@ -518,11 +523,41 @@ type QuarterUnderstandingEvaluationHooks = {
 };
 ```
 
-Evaluation hooks are metadata only.
+Evaluation hooks are content-level replayability metadata only.
 
 Evaluation hooks do not execute evaluation.
 
 Evaluation hooks do not define scoring logic.
+
+LOCKED.
+
+---
+
+# Limitations
+
+```ts
+type QuarterUnderstandingLimitations = {
+  trust_dimension_gaps: TrustDimension[];
+};
+```
+
+Trust dimension gaps are Quarter Understanding-owned interpretation limitations
+derived from Trust Signals `missing_dimensions`.
+
+When Trust Signals enrichment is absent:
+
+```text
+trust_dimension_gaps must include every Trust Dimension.
+```
+
+When Trust Signals enrichment is present:
+
+```text
+trust_dimension_gaps must match Trust Signals missing_dimensions.
+```
+
+Investor Intelligence must consume these limitations when producing Q3 trust
+synthesis.
 
 LOCKED.
 
@@ -544,27 +579,28 @@ type QuarterUnderstandingArtifactContent = {
 
   depth_indicator: DepthIndicator;
 
+  limitations: QuarterUnderstandingLimitations;
+
   confidence: QuarterUnderstandingConfidence;
 
   evaluation_hooks: QuarterUnderstandingEvaluationHooks;
 };
 ```
 
-Artifact ownership belongs to:
+Artifact Framework owns:
 
 ```text
-Artifact Framework
-```
-
-Quarter Understanding does not own:
-
-```text
-artifact_id
-metadata
-lineage
-versioning
+artifact identity
+artifact metadata
+framework lineage
+artifact versioning
 persistence
+current pointers
+archive/history
+framework hashes
 ```
+
+Quarter Understanding content must not model those responsibilities.
 
 LOCKED.
 
@@ -634,24 +670,42 @@ LOCKED.
 
 ---
 
-# Replayability
+# Replayability Metadata
 
 Quarter Understanding must be replayable.
 
-Required lineage:
+Required content-level replayability references:
 
 ```text
 Company Knowledge
 Business Signals
 ```
 
-Optional lineage:
+Optional content-level replayability references:
 
 ```text
 Trust Signals
 Topic Evolution
 Concept Registry
 ```
+
+Quarter Understanding may own:
+
+```text
+prompt lineage
+prompt versions
+model versions
+input references
+input hashes
+output hashes
+evaluation metadata
+enrichment status
+depth indicators
+```
+
+These are content-level replayability references and metadata.
+
+They are not Artifact Framework lineage.
 
 LOCKED.
 

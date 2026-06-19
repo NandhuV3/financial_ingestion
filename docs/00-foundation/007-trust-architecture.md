@@ -58,14 +58,25 @@ Trust Signals
         ↓
 Quarter Understanding
         ↓
-Investor Intelligence
-        ↓
-Partner Domain
+Investor Intelligence Q3
 ```
 
 Trust flows through dedicated trust artifacts.
 
 It is not generated from general business signals.
+
+This is the only canonical trust flow.
+
+Direct consumption outside this chain is forbidden:
+
+- Trust Pillars are not consumed directly by Quarter Understanding.
+- Trust Pillars are not consumed directly by Investor Intelligence Q3.
+- Trust Signals are not consumed directly by Investor Intelligence Q3.
+
+Quarter Understanding is the only trust interpretation layer.
+
+Investor Intelligence Q3 consumes trust interpretation, not trust
+observations.
 
 LOCKED.
 
@@ -196,6 +207,20 @@ LOCKED.
 # Trust Artifacts
 
 Four dedicated trust pillar artifacts exist.
+
+Trust Pillars collectively own:
+
+- Evidence
+- Pillar-specific observations
+- Pillar-specific coverage
+- Pillar-specific depth indicators
+
+The four Trust Pillars are:
+
+- Commitment Tracking
+- Narrative Consistency
+- Accounting Stability
+- Capital Allocation Tracking
 
 ---
 
@@ -462,6 +487,16 @@ Trust Signals derive trust observations from Trust Pillar Artifacts.
 
 No LLM involvement.
 
+Trust Signals owns:
+
+- Deterministic trust observations
+- Dimensions
+- Severity
+- Direction
+- Confidence
+- Coverage status
+- Depth indicators
+
 ---
 
 ## Trust Signal Types
@@ -538,12 +573,17 @@ Quarter Understanding interprets:
 
 - Signal clustering
 - Signal severity
+- Trust significance
+- Trust context
 - Narrative coherence
 - Pattern evolution
 
 Quarter Understanding owns:
 
-Trust Interpretation
+- Trust interpretation
+- Trust significance
+- Trust context
+- Trust narrative coherence
 
 It does not own:
 
@@ -557,18 +597,35 @@ LOCKED.
 
 Investor Intelligence owns:
 
-Q3
+- Investor Intelligence Q3
+- Investor-facing trust synthesis
+- Trust understanding
+- Trust verdicts
 
 "Can the story be trusted?"
 
-Q3 synthesizes:
+Q3 consumes:
 
-- Commitment Tracking
-- Narrative Consistency
-- Accounting Stability
-- Trust Interpretation
+- Quarter Understanding trust interpretation
 
-into a trust verdict.
+Q3 synthesizes Quarter Understanding trust interpretation into investor-facing
+trust synthesis and trust verdicts.
+
+Trust Pillars are not consumed directly by Investor Intelligence Q3.
+
+Trust Pillars flow through Trust Signals.
+
+Trust Signals flow through Quarter Understanding.
+
+Quarter Understanding trust interpretation flows into Investor Intelligence
+Q3.
+
+Quarter Understanding trust interpretation is always the trust input to
+Investor Intelligence Q3.
+
+Investor Intelligence Q3 never consumes Trust Signals directly.
+
+LOCKED.
 
 ---
 
@@ -667,6 +724,36 @@ LOCKED.
 
 ---
 
+# Content-Level References And Replayability Metadata
+
+Trust Architecture content may carry:
+
+- Evidence references
+- Source artifact references
+- Enrichment status
+- Depth indicators
+- Replayability metadata
+
+These are content-level references and replayability fields.
+
+They are not Artifact Framework lineage, artifact metadata, or artifact
+versioning.
+
+The Artifact Framework owns:
+
+- Artifact identity
+- Artifact metadata
+- Framework lineage
+- Artifact versioning
+- Persistence
+- Current pointers
+- Archive and history
+- Framework hashes
+
+LOCKED.
+
+---
+
 # Governance Rules
 
 ## Rule 1
@@ -695,7 +782,11 @@ LOCKED.
 
 ## Rule 4
 
-Trust verdicts originate in Quarter Understanding and Investor Intelligence.
+Trust verdicts originate in Investor Intelligence Q3.
+
+Quarter Understanding owns trust interpretation only.
+
+Trust Signals remain observation-only.
 
 LOCKED.
 
@@ -709,16 +800,15 @@ LOCKED.
 
 ---
 
-# Storage Structure
+# Artifact Framework Ownership
 
-trust/
-├── commitment-tracking/
-├── narrative-consistency/
-├── accounting-stability/
-├── capital-allocation-tracking/
-├── signals/
-├── interpretations/
-└── evaluations/
+Trust Architecture does not own storage mechanics.
+
+The Artifact Framework owns storage, persistence, current pointers,
+archive/history, and framework lineage.
+
+Trust Architecture does not define storage trees, `current.json` layouts,
+archive layouts, persistence structures, or lineage directories.
 
 ---
 

@@ -2,7 +2,7 @@
 
 # Purpose
 
-Quarter Understanding is the first investor interpretation layer in the platform.
+Quarter Understanding is the first LLM-assisted interpretation layer in the platform.
 
 It answers:
 
@@ -34,7 +34,7 @@ Enrichment inputs:
 ```text
 Trust Signals
 Topic Evolution
-Advanced Concept Registry
+Concept Registry
 ```
 
 Quarter Understanding is the bridge between deterministic observations and investor reasoning.
@@ -51,7 +51,7 @@ Quarter Understanding owns:
 - Business interpretation
 - Narrative coherence assessment
 - Pattern assessment
-- Current period investor significance
+- Current period business significance or Current period significance assessment
 
 ---
 
@@ -99,7 +99,7 @@ Quarter Understanding may consume these inputs when available:
 
 - Trust Signals
 - Topic Evolution
-- Advanced Concept Registry
+- Concept Registry
 
 Without enrichment inputs:
 
@@ -157,11 +157,26 @@ Provides:
 
 Enrichment input.
 
+Trust follows this governed flow:
+
+```text
+Trust Pillars
+        ↓
+Trust Signals
+        ↓
+Quarter Understanding
+```
+
 Provides:
 
 - Trust observations generated from Commitment Tracking
 - Trust observations generated from Narrative Consistency
 - Trust observations generated from Accounting Stability
+- Trust observations generated from Capital Allocation Tracking
+
+Quarter Understanding never consumes Trust Pillars directly.
+
+All trust observations arrive through Trust Signals.
 
 ---
 
@@ -169,12 +184,23 @@ Provides:
 
 Quarter Understanding never reads:
 
+- Quarter Change Artifact
+- Commitment Tracking Artifact
+- Narrative Consistency Artifact
+- Accounting Stability Artifact
+- Capital Allocation Tracking Artifact
 - Filing Text
 - Earnings Call Text
 - Raw MD&A
 - Raw Financial Statements
+- Investor Intelligence
 
-Those responsibilities belong to Structured Intelligence.
+Quarter-over-quarter observations arrive exclusively through Business Signals
+movement signals.
+
+Trust observations arrive exclusively through Trust Signals.
+
+Raw filing responsibilities belong to Structured Intelligence.
 
 Quarter Understanding only reads structured artifacts.
 
@@ -316,6 +342,10 @@ type EnrichmentStatus = {
 };
 ```
 
+The artifact paths and versions in enrichment status are Artifact
+Framework-provided references to upstream artifacts. Quarter Understanding does
+not own upstream artifact identity, versioning, or storage mechanics.
+
 ---
 
 # Depth Indicator
@@ -413,7 +443,11 @@ type QuarterUnderstanding = {
 
 # LLM Usage
 
-LLM REQUIRED.
+LLM-ASSISTED.
+
+Quarter Understanding is the first interpretation layer in the platform.
+
+This is a locked architecture decision.
 
 Reason:
 
@@ -428,6 +462,13 @@ They cannot reliably determine:
 - Why it matters
 
 Quarter Understanding is the correct location for this reasoning.
+
+LLM execution requirements:
+
+- Temperature = 0
+- Model version must be pinned
+- Prompt version must be resolved through the Prompt Registry
+- Inputs and outputs must remain replayable
 
 ---
 
@@ -461,19 +502,38 @@ type StructuredConfidence = {
 
 ---
 
-# Lineage Requirements
+# Replayability Metadata
 
-Every Quarter Understanding artifact must record:
+Quarter Understanding owns generation of the following content-level
+replayability metadata:
 
-- Prompt Version
-- Prompt Snapshot
-- Model Provider
-- Model Version
-- Input Hash
-- Business Signal Versions
-- Company Knowledge Version
+- `prompt_version`
+- `model_version`
+- prompt lineage
+- input hashes
+- output hashes
+- evaluation hooks
+- enrichment status
+- depth indicators
 
-This enables replayability.
+Prompt lineage includes the governed prompt snapshot reference and model
+provider required to reproduce execution.
+
+Input references must include the Company Knowledge and Business Signals
+versions and every enrichment artifact actually used.
+
+This metadata is not Artifact Framework lineage.
+
+Artifact Framework owns:
+
+- artifact identity
+- artifact metadata
+- Artifact Framework lineage
+- artifact versioning
+- persistence
+- current pointer
+- archive/history
+- framework-level hashes
 
 ---
 
@@ -577,13 +637,12 @@ LOCKED.
 
 ---
 
-# Storage Structure
+# Storage Ownership
 
-quarter-understanding/
-├── current.json
-├── archive/
-├── evaluations/
-└── lineage/
+Quarter Understanding does not own storage mechanics.
+
+Artifact storage, persistence, current-pointer resolution, archive/history, and
+framework lineage are managed by the Artifact Framework.
 
 ---
 

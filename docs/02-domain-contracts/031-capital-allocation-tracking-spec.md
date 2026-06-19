@@ -24,6 +24,10 @@ Capital Allocation Tracking is not investment recommendation.
 
 Capital Allocation Tracking is not trust interpretation.
 
+Capital Allocation Tracking executes deterministically.
+
+Capital Allocation Tracking does not perform LLM reasoning.
+
 LOCKED.
 
 ---
@@ -43,6 +47,24 @@ Quarter Understanding
 Investor Intelligence Q3
 ```
 
+Capital Allocation Tracking is a Trust Pillar artifact.
+
+Its canonical trust flow is:
+
+```text
+Capital Allocation Tracking
+        ↓
+Trust Signals
+        ↓
+Quarter Understanding
+        ↓
+Investor Intelligence Q3
+```
+
+Capital Allocation Tracking does not bypass Trust Signals.
+
+Capital Allocation Tracking does not bypass Quarter Understanding.
+
 LOCKED.
 
 ---
@@ -51,21 +73,41 @@ LOCKED.
 
 Capital Allocation Tracking owns:
 
-- Stated capital priorities
-- Observed capital deployment
-- Priority-versus-deployment gaps
-- Capital allocation evidence references
-- Capital allocation coverage status
+- Stated capital allocation priorities
+- Observed deployment tracking
+- Deployment measurement
+- Priority-versus-deployment gap detection
+- Gap classification
+- Consecutive-period gap tracking
+- Coverage status
+- Depth indicators
+- Capital allocation evidence
 
 Capital Allocation Tracking does NOT own:
 
-- Trust conclusions
+- Trust observations
+- Trust dimensions
+- Trust severity
+- Trust direction
+- Trust confidence
+- Trust interpretation
+- Trust verdicts
+- Investor synthesis
+- Recommendations
+- Valuation opinions
+- LLM reasoning
 - Commitment lifecycle
 - Management credibility conclusions
-- Recommendations
-- Valuation
 - Investor conclusions
 - Quarter Understanding interpretation
+
+Trust observations, dimensions, severity, direction, and trust confidence belong
+to Trust Signals.
+
+Trust interpretation belongs to Quarter Understanding.
+
+Investor-facing trust synthesis and trust verdicts belong to Investor
+Intelligence Q3.
 
 LOCKED.
 
@@ -187,7 +229,8 @@ type CapitalAllocationTrackingArtifactContent = {
 };
 ```
 
-Artifact metadata, identity, lineage, versioning, persistence, archive, and current pointer belong to:
+Artifact identity, artifact metadata, framework lineage, artifact versioning,
+persistence, current pointers, archive/history, and framework hashes belong to:
 
 ```text
 Artifact Framework
@@ -337,7 +380,7 @@ LOCKED.
 ```typescript
 type EnrichmentInputStatus = {
   available: boolean;
-  artifact_path: string | null;
+  artifact_ref: string | null;
   artifact_version: number | null;
   absent_reason: string | null;
 };
@@ -415,7 +458,7 @@ LOCKED.
 
 Capital Allocation Tracking must be replayable.
 
-Required lineage:
+Required source references:
 
 ```text
 Company Knowledge
@@ -423,20 +466,33 @@ Current Filing
 Current Financial Statements
 ```
 
-Optional lineage when used:
+Optional source references when used:
 
 ```text
 Prior Capital Allocation Tracking
 Prior Financial Statements
 ```
 
-Required replay metadata:
+Capital Allocation Tracking may own these content-level replayability
+references:
 
-- input hash
-- artifact hash
-- schema version
+- source references
+- evidence references
+- priority references
+- deployment references
+- gap references
+- coverage status
+- depth indicators
 - builder version
-- generated period
+- calibration version
+- rule version
+
+These are content replayability references. They are not Artifact Framework
+lineage.
+
+Artifact Framework owns artifact identity, artifact metadata, framework
+lineage, artifact versioning, persistence, current pointers, archive/history,
+and framework hashes.
 
 LOCKED.
 
@@ -444,7 +500,7 @@ LOCKED.
 
 # Invalidation Behavior
 
-Regenerate when:
+Capital Allocation Tracking publishes a new immutable artifact version when:
 
 ```text
 Company Knowledge changes
@@ -454,14 +510,30 @@ Prior Capital Allocation Tracking changes
 Prior Financial Statements change when used
 ```
 
-When Capital Allocation Tracking changes, mark stale:
+When Capital Allocation Tracking changes:
 
-```text
-Trust Signals
-Quarter Understanding
-Investor Intelligence
-Partner Domain
-```
+- Capital Allocation Tracking publishes a new artifact version.
+- Dependency Index records dependency relationships.
+- Invalidation Engine determines downstream staleness and propagation.
+
+Capital Allocation Tracking does not mark Trust Signals, Quarter Understanding,
+Investor Intelligence Q3, or any other downstream consumer stale directly.
+
+Capital Allocation Tracking does not own invalidation decisions.
+
+LOCKED.
+
+---
+
+# Storage Ownership
+
+Artifact Framework owns storage mechanics, persistence, current pointer
+resolution, archive/history, retrieval mechanics, and framework hashes.
+
+Capital Allocation Tracking does not own storage structure.
+
+Capital Allocation Tracking does not define storage trees, archive layouts,
+`current.json` layouts, persistence structures, or filesystem paths.
 
 LOCKED.
 
@@ -481,8 +553,16 @@ against:
 Observed Capital Deployment
 ```
 
-It produces evidence-backed observations only.
+It produces evidence-backed capital allocation content and pillar-specific
+observations only.
 
 Interpretation belongs downstream.
+
+Trust Signals produces deterministic trust observations.
+
+Quarter Understanding produces trust interpretation.
+
+Investor Intelligence Q3 produces investor-facing trust synthesis and trust
+verdicts.
 
 LOCKED.

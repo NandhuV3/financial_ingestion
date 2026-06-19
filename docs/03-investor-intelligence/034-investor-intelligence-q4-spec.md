@@ -16,11 +16,8 @@ Q4 is the valuation intelligence layer.
 
 Q4 evaluates:
 
-- current valuation context
-- valuation relative to business quality
-- valuation relative to growth expectations
-- valuation relative to historical norms
-- valuation relative to peers
+- expectation context when market data is available
+- limitations when market data is unavailable
 
 Q4 does NOT:
 
@@ -40,14 +37,36 @@ in the current valuation?
 
 ---
 
+# Classification
+
+Q4 is:
+
+- an Investor Intelligence Q4 section
+- an LLM-assisted investor-facing synthesis
+- a valuation-context synthesis layer
+
+Q4 is not:
+
+- a deterministic valuation engine
+- a market-data processing layer
+- a pricing engine
+
+Generation requirements:
+
+- `temperature = 0`
+- pinned prompt version
+- pinned model version
+- replayable generation
+
+---
+
 # Ownership
 
-Q4 owns:
+Q4 future-state ownership includes:
 
-- valuation context
-- valuation assessment
-- valuation confidence
-- valuation evidence
+- expectation context
+- valuation limitation reporting
+- Q4 evidence references
 
 Q4 does NOT own:
 
@@ -68,6 +87,30 @@ Q5
 
 ---
 
+# Sprint 11 Ownership Boundary
+
+Sprint 11 Q4 currently owns:
+
+- valuation limitation reporting
+- insufficient-data reporting
+- valuation evidence references
+
+Sprint 11 Q4 does not perform:
+
+- valuation assessment synthesis
+- expectation-context synthesis
+- valuation-driver generation
+
+These capabilities are future-state responsibilities that become active only
+after:
+
+- Market Data Architecture
+- Valuation Architecture
+
+are implemented.
+
+---
+
 # Core Question
 
 Q4 must answer:
@@ -80,21 +123,35 @@ or demanding
 relative to business fundamentals?
 ```
 
+Full valuation assessment is deferred in Sprint 11.
+
 ---
 
 # Architectural Position
 
-Q4 is OPTIONAL.
+Sprint 11 behavior:
 
-Investor Intelligence must function without Q4.
+```text
+Q4 is always present.
+```
 
-Q5 must function without Q4.
+Q4 always returns:
 
-Q4 absence must never block:
+```typescript
+status = "insufficient_data";
 
-- Investor Intelligence generation
-- Q5 generation
-- Partner Domain generation
+absent_reason = "market_data_unavailable";
+```
+
+Q4 is not omitted.
+
+Q4 remains a required section of Investor Intelligence.
+
+Q5 always consumes Q4 output.
+
+Q4 may contain insufficient-data status.
+
+Q4 may not be absent.
 
 ---
 
@@ -102,27 +159,31 @@ Q4 absence must never block:
 
 ## Required
 
-Market Data
-
-Valuation Data
-
 Company Knowledge
 
-Q1 Answer
+Q1
 
-Q2 Answer
+Q2
 
-Q3 Answer
+Q3
 
 ---
 
-# Optional
+## Optional
+
+Market Data
+
+Valuation Data
 
 Peer Benchmark Data
 
 Sector Multiples
 
 Historical Valuation Data
+
+Missing optional inputs reduce valuation depth.
+
+Missing optional inputs do not remove Q4.
 
 ---
 
@@ -168,9 +229,8 @@ type Q4Answer = {
 
   evidence_package: Q4EvidencePackage;
 
-  lineage: Q4Lineage;
-
-  metadata: Metadata;
+  replayability_metadata:
+    Q4ReplayabilityMetadata;
 };
 ```
 
@@ -178,7 +238,25 @@ type Q4Answer = {
 
 # Status Rules
 
+## Sprint 11
+
+Sprint 11 always returns:
+
+```typescript
+status = "insufficient_data";
+
+absent_reason = "market_data_unavailable";
+```
+
+Market data integration is deferred.
+
+Valuation methodology is future work and is not implemented in Sprint 11.
+
+---
+
 ## Answered
+
+Answered status is reserved for a future Market Data and Valuation Architecture.
 
 Valuation data available.
 
@@ -194,7 +272,7 @@ Required market inputs unavailable.
 
 Valuation cannot be assessed reliably.
 
-Q4 generation skipped.
+Q4 remains present with insufficient-data status.
 
 ---
 
@@ -211,6 +289,8 @@ type Q4AbsentReason =
 ---
 
 # Valuation Assessment
+
+This is a future-state contract and is not executed during Sprint 11.
 
 ```typescript
 type ValuationAssessment =
@@ -245,6 +325,8 @@ Insufficient confidence to classify.
 Purpose:
 
 Explain why valuation appears as assessed.
+
+This is a future-state contract and is not executed during Sprint 11.
 
 ```typescript
 type ValuationDriver = {
@@ -281,9 +363,24 @@ type Q4EvidencePackage = {
 
   q3_refs: string[];
 
-  supporting_artifacts: string[];
+  supporting_artifacts: Array<{
+    artifact_ref: string;
+
+    artifact_version: number;
+  }>;
 };
 ```
+
+`artifact_ref` and `artifact_version` are Artifact Framework-provided
+references.
+
+Q4 does not own:
+
+- artifact identity
+- artifact versioning
+- persistence
+- storage mechanics
+- framework lineage
 
 ---
 
@@ -349,6 +446,8 @@ Valuation assessment is uncertain.
 
 # Valuation Framework
 
+This is a future-state contract and is not executed during Sprint 11.
+
 Q4 evaluates:
 
 ```text
@@ -367,9 +466,19 @@ It does NOT evaluate:
 Future Share Price
 ```
 
+Sprint 11 does not execute this valuation framework.
+
+The framework remains deferred until Market Data and Valuation Architecture are implemented.
+
 ---
 
 # Evaluation Metrics
+
+Evaluation metadata is content-level replayability metadata.
+
+Evaluation execution belongs to Evaluation Architecture.
+
+Q4 does not execute evaluations.
 
 ## Data Freshness
 
@@ -463,43 +572,32 @@ Any occurrence fails governance checks.
 
 # Q5 Dependency Rules
 
-Q5 may consume Q4 when available.
+Q5 always consumes Q4 output.
 
-Q5 must not require Q4.
-
-If:
+When:
 
 ```typescript
-Q4.status === "insufficient_data"
+status = "insufficient_data"
 ```
 
-then:
+Q5 must propagate valuation limitations.
 
-```typescript
-Q5.status = "partial"
-```
-
-with:
-
-```typescript
-partial_reason = "q4_unavailable"
-```
+Q5 may not fabricate valuation conclusions.
 
 ---
 
 # Q5 Integration
 
-When Q4 exists:
-
-Q5 may generate:
+Future Q4 implementations may create valuation-related change conditions for
+Q5 when valuation architecture is available.
 
 ```text
 valuation_threshold
 ```
 
-change conditions.
+Sprint 11 does not generate valuation-related change conditions.
 
-When Q4 absent:
+When Q4 has insufficient-data status:
 
 valuation_threshold conditions forbidden.
 
@@ -522,6 +620,14 @@ Q2 changes
 
 Q3 changes
 ```
+
+Q4 publishes immutable content only.
+
+Dependency Index owns dependency registration.
+
+Invalidation Engine owns staleness determination and propagation.
+
+Q4 does not make invalidation decisions.
 
 ---
 
@@ -571,41 +677,63 @@ Peer Relative Valuation Tracking
 
 ---
 
-# Lineage
+# Replayability Metadata
 
 ```typescript
-type Q4Lineage = {
+type Q4ReplayabilityMetadata = {
   q1_version: number;
 
   q2_version: number;
 
   q3_version: number;
 
-  market_data_version: number;
+  market_data_version: number | null;
 
-  valuation_data_version: number;
+  valuation_data_version: number | null;
+
+  prompt_lineage: string;
 
   prompt_version: string;
 
   model_version: string;
 
-  input_hash: string;
+  section_input_hash: string;
+
+  section_output_hash: string;
+
+  evaluation_metadata: Record<string, unknown>;
 };
 ```
+
+Q4 may own:
+
+- `prompt_lineage`
+- `prompt_version`
+- `model_version`
+- `section_input_hash`
+- `section_output_hash`
+- `evaluation_metadata`
+
+These are content-level replayability metadata.
+
+They are not Artifact Framework lineage.
 
 ---
 
-# Metadata
+# Artifact Framework Metadata
 
-```typescript
-type Metadata = {
-  artifact_version: number;
+Artifact Framework owns:
 
-  generated_at: string;
+- artifact identity
+- artifact metadata
+- framework lineage
+- artifact versioning
+- persistence
+- current pointers
+- archive/history
+- framework hashes
 
-  schema_version: string;
-};
-```
+These are not part of Q4 content-level replayability metadata.
 
 ---
 
@@ -621,10 +749,12 @@ Must support:
 
 - valuation refresh cycles
 - market data updates
-- partial invalidation
-- Q5 integration
+- replayability
+- auditability
 
-without triggering full Investor Intelligence regeneration.
+Dependency Index owns dependency registration.
+
+Invalidation Engine owns staleness determination and propagation.
 
 ---
 
@@ -632,15 +762,15 @@ without triggering full Investor Intelligence regeneration.
 
 LOCKED.
 
-1. Q4 is optional.
-2. Q4 absence must not block Investor Intelligence.
-3. Q4 absence must not block Q5.
-4. Q4 evaluates valuation context only.
-5. Q4 never predicts stock prices.
-6. Q4 never provides investment recommendations.
-7. All valuation claims require evidence.
-8. Q4 integrates Q1–Q3 but does not replace them.
-9. Q4 may create valuation-related change conditions for Q5.
-10. Q4 must support partial invalidation and independent refresh cycles.
+1. Q4 is a required Investor Intelligence section.
+2. Q4 remains present in Sprint 11.
+3. Q4 may return insufficient-data status.
+4. Q5 consumes Q4 output.
+5. Q4 evaluates valuation context only.
+6. Q4 never predicts stock prices.
+7. Q4 never provides investment recommendations.
+8. All valuation claims require evidence.
+9. Q4 integrates Q1–Q3 but does not replace them.
+10. Future Q4 implementations may create valuation-related change conditions for Q5 when valuation architecture exists.
 
 End of Specification.

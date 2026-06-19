@@ -60,6 +60,12 @@ Governance Artifacts may be persisted through the Artifact Framework when they r
 
 Governance Artifacts do not become downstream intelligence unless a domain contract explicitly says so.
 
+Governance Artifacts become intelligence dependencies only when an explicit
+domain contract defines that behavior.
+
+There is no implicit Governance Artifact participation in intelligence
+dependencies.
+
 LOCKED.
 
 ---
@@ -82,6 +88,12 @@ Operational Records are not intelligence artifacts.
 
 Operational Records are not downstream intelligence dependencies.
 
+Operational Records may reference Intelligence Artifacts and Governance
+Artifacts.
+
+Operational Records never become intelligence inputs unless a platform
+contract explicitly models them as such.
+
 Operational Records may be stored in audit stores, event stores, metrics stores, log stores, or artifact-adjacent storage as specified by their owning platform contract.
 
 LOCKED.
@@ -94,16 +106,35 @@ All three object classes must support replay-safe operation.
 
 ## Intelligence Artifacts
 
-Intelligence Artifacts must record:
+Artifact Framework-owned mechanics for Intelligence Artifacts are:
 
-- identity
-- version
-- metadata
-- lineage
-- input hashes
-- artifact hashes
-- governance metadata
+- artifact identity
+- artifact metadata
+- framework lineage
+- artifact versioning
+- persistence
+- current pointers
+- archive/history
+- framework hashes
+
+Intelligence Artifacts may own content-level replayability metadata:
+
+- prompt lineage
+- prompt versions
+- model versions
+- input references
+- output hashes
+- replayability hashes
 - evaluation metadata
+
+LLM-assisted Intelligence Artifacts may own prompt lineage, prompt versions,
+and model versions.
+
+Deterministic Intelligence Artifacts may own builder version, calibration
+version, and rule version.
+
+These are replayability references. Content-level replayability metadata is
+not Artifact Framework lineage.
 
 ## Governance Artifacts
 
@@ -167,11 +198,17 @@ Governance Artifacts are visible to governance workflows and audit/replay toolin
 
 Governance Artifacts are not visible to downstream intelligence builders unless a domain contract explicitly says so.
 
+No implicit intelligence dependency or downstream visibility is created by
+classifying an object as a Governance Artifact.
+
 ## Operational Records
 
 Operational Records are visible to observability, audit, recovery, and control-plane tooling.
 
 Operational Records are not downstream intelligence inputs.
+
+References from Operational Records to Intelligence Artifacts or Governance
+Artifacts do not make those records intelligence inputs.
 
 LOCKED.
 
@@ -183,15 +220,21 @@ LOCKED.
 
 The Artifact Framework owns artifact mechanics for objects persisted as artifacts:
 
-- identity
-- metadata
-- lineage
-- versioning
-- archive
-- current pointer
-- artifact hashes
-- input hashes
+- artifact identity
+- artifact metadata
+- framework lineage
+- artifact versioning
+- archive/history
+- current pointers
+- framework hashes
 - immutable persistence
+
+Content-level input references, output hashes, replayability hashes, prompt
+lineage, prompt/model versions, deterministic builder/calibration/rule
+versions, and evaluation metadata belong to the producing Intelligence
+Artifact when required by its domain contract.
+
+Content-level replayability metadata is not Artifact Framework lineage.
 
 ## Governance Systems
 
@@ -223,17 +266,23 @@ LOCKED.
 
 ## Builders
 
-Builders propose.
+Intelligence builders produce `BuilderResult` content.
+
+Governance candidate builders produce candidates as `BuilderResult` content.
 
 Builders may:
 
 - consume approved input artifacts
-- generate candidate content
+- generate Intelligence Artifact content or governance candidate content
 - validate builder outputs
 - emit evaluation hooks
 
 Builders may not:
 
+- approve
+- promote
+- merge
+- reject
 - make governance decisions
 - update approved intelligence
 - write current pointers

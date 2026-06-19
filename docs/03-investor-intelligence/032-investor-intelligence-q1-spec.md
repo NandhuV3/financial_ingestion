@@ -34,6 +34,28 @@ Q1 is the business understanding layer.
 
 ---
 
+# Classification
+
+Q1 is:
+
+- an Investor Intelligence Q1 section
+- an LLM-assisted investor-facing synthesis
+- a business-understanding synthesis layer
+
+Q1 is not a deterministic observation layer.
+
+Q1 consumes business understanding and produces investor-facing business
+understanding.
+
+Generation requirements:
+
+- `temperature = 0`
+- pinned prompt version
+- pinned model version
+- replayable generation
+
+---
+
 # Core Responsibility
 
 Transform:
@@ -96,13 +118,15 @@ Company Knowledge
 
 Quarter Understanding
 
+## Optional
+
 Topic Evolution
 
----
+Prior Investor Intelligence
 
-# Optional Inputs
+Topic Evolution is longitudinal enrichment only.
 
-Historical Investor Intelligence
+Missing Topic Evolution reduces depth but does not block generation.
 
 ---
 
@@ -170,9 +194,8 @@ type Q1Answer = {
 
   evidence_package: Q1EvidencePackage;
 
-  lineage: Q1Lineage;
-
-  metadata: Metadata;
+  replayability_metadata:
+    Q1ReplayabilityMetadata;
 };
 ```
 
@@ -292,6 +315,17 @@ type Q1EvidencePackage = {
   supporting_artifacts: string[];
 };
 ```
+
+Where artifact enrichment references are present, each reference uses:
+
+- `artifact_ref`
+- `artifact_version`
+
+`artifact_ref` and `artifact_version` are Artifact Framework-provided
+references.
+
+Q1 does not own artifact identity, versioning, persistence, storage mechanics,
+or framework lineage.
 
 ---
 
@@ -426,6 +460,12 @@ for downstream systems.
 
 # Evaluation Metrics
 
+Evaluation metadata is content-level replayability metadata.
+
+Evaluation execution belongs to Evaluation Architecture.
+
+Q1 does not execute evaluations.
+
 ---
 
 ## Grounding Score
@@ -536,6 +576,14 @@ Quarter Understanding changes
 Topic Evolution changes
 ```
 
+Q1 publishes immutable content only.
+
+Dependency Index owns dependency registration.
+
+Invalidation Engine owns staleness determination and propagation.
+
+Q1 does not make invalidation decisions.
+
 ---
 
 # No Regeneration Required
@@ -590,37 +638,63 @@ This supports future Company Knowledge governance.
 
 ---
 
-# Lineage
+# Replayability Metadata
 
 ```typescript
-type Q1Lineage = {
+type Q1ReplayabilityMetadata = {
   company_knowledge_version: number;
 
   quarter_understanding_version: number;
 
   topic_evolution_version: number;
 
+  prompt_lineage: string;
+
   prompt_version: string;
 
   model_version: string;
 
-  input_hash: string;
+  section_input_hash: string;
+
+  section_output_hash: string;
+
+  evaluation_metadata: Record<string, unknown>;
 };
 ```
+
+Q1 may own:
+
+- `prompt_lineage`
+- `prompt_version`
+- `model_version`
+- `section_input_hash`
+- `section_output_hash`
+- `evaluation_metadata`
+
+The company knowledge, quarter understanding, and topic evolution versions,
+along with the Q1-owned fields above, are content-level replayability metadata.
+
+They are not Artifact Framework lineage.
+
+Evaluation metadata is content-level replayability metadata. Evaluation
+execution belongs to Evaluation Architecture; Q1 does not execute evaluations.
 
 ---
 
-# Metadata
+# Artifact Framework Metadata
 
-```typescript
-type Metadata = {
-  artifact_version: number;
+Artifact Framework owns:
 
-  generated_at: string;
+- artifact identity
+- artifact metadata
+- framework lineage
+- artifact versioning
+- persistence
+- current pointers
+- archive/history
+- framework hashes
 
-  schema_version: string;
-};
-```
+These are not part of Q1 content-level replayability metadata.
 
 ---
 

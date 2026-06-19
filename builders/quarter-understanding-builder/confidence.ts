@@ -5,6 +5,7 @@ import type {
   EnrichmentStatus,
   DepthIndicator,
 } from "./types.js";
+import { QUARTER_UNDERSTANDING_CALIBRATION } from "./calibration-contract.js";
 
 export function buildQuarterUnderstandingConfidence(input: {
   understandings: Understanding[];
@@ -22,12 +23,31 @@ export function buildQuarterUnderstandingConfidence(input: {
     input.enrichmentStatus.trust_signals,
     input.enrichmentStatus.topic_evolution,
     input.enrichmentStatus.concept_registry,
-  ].filter((status) => status.available).length / 3;
-  const groundingScore = round((evidenceCoverageScore + Math.max(signalUtilizationScore, 0.25)) / 2);
-  const interpretationQualityScore = round((groundingScore + enrichmentScore + 1) / 3);
+  ].filter((status) => status.available).length
+    / QUARTER_UNDERSTANDING_CALIBRATION.SUPPORTED_ENRICHMENT_DIMENSION_COUNT;
+  const groundingScore = round(
+    (evidenceCoverageScore + Math.max(
+      signalUtilizationScore,
+      QUARTER_UNDERSTANDING_CALIBRATION.SIGNAL_UTILIZATION_GROUNDING_FLOOR,
+    )) / QUARTER_UNDERSTANDING_CALIBRATION.GROUNDING_COMPONENT_COUNT,
+  );
+  const interpretationQualityScore = round(
+    (
+      groundingScore
+      + enrichmentScore
+      + QUARTER_UNDERSTANDING_CALIBRATION.INTERPRETATION_QUALITY_BASELINE
+    ) / QUARTER_UNDERSTANDING_CALIBRATION.INTERPRETATION_QUALITY_COMPONENT_COUNT,
+  );
 
   return {
-    overall: round((groundingScore + signalUtilizationScore + evidenceCoverageScore + interpretationQualityScore) / 4),
+    overall: round(
+      (
+        groundingScore
+        + signalUtilizationScore
+        + evidenceCoverageScore
+        + interpretationQualityScore
+      ) / QUARTER_UNDERSTANDING_CALIBRATION.OVERALL_CONFIDENCE_COMPONENT_COUNT,
+    ),
     grounding_score: groundingScore,
     signal_utilization_score: round(signalUtilizationScore),
     evidence_coverage_score: round(evidenceCoverageScore),
@@ -81,5 +101,7 @@ function evidenceCount(understanding: Understanding): number {
 }
 
 function round(value: number): number {
-  return Number(Math.max(0, Math.min(1, value)).toFixed(4));
+  return Number(Math.max(0, Math.min(1, value)).toFixed(
+    QUARTER_UNDERSTANDING_CALIBRATION.CONFIDENCE_ROUNDING_DECIMAL_PLACES,
+  ));
 }

@@ -1,4 +1,5 @@
 import type { TrustSignal } from "../trust-signals-builder/types.js";
+import { QUARTER_UNDERSTANDING_CALIBRATION } from "./calibration-contract.js";
 import type { QuarterUnderstandingBuildContext, UnderstandingSeed } from "./types.js";
 
 export function buildTrustInterpretations(context: QuarterUnderstandingBuildContext): UnderstandingSeed[] {
@@ -28,11 +29,12 @@ export function buildTrustInterpretations(context: QuarterUnderstandingBuildCont
 }
 
 function importanceFromTrustSignals(signals: TrustSignal[]): "low" | "medium" | "high" {
-  if (signals.some((signal) => signal.severity === "high")) {
+  if (signals.some((signal) =>
+    includesCalibrationValue(QUARTER_UNDERSTANDING_CALIBRATION.HIGH_IMPORTANCE_TRUST_SEVERITIES, signal.severity))) {
     return "high";
   }
 
-  if (signals.length > 0) {
+  if (signals.length >= QUARTER_UNDERSTANDING_CALIBRATION.MEDIUM_IMPORTANCE_MIN_TRUST_SIGNAL_COUNT) {
     return "medium";
   }
 
@@ -40,8 +42,10 @@ function importanceFromTrustSignals(signals: TrustSignal[]): "low" | "medium" | 
 }
 
 function directionFromTrustSignals(signals: TrustSignal[]): "improving" | "stable" | "deteriorating" | "mixed" {
-  const positive = signals.filter((signal) => signal.direction === "positive").length;
-  const negative = signals.filter((signal) => signal.direction === "negative").length;
+  const positive = signals.filter((signal) =>
+    includesCalibrationValue(QUARTER_UNDERSTANDING_CALIBRATION.IMPROVING_TRUST_SIGNAL_DIRECTIONS, signal.direction)).length;
+  const negative = signals.filter((signal) =>
+    includesCalibrationValue(QUARTER_UNDERSTANDING_CALIBRATION.DETERIORATING_TRUST_SIGNAL_DIRECTIONS, signal.direction)).length;
 
   if (positive > 0 && negative > 0) {
     return "mixed";
@@ -56,4 +60,8 @@ function directionFromTrustSignals(signals: TrustSignal[]): "improving" | "stabl
   }
 
   return "stable";
+}
+
+function includesCalibrationValue(values: readonly string[], value: string): boolean {
+  return values.includes(value);
 }

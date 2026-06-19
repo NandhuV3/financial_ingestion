@@ -31,10 +31,6 @@ Structured Intelligence
 Company Knowledge
         ↓
 
-Topic Evolution
-Quarter Change
-        ↓
-
 Business Signals
         ↓
 
@@ -43,6 +39,17 @@ Quarter Understanding
 
 Investor Intelligence
 ```
+
+Enrichment:
+
+```text
+Quarter Change
+Topic Evolution
+```
+
+Company Knowledge is the sole required input.
+
+Quarter Change and Topic Evolution are enrichment inputs only.
 
 LOCKED.
 
@@ -81,7 +88,6 @@ Business Signals owns:
 * Signal direction
 * Signal evidence references
 * Signal lifecycle
-* Signal versioning
 
 LOCKED.
 
@@ -96,13 +102,23 @@ Business Signals does NOT own:
 * Topic Assignment
 * Topic Evolution
 * Company Knowledge
-* Trust Signal generation
-* Trust Signal classification
+* Trust Signals
+* Trust observations
+* Trust dimensions
 * Trust conclusions
 * Quarter Understanding
 * Investor Intelligence
 * Recommendations
 * Valuation opinions
+
+Trust Signals owns deterministic trust observations.
+
+Quarter Understanding owns trust interpretation.
+
+Investor Intelligence Q3 owns investor-facing trust synthesis and trust
+verdicts.
+
+Business Signals owns no trust-layer intelligence.
 
 LOCKED.
 
@@ -177,10 +193,6 @@ Enrichment Inputs:
 ```text
 Quarter Change
 Topic Evolution
-Transcript Signals
-Market Context
-Industry Context
-Future Data Sources
 ```
 
 Enrichment inputs increase signal coverage.
@@ -198,7 +210,7 @@ LOCKED.
 ```ts
 type EnrichmentInputStatus = {
   available: boolean;
-  artifact_path: string | null;
+  artifact_ref: string | null;
   artifact_version: number | null;
   absent_reason: string | null;
 };
@@ -214,6 +226,12 @@ type EnrichmentStatus = {
   industry_context?: EnrichmentInputStatus;
 };
 ```
+
+`artifact_ref` and `artifact_version` are Artifact Framework-provided
+references.
+
+Business Signals does not own artifact identity, artifact versioning, storage
+mechanics, persistence, or framework lineage.
 
 LOCKED.
 
@@ -290,7 +308,7 @@ Business Dependency Signals
 
 ## Movement Signals
 
-Required:
+Available when this enrichment input is used:
 
 ```text
 Quarter Change
@@ -308,7 +326,7 @@ Customer Growth Acceleration
 
 ## Trend Signals
 
-Required:
+Available when this enrichment input is used:
 
 ```text
 Topic Evolution
@@ -464,24 +482,36 @@ Trust Signals are generated from:
 Commitment Tracking
 Narrative Consistency
 Accounting Stability
+Capital Allocation Tracking
+        ↓
+Trust Signals
+        ↓
+Quarter Understanding
+        ↓
+Investor Intelligence Q3
 ```
 
 by the Trust Signals layer.
 
-Business Signals may reference trust-related upstream availability only as lineage or enrichment status.
+Business Signals remains separate from Trust Architecture ownership.
 
 Business Signals may NOT emit:
 
 ```text
 Trust Signals
+Trust Observations
+Trust Dimensions
 Trust Conclusions
 ```
 
-Trust conclusions belong to:
+Trust Signals owns deterministic trust observations.
 
-```text
-Quarter Understanding and Investor Intelligence Q3
-```
+Quarter Understanding owns trust interpretation.
+
+Investor Intelligence Q3 owns investor-facing trust synthesis and trust
+verdicts.
+
+Business Signals owns no trust-layer intelligence.
 
 LOCKED.
 
@@ -546,6 +576,10 @@ type SourceArtifactReference = {
 };
 ```
 
+`artifact_id` and `artifact_version` are Artifact Framework-provided
+references. Their presence in Business Signals content does not transfer
+artifact identity or versioning ownership to Business Signals.
+
 `observation` describes what happened.
 
 It must not explain why it matters.
@@ -574,10 +608,10 @@ LOCKED.
 
 ---
 
-# Signal Artifact
+# Signal Artifact Content
 
 ```ts
-type BusinessSignalsArtifact = {
+type BusinessSignalsArtifactContent = {
   company_id: string;
 
   period_id: string;
@@ -598,11 +632,21 @@ type BusinessSignalsArtifact = {
 };
 ```
 
-Artifact metadata, lineage, identity, versioning, and persistence belong to:
+Artifact Framework owns:
 
 ```text
-Artifact Framework
+artifact identity
+artifact metadata
+framework lineage
+artifact versioning
+persistence
+current pointers
+archive/history
+framework hashes
 ```
+
+Business Signals owns signal lifecycle, typing, classification, magnitude, and
+direction. It does not own artifact versioning.
 
 LOCKED.
 
@@ -684,28 +728,39 @@ LOCKED.
 
 ---
 
-# Replayability
+# Replayability References
 
 Signal generation must be replayable.
 
-Required lineage:
+Required replayability references:
 
 ```text
 Company Knowledge
 ```
 
-Enrichment lineage must be recorded when used:
+Optional replayability references:
 
 ```text
-Topic Evolution
 Quarter Change
+Topic Evolution
+```
+
+If future enrichment inputs are used, their replayability references must also
+be recorded:
+
+```text
 Transcript Signals
 Market Context
 Industry Context
-Future Data Sources
 ```
 
-Used during signal generation.
+These are content-level replayability references.
+
+They are not Artifact Framework lineage.
+
+Artifact Framework owns artifact identity, artifact metadata, framework
+lineage, artifact versioning, persistence, current pointers, archive/history,
+and framework hashes.
 
 LOCKED.
 

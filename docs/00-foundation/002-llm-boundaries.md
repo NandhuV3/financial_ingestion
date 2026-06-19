@@ -208,10 +208,14 @@ What is observably true right now?
 
 ### Inputs
 
+Required:
+
 - Company Knowledge
+
+Enrichment:
+
 - Quarter Change
 - Topic Evolution
-- Trust Artifacts
 
 ### Outputs
 
@@ -227,6 +231,64 @@ Signals must be replayable.
 
 ---
 
+## Trust Pillars
+
+### Business Question
+
+What trust evidence is observable within each owned trust dimension?
+
+### Inputs
+
+- Structured source artifacts owned by each Trust Pillar
+
+### Outputs
+
+- Commitment Tracking
+- Narrative Consistency
+- Accounting Stability
+- Capital Allocation Tracking
+
+### LLM Usage
+
+FORBIDDEN
+
+### Reason
+
+Trust Pillars collect, compare, and preserve evidence deterministically.
+
+Trust Pillars do not interpret trust meaning.
+
+---
+
+## Trust Signals
+
+### Business Question
+
+What deterministic trust observations are present?
+
+### Inputs
+
+- Commitment Tracking
+- Narrative Consistency
+- Accounting Stability
+- Capital Allocation Tracking
+
+### Outputs
+
+- Typed Trust Signals
+
+### LLM Usage
+
+FORBIDDEN
+
+### Reason
+
+Trust Signals transform Trust Pillar evidence into deterministic observations.
+
+Trust Signals do not perform interpretation.
+
+---
+
 ## Quarter Understanding
 
 ### Business Question
@@ -235,8 +297,16 @@ What happened this period and why does it matter?
 
 ### Inputs
 
-- Business Signals
+Required:
+
 - Company Knowledge
+- Business Signals
+
+Enrichment:
+
+- Trust Signals
+- Topic Evolution
+- Concept Registry
 
 ### Outputs
 
@@ -246,11 +316,15 @@ What happened this period and why does it matter?
 
 ### LLM Usage
 
-MANDATORY
+LLM-ASSISTED
 
 ### Reason
 
 Investor interpretation requires judgment.
+
+Quarter Understanding is the platform interpretation layer.
+
+This is a locked architecture decision.
 
 ---
 
@@ -262,10 +336,21 @@ What should an owner understand?
 
 ### Inputs
 
-- Quarter Understanding
+Required:
+
 - Company Knowledge
+- Quarter Understanding
+
+Enrichment:
+
+- Business Signals
 - Topic Evolution
-- Trust Artifacts
+- Prior Investor Intelligence
+- Market Data
+
+Trust input:
+
+- Quarter Understanding trust interpretation
 
 ### Outputs
 
@@ -277,11 +362,13 @@ What should an owner understand?
 
 ### LLM Usage
 
-MANDATORY
+LLM-ASSISTED
 
 ### Reason
 
 Cross-period synthesis.
+
+Investor Intelligence is the platform synthesis layer.
 
 ---
 
@@ -294,7 +381,6 @@ How should intelligence be presented?
 ### Inputs
 
 - Investor Intelligence
-- Company Knowledge
 
 ### Outputs
 
@@ -375,14 +461,25 @@ LOCKED.
 
 # Production LLM Layers
 
-Only three layers are allowed to generate intelligence.
+Only four layers are LLM-assisted:
 
 1. Themes
 2. Structured Intelligence
 3. Quarter Understanding
 4. Investor Intelligence
 
-Everything else remains deterministic.
+The deterministic layers are:
+
+1. Topic Assignment
+2. Topic Evolution
+3. Quarter Change
+4. Company Knowledge promotion and governance logic
+5. Business Signals
+6. Trust Pillars
+7. Trust Signals
+
+Topic Assignment remains deterministic-primary with its existing governed
+ambiguity fallback.
 
 LOCKED.
 
