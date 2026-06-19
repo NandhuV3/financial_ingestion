@@ -566,6 +566,56 @@ LOCKED.
 # Artifact Content
 
 ```ts
+type QuarterUnderstandingEvaluationMetadata =
+  Record<string, unknown>;
+```
+
+```ts
+type QuarterUnderstandingPromptLineage = {
+  prompt_id: string;
+
+  prompt_version: string;
+
+  model_version: string;
+};
+```
+
+```ts
+type QuarterUnderstandingReplayabilityMetadata = {
+  prompt_lineage: QuarterUnderstandingPromptLineage;
+
+  prompt_version: string;
+
+  model_version: string;
+
+  concept_registry_version: string | null;
+
+  input_hash: string;
+
+  output_hash: string;
+
+  evaluation_hooks: QuarterUnderstandingEvaluationHooks;
+
+  evaluation_metadata: QuarterUnderstandingEvaluationMetadata;
+
+  enrichment_status: EnrichmentStatus;
+
+  depth_indicators: DepthIndicator;
+
+  builder_version: string;
+
+  calibration_contract_version: string;
+};
+```
+
+Quarter Understanding owns this content-level replayability metadata.
+
+Prompt Registry supplies prompt metadata. The builder records it in
+`replayability_metadata`. Prompt output does not emit lineage.
+
+This is not Artifact Framework lineage.
+
+```ts
 type QuarterUnderstandingArtifactContent = {
   company_id: string;
 
@@ -584,6 +634,8 @@ type QuarterUnderstandingArtifactContent = {
   confidence: QuarterUnderstandingConfidence;
 
   evaluation_hooks: QuarterUnderstandingEvaluationHooks;
+
+  replayability_metadata: QuarterUnderstandingReplayabilityMetadata;
 };
 ```
 

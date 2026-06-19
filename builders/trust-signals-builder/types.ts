@@ -1,5 +1,24 @@
 import type { Artifact } from "../../contracts/artifacts/artifact.js";
 import type {
+  Commitment,
+  CommitmentTrackingArtifactContent,
+} from "../commitment-tracking-builder/types.js";
+import type {
+  LanguageShift,
+  NarrativeConsistencyArtifactContent,
+  StrategicPriority,
+} from "../narrative-consistency-builder/types.js";
+import type {
+  AccountingStabilityArtifactContent,
+  PolicyChange,
+  RestatementRecord,
+  SegmentChange,
+} from "../accounting-stability-builder/types.js";
+import type {
+  CapitalAllocationGap,
+  CapitalAllocationTrackingArtifactContent,
+} from "../capital-allocation-tracking-builder/types.js";
+import type {
   DepthLevel,
   SignalDirection,
   SignalLifecycleStatus,
@@ -12,6 +31,7 @@ import type {
 export type TrustSignalsBuilderInput = {
   company_id: string;
   period_id: string;
+  generated_at: string;
 };
 
 export type TrustSignalsBuilderDependencies = {
@@ -68,7 +88,7 @@ export type TrustSignalConfidence = {
 
 export type EnrichmentInputStatus = {
   available: boolean;
-  artifact_path: string | null;
+  artifact_ref: string | null;
   artifact_version: number | null;
   absent_reason: string | null;
 };
@@ -96,9 +116,24 @@ export type TrustSignalsEvaluationHooks = {
   rule_count: number;
 };
 
+export type TrustSignalsReplayabilityMetadata = {
+  schema_version: string;
+  generated_at: string;
+  source_artifact_references: string[];
+  source_artifact_versions: number[];
+  source_record_references: string[];
+  evidence_references: string[];
+  enrichment_status: EnrichmentStatus;
+  depth_indicators: DepthIndicator;
+  evaluation_hooks: TrustSignalsEvaluationHooks;
+  calibration_version: string;
+  rule_version: string;
+};
+
 export type TrustSignalsArtifactContent = {
-  company_id: string;
-  period_id: string;
+  artifact_type: "trust_signals";
+  company: string;
+  period: string;
   trust_signals: TrustSignal[];
   summary: TrustSignalSummary;
   confidence: TrustSignalConfidence;
@@ -106,98 +141,22 @@ export type TrustSignalsArtifactContent = {
   depth_indicator: DepthIndicator;
   missing_dimensions: TrustDimension[];
   evaluation_hooks: TrustSignalsEvaluationHooks;
+  replayability_metadata: TrustSignalsReplayabilityMetadata;
 };
 
-export type CommitmentTrackingArtifactContent = {
-  commitments?: CommitmentInput[];
-  confidence?: PillarConfidence;
-};
+export type CommitmentInput = Commitment;
+export type StrategicPriorityInput = StrategicPriority;
+export type LanguageShiftInput = LanguageShift;
+export type PolicyChangeInput = PolicyChange;
+export type SegmentChangeInput = SegmentChange;
+export type RestatementInput = RestatementRecord;
+export type CapitalAllocationGapInput = CapitalAllocationGap;
 
-export type CommitmentInput = {
-  commitment_id: string;
-  status: "new" | "active" | "achieved" | "fulfilled" | "delayed" | "overdue" | "modified" | "abandoned" | "expired";
-  statement?: string;
-  evidence?: EvidenceInput[];
-  confidence?: number;
-};
-
-export type NarrativeConsistencyArtifactContent = {
-  strategic_priorities?: StrategicPriorityInput[];
-  language_shifts?: LanguageShiftInput[];
-  summary?: {
-    stable_priority_ratio?: number;
-  };
-  confidence?: PillarConfidence;
-};
-
-export type StrategicPriorityInput = {
-  priority_id: string;
-  current_status: "new" | "active" | "persistent" | "declining" | "dropped" | "reintroduced";
-  description?: string;
-  confidence?: number;
-};
-
-export type LanguageShiftInput = {
-  shift_id: string;
-  shift_magnitude: "minor" | "moderate" | "significant";
-  supporting_evidence?: string[];
-  confidence?: number;
-};
-
-export type AccountingStabilityArtifactContent = {
-  policy_changes?: PolicyChangeInput[];
-  segment_changes?: SegmentChangeInput[];
-  non_gaap_analysis?: {
-    trend_assessment?: {
-      direction?: "widening" | "stable" | "narrowing";
-      materiality?: "low" | "medium" | "high";
-    };
-    confidence?: number;
-  };
-  restatements?: RestatementInput[];
-  summary?: {
-    reporting_stability_decreased?: boolean;
-  };
-  confidence?: PillarConfidence;
-};
-
-export type PolicyChangeInput = {
-  policy_change_id: string;
-  comparability_impact: "none" | "minor" | "moderate" | "material";
-  confidence?: number;
-};
-
-export type SegmentChangeInput = {
-  segment_change_id: string;
-  change_type: "renamed" | "combined" | "split" | "added" | "removed" | "restructured";
-  confidence?: number;
-};
-
-export type RestatementInput = {
-  restatement_id: string;
-  materiality: "low" | "medium" | "high";
-  confidence?: number;
-};
-
-export type CapitalAllocationTrackingArtifactContent = {
-  gaps?: CapitalAllocationGapInput[];
-};
-
-export type CapitalAllocationGapInput = {
-  gap_id: string;
-  gap_type: "aligned" | "under_supported" | "unsupported_deployment" | "insufficient_evidence";
-  priority_refs: string[];
-  deployment_refs: string[];
-  evidence_refs: string[];
-};
-
-export type EvidenceInput = {
-  evidence_id: string;
-  confidence?: number;
-};
-
-export type PillarConfidence = {
-  overall?: number;
+export type {
+  AccountingStabilityArtifactContent,
+  CapitalAllocationTrackingArtifactContent,
+  CommitmentTrackingArtifactContent,
+  NarrativeConsistencyArtifactContent,
 };
 
 export type TrustSignalBuildContext = {

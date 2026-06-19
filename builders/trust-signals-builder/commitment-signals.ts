@@ -13,7 +13,7 @@ export function buildCommitmentSignals(context: TrustSignalBuildContext): TrustS
     return [];
   }
 
-  return [...artifact.content.commitments ?? []]
+  return artifact.content.commitments
     .map((commitment) => signalForCommitment(context, commitment))
     .filter((signal): signal is TrustSignal => signal !== null);
 }
@@ -28,7 +28,9 @@ function signalForCommitment(
     return null;
   }
 
-  const ruleRef = ruleForStatus(commitment.status);
+  const ruleRef = commitment.timing.overdue
+    ? "trust_signals.commitment.overdue"
+    : ruleForStatus(commitment.status);
 
   if (ruleRef === null) {
     return null;
@@ -43,11 +45,14 @@ function signalForCommitment(
     source_artifact: "commitment_tracking",
     evidence_refs: evidenceRefs,
     source_artifact_refs: [sourceRef(artifact)],
-    source_record_refs: [commitment.commitment_id],
+    source_record_refs: [
+      commitment.commitment_id,
+      ...commitment.evidence.map((evidence) => evidence.source_record_ref),
+    ],
     observation: `Commitment status observed: ${commitment.status}.`,
     confidence: averageConfidence([
       commitment.confidence,
-      ...[...commitment.evidence ?? []].map((evidence) => evidence.confidence),
+      ...commitment.evidence.map((evidence) => evidence.confidence),
     ]),
   });
 }
@@ -57,12 +62,9 @@ function ruleForStatus(status: CommitmentInput["status"]): string | null {
     case "new":
       return "trust_signals.commitment.created";
     case "achieved":
-    case "fulfilled":
       return "trust_signals.commitment.fulfilled";
     case "delayed":
       return "trust_signals.commitment.delayed";
-    case "overdue":
-      return "trust_signals.commitment.overdue";
     case "modified":
       return "trust_signals.commitment.modified";
     case "abandoned":
@@ -73,9 +75,7 @@ function ruleForStatus(status: CommitmentInput["status"]): string | null {
 }
 
 function evidenceRefsForCommitment(commitment: CommitmentInput): string[] {
-  const refs = [...commitment.evidence ?? []].map((evidence) => evidence.evidence_id);
-
-  return refs.length > 0 ? refs : [`commitment:${commitment.commitment_id}`];
+  return commitment.evidence.map((evidence) => evidence.evidence_id);
 }
 
 function averageConfidence(values: Array<number | undefined>): number {

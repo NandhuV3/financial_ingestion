@@ -57,7 +57,10 @@ describe("trust signals builder", () => {
       "accounting_stability",
       "capital_allocation_consistency",
     ]);
-    assert.equal(result.content.trust_signals.length, 2);
+    assert.equal(result.content.artifact_type, "trust_signals");
+    assert.equal(result.content.company, "MSFT");
+    assert.equal(result.content.period, "2026-Q2");
+    assert.equal(result.content.trust_signals.length, 1);
     assert.equal(result.content.trust_signals.every((signal) => signal.dimension === "commitment_follow_through"), true);
     assert.equal(result.content.trust_signals.every((signal) => signal.evidence_refs.length > 0), true);
     assert.equal(result.content.trust_signals.every((signal) => signal.source_record_refs.length > 0), true);
@@ -123,9 +126,13 @@ describe("trust signals builder", () => {
     narrativeArtifact.content.strategic_priorities = [];
     narrativeArtifact.content.language_shifts = [];
     narrativeArtifact.content.summary = {
-      stable_priority_ratio: TRUST_SIGNALS_CALIBRATION.NARRATIVE_STABILITY_LOW_MAX_RATIO,
+      active_priorities: 0,
+      new_priorities: 0,
+      dropped_priorities: 0,
+      significant_language_shifts: 0,
+      stable_priority_ratio:
+        TRUST_SIGNALS_CALIBRATION.NARRATIVE_STABILITY_LOW_MAX_RATIO,
     };
-    narrativeArtifact.content.confidence = {};
 
     const result = await executor(new TestArtifactRepository()).executeBuilder<TrustSignalsBuilderInput, TrustSignalsArtifactContent>({
       builderType: TRUST_SIGNALS_BUILDER_TYPE,
@@ -144,7 +151,7 @@ describe("trust signals builder", () => {
     ]);
     assert.equal(
       result.content.trust_signals[0]?.confidence,
-      TRUST_SIGNALS_CALIBRATION.NARRATIVE_STABILITY_CONFIDENCE_FALLBACK,
+      narrativeArtifact.content.confidence.overall,
     );
   });
 
@@ -154,11 +161,20 @@ describe("trust signals builder", () => {
     capitalArtifact.content.gaps = [
       ...(capitalArtifact.content.gaps ?? []),
       {
+        gap_id: "gap-2",
+        gap_type: "under_supported",
+        priority_refs: ["priority-2"],
+        deployment_refs: [],
+        evidence_refs: ["capital:evidence:single"],
+        explanation: "One priority evidence reference is available.",
+      },
+      {
         gap_id: "gap-3",
         gap_type: "insufficient_evidence",
         priority_refs: [],
         deployment_refs: [],
         evidence_refs: [],
+        explanation: "No direct evidence is available.",
       },
     ];
 
@@ -178,22 +194,18 @@ describe("trust signals builder", () => {
       result.content.trust_signals.map((signal) => [signal.source_record_refs[0], signal.confidence]),
     );
 
-    assert.equal(confidenceByRecord.get("gap-1"), TRUST_SIGNALS_CALIBRATION.CAPITAL_ALLOCATION_MULTI_EVIDENCE_CONFIDENCE);
+    assert.equal(
+      confidenceByRecord.get(
+        "aligned:priority-buybacks:deployment-buybacks",
+      ),
+      TRUST_SIGNALS_CALIBRATION.CAPITAL_ALLOCATION_MULTI_EVIDENCE_CONFIDENCE,
+    );
     assert.equal(confidenceByRecord.get("gap-2"), TRUST_SIGNALS_CALIBRATION.CAPITAL_ALLOCATION_SINGLE_EVIDENCE_CONFIDENCE);
-    assert.equal(confidenceByRecord.get("gap-3"), TRUST_SIGNALS_CALIBRATION.CAPITAL_ALLOCATION_NO_EVIDENCE_CONFIDENCE);
+    assert.equal(confidenceByRecord.has("gap-3"), false);
   });
 
-  it("uses contract constants for commitment fallback confidence", async () => {
+  it("preserves completed Commitment Tracking confidence and evidence", async () => {
     const commitmentArtifact = commitmentTrackingArtifact();
-
-    commitmentArtifact.content.commitments = [
-      {
-        commitment_id: "commitment-without-confidence",
-        status: "delayed",
-        statement: "Expand cloud capacity.",
-        evidence: [],
-      },
-    ];
 
     const result = await executor(new TestArtifactRepository()).executeBuilder<TrustSignalsBuilderInput, TrustSignalsArtifactContent>({
       builderType: TRUST_SIGNALS_BUILDER_TYPE,
@@ -209,7 +221,11 @@ describe("trust signals builder", () => {
 
     assert.equal(
       result.content.trust_signals[0]?.confidence,
-      TRUST_SIGNALS_CALIBRATION.COMMITMENT_CONFIDENCE_FALLBACK,
+      commitmentArtifact.content.commitments[0]?.confidence,
+    );
+    assert.deepEqual(
+      result.content.trust_signals[0]?.evidence_refs,
+      ["evidence-ai-capacity-created"],
     );
   });
 
@@ -307,7 +323,7 @@ describe("trust signals builder", () => {
     const content = validTrustSignalsContent();
     content.enrichment_status.narrative_consistency = {
       available: true,
-      artifact_path: null,
+      artifact_ref: null,
       artifact_version: 1,
       absent_reason: null,
     };
@@ -381,6 +397,120 @@ describe("trust signals builder", () => {
       first.content.trust_signals.map((signal) => signal.signal_id),
       second.content.trust_signals.map((signal) => signal.signal_id),
     );
+  });
+
+  it("preserves provenance from every completed pillar", async () => {
+    const result = await executor(new TestArtifactRepository())
+      .executeBuilder<TrustSignalsBuilderInput, TrustSignalsArtifactContent>({
+        builderType: TRUST_SIGNALS_BUILDER_TYPE,
+        companyId: "MSFT",
+        periodId: "2026-Q2",
+        executionId: "trust-signals-provenance",
+        input: input(),
+        inputHash: "trust-signals-input-hash",
+        dependencies: {
+          commitment_tracking: commitmentTrackingArtifact(),
+          narrative_consistency: narrativeConsistencyArtifact(),
+          accounting_stability: accountingStabilityArtifact(),
+          capital_allocation_tracking: capitalAllocationTrackingArtifact(),
+        },
+      });
+
+    assert.ok(result.content.trust_signals.some((signal) =>
+      signal.evidence_refs.includes("evidence-ai-capacity-created")));
+    assert.ok(result.content.trust_signals.some((signal) =>
+      signal.evidence_refs.includes("narrative:priority:1")));
+    assert.ok(result.content.trust_signals.some((signal) =>
+      signal.evidence_refs.includes("accounting:policy:1")));
+    assert.ok(result.content.trust_signals.some((signal) =>
+      signal.evidence_refs.includes(
+        "filing:capital-allocation:priority-buybacks",
+      )));
+  });
+
+  it("rejects pillar company and period identity mismatches", async () => {
+    const wrongCompany = commitmentTrackingArtifact();
+    wrongCompany.identity.company_id = "AAPL";
+
+    await assert.rejects(
+      executor(new TestArtifactRepository())
+        .executeBuilder<TrustSignalsBuilderInput, TrustSignalsArtifactContent>({
+          builderType: TRUST_SIGNALS_BUILDER_TYPE,
+          companyId: "MSFT",
+          periodId: "2026-Q2",
+          executionId: "trust-signals-company-mismatch",
+          input: input(),
+          inputHash: "trust-signals-input-hash",
+          dependencies: { commitment_tracking: wrongCompany },
+        }),
+      BuilderDependencyError,
+    );
+
+    const wrongPeriod = commitmentTrackingArtifact();
+    wrongPeriod.identity.period_id = "2026-Q1";
+
+    await assert.rejects(
+      executor(new TestArtifactRepository())
+        .executeBuilder<TrustSignalsBuilderInput, TrustSignalsArtifactContent>({
+          builderType: TRUST_SIGNALS_BUILDER_TYPE,
+          companyId: "MSFT",
+          periodId: "2026-Q2",
+          executionId: "trust-signals-period-mismatch",
+          input: input(),
+          inputHash: "trust-signals-input-hash",
+          dependencies: { commitment_tracking: wrongPeriod },
+        }),
+      BuilderDependencyError,
+    );
+  });
+
+  it("rejects replayability reconciliation mismatches", () => {
+    const content = validTrustSignalsContent();
+    content.replayability_metadata.evidence_references = ["unknown"];
+
+    assert.throws(
+      () => validateTrustSignalsArtifactContent(content),
+      BuilderValidationError,
+    );
+
+    const sourceVersionMismatch = validTrustSignalsContent();
+    sourceVersionMismatch.replayability_metadata.source_artifact_versions = [2];
+
+    assert.throws(
+      () => validateTrustSignalsArtifactContent(sourceVersionMismatch),
+      BuilderValidationError,
+    );
+  });
+
+  it("validates artifact_ref against emitted signal provenance", () => {
+    const content = validTrustSignalsContent();
+    content.enrichment_status.commitment_tracking.artifact_ref =
+      "different-commitment-artifact";
+
+    assert.throws(
+      () => validateTrustSignalsArtifactContent(content),
+      BuilderValidationError,
+    );
+  });
+
+  it("calculates standard depth for three pillars", async () => {
+    const result = await executor(new TestArtifactRepository())
+      .executeBuilder<TrustSignalsBuilderInput, TrustSignalsArtifactContent>({
+        builderType: TRUST_SIGNALS_BUILDER_TYPE,
+        companyId: "MSFT",
+        periodId: "2026-Q2",
+        executionId: "trust-signals-three-pillars",
+        input: input(),
+        inputHash: "trust-signals-input-hash",
+        dependencies: {
+          commitment_tracking: commitmentTrackingArtifact(),
+          narrative_consistency: narrativeConsistencyArtifact(),
+          accounting_stability: accountingStabilityArtifact(),
+        },
+      });
+
+    assert.equal(result.content.depth_indicator.overall, "standard");
+    assert.equal(result.content.evaluation_hooks.available_pillar_count, 3);
   });
 
   it("keeps calibration values out of implementation modules", () => {

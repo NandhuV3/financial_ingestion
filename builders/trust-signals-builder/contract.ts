@@ -2,6 +2,7 @@ export const TRUST_SIGNALS_BUILDER_TYPE = "trust-signals-builder";
 export const TRUST_SIGNALS_BUILDER_VERSION = "trust-signals-builder-v1";
 export const TRUST_SIGNALS_SCHEMA_VERSION = "trust-signals-v1";
 export const TRUST_SIGNALS_PIPELINE_VERSION = "trust-signals-pipeline-v1";
+export const TRUST_SIGNALS_RULE_VERSION = "trust-signals-rules-v1";
 
 export const TRUST_DIMENSIONS = [
   "commitment_follow_through",

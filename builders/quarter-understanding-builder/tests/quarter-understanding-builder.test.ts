@@ -5,16 +5,30 @@ import { describe, it } from "node:test";
 import type { ArtifactRepository } from "../../../packages/artifact-framework/src/artifact-repository.js";
 import { ArtifactService } from "../../../packages/artifact-framework/src/artifact-service.js";
 import { BuilderExecutor } from "../../../packages/builder-framework/src/builder-executor.js";
-import { BuilderDependencyError, BuilderValidationError } from "../../../packages/builder-framework/src/builder-errors.js";
+import {
+  BuilderDependencyError,
+  BuilderExecutionError,
+  BuilderValidationError,
+} from "../../../packages/builder-framework/src/builder-errors.js";
 import { BuilderRegistry } from "../../../packages/builder-framework/src/builder-registry.js";
+import type {
+  LLMClient,
+  LLMRequest,
+  LLMResponse,
+} from "../../../packages/llm-framework/src/llm-client.js";
+import { FilesystemPromptProvider } from "../../../src/prompt-registry/filesystem-prompt-provider.js";
+import { PromptResolver } from "../../../src/prompt-registry/prompt-resolver.js";
 import { QuarterUnderstandingBuilder } from "../builder.js";
 import { QUARTER_UNDERSTANDING_CALIBRATION } from "../calibration-contract.js";
 import {
   QUARTER_UNDERSTANDING_BUILDER_TYPE,
   QUARTER_UNDERSTANDING_BUILDER_VERSION,
+  QUARTER_UNDERSTANDING_MODEL_VERSION,
   QUARTER_UNDERSTANDING_PIPELINE_VERSION,
+  QUARTER_UNDERSTANDING_PROMPT_ID,
   QUARTER_UNDERSTANDING_SCHEMA_VERSION,
 } from "../contract.js";
+import { parseQuarterUnderstandingPromptOutput } from "../response-parser.js";
 import type {
   QuarterUnderstandingArtifactContent,
   QuarterUnderstandingBuilderInput,
@@ -67,6 +81,18 @@ describe("quarter understanding builder", () => {
       "capital_allocation_consistency",
     ]);
     assert.equal(result.content.proposed_concepts.length > 0, true);
+    assert.equal(
+      result.content.replayability_metadata.prompt_lineage.prompt_id,
+      QUARTER_UNDERSTANDING_PROMPT_ID,
+    );
+    assert.equal(
+      result.content.replayability_metadata.model_version,
+      QUARTER_UNDERSTANDING_MODEL_VERSION,
+    );
+    assert.equal(
+      result.content.enrichment_status.trust_signals.artifact_ref,
+      null,
+    );
     assert.deepEqual(await repository.getCurrent({
       artifact_type: "quarter_understanding",
       company_id: "MSFT",
@@ -258,7 +284,7 @@ describe("quarter understanding builder", () => {
     const content = validQuarterUnderstandingContent();
     content.enrichment_status.trust_signals = {
       available: true,
-      artifact_path: null,
+      artifact_ref: null,
       artifact_version: 1,
       absent_reason: null,
     };
@@ -325,6 +351,143 @@ describe("quarter understanding builder", () => {
   it("rejects confidence values outside bounds", () => {
     const content = validQuarterUnderstandingContent();
     content.confidence.overall = 1.1;
+
+    assert.throws(
+      () => validateQuarterUnderstandingArtifactContent(content),
+      BuilderValidationError,
+    );
+  });
+
+  it("rejects dependency company and period mismatches", async () => {
+    const companyMismatch = companyKnowledgeArtifact();
+    companyMismatch.identity.company_id = "OTHER";
+
+    await assert.rejects(
+      executor(new TestArtifactRepository()).executeBuilder({
+        builderType: QUARTER_UNDERSTANDING_BUILDER_TYPE,
+        companyId: "MSFT",
+        periodId: "2026-Q2",
+        executionId: "quarter-understanding-company-mismatch",
+        input: input(),
+        inputHash: "quarter-understanding-input-hash",
+        dependencies: {
+          company_knowledge: companyMismatch,
+          business_signals: businessSignalsArtifact(),
+        },
+      }),
+      BuilderDependencyError,
+    );
+
+    const periodMismatch = businessSignalsArtifact();
+    periodMismatch.identity.period_id = "2026-Q1";
+
+    await assert.rejects(
+      executor(new TestArtifactRepository()).executeBuilder({
+        builderType: QUARTER_UNDERSTANDING_BUILDER_TYPE,
+        companyId: "MSFT",
+        periodId: "2026-Q2",
+        executionId: "quarter-understanding-period-mismatch",
+        input: input(),
+        inputHash: "quarter-understanding-input-hash",
+        dependencies: {
+          company_knowledge: companyKnowledgeArtifact(),
+          business_signals: periodMismatch,
+        },
+      }),
+      BuilderDependencyError,
+    );
+  });
+
+  it("rejects malformed and extra prompt output fields", () => {
+    assert.throws(
+      () => parseQuarterUnderstandingPromptOutput("{"),
+      BuilderValidationError,
+    );
+
+    const output = promptOutput({
+      trustSignals: false,
+      topicEvolution: false,
+      conceptRegistry: false,
+    });
+    const parsed = JSON.parse(output) as Record<string, unknown>;
+    parsed.confidence = 0.9;
+
+    assert.throws(
+      () => parseQuarterUnderstandingPromptOutput(JSON.stringify(parsed)),
+      BuilderValidationError,
+    );
+  });
+
+  it("records governed prompt execution and temperature zero", async () => {
+    const llmClient = new StaticQuarterUnderstandingLLMClient();
+    const promptResolver = new StaticQuarterUnderstandingPromptResolver();
+
+    await executor(
+      new TestArtifactRepository(),
+      llmClient,
+      promptResolver,
+    ).executeBuilder({
+      builderType: QUARTER_UNDERSTANDING_BUILDER_TYPE,
+      companyId: "MSFT",
+      periodId: "2026-Q2",
+      executionId: "quarter-understanding-prompt-execution",
+      input: input(),
+      inputHash: "quarter-understanding-input-hash",
+      dependencies: {
+        company_knowledge: companyKnowledgeArtifact(),
+        business_signals: businessSignalsArtifact(),
+      },
+    });
+
+    assert.equal(promptResolver.resolvedPromptIds[0], QUARTER_UNDERSTANDING_PROMPT_ID);
+    assert.equal(llmClient.requests.length, 1);
+    assert.equal(llmClient.requests[0]?.temperature, 0);
+    assert.equal(
+      llmClient.requests[0]?.model,
+      QUARTER_UNDERSTANDING_MODEL_VERSION,
+    );
+  });
+
+  it("resolves the governed prompt from the filesystem Prompt Registry", () => {
+    const prompt = new PromptResolver(
+      new FilesystemPromptProvider(),
+    ).resolve(QUARTER_UNDERSTANDING_PROMPT_ID);
+
+    assert.equal(prompt.promptId, QUARTER_UNDERSTANDING_PROMPT_ID);
+    assert.equal(prompt.version, "quarter-understanding-v1");
+    assert.equal(prompt.source, "filesystem");
+    assert.equal(prompt.content.length > 0, true);
+  });
+
+  it("fails when governed prompt resolution fails", async () => {
+    await assert.rejects(
+      executor(
+        new TestArtifactRepository(),
+        new StaticQuarterUnderstandingLLMClient(),
+        {
+          resolve() {
+            throw new Error("missing prompt");
+          },
+        },
+      ).executeBuilder({
+        builderType: QUARTER_UNDERSTANDING_BUILDER_TYPE,
+        companyId: "MSFT",
+        periodId: "2026-Q2",
+        executionId: "quarter-understanding-prompt-missing",
+        input: input(),
+        inputHash: "quarter-understanding-input-hash",
+        dependencies: {
+          company_knowledge: companyKnowledgeArtifact(),
+          business_signals: businessSignalsArtifact(),
+        },
+      }),
+      BuilderExecutionError,
+    );
+  });
+
+  it("rejects replayability reconciliation failures", () => {
+    const content = validQuarterUnderstandingContent();
+    content.replayability_metadata.output_hash = "incorrect";
 
     assert.throws(
       () => validateQuarterUnderstandingArtifactContent(content),
@@ -418,8 +581,6 @@ describe("quarter understanding builder", () => {
 
   it("keeps calibration values out of implementation modules", () => {
     const implementationFiles = [
-      "../business-interpretation.ts",
-      "../trust-interpretation.ts",
       "../confidence.ts",
     ];
 
@@ -462,7 +623,13 @@ describe("quarter understanding builder", () => {
   });
 });
 
-function executor(repository: ArtifactRepository): BuilderExecutor {
+function executor(
+  repository: ArtifactRepository,
+  llmClient: StaticQuarterUnderstandingLLMClient =
+    new StaticQuarterUnderstandingLLMClient(),
+  promptResolver: Pick<StaticQuarterUnderstandingPromptResolver, "resolve"> =
+    new StaticQuarterUnderstandingPromptResolver(),
+): BuilderExecutor {
   const registry = new BuilderRegistry();
 
   registry.registerBuilder({
@@ -471,7 +638,111 @@ function executor(repository: ArtifactRepository): BuilderExecutor {
     version: QUARTER_UNDERSTANDING_BUILDER_VERSION,
     schema_version: QUARTER_UNDERSTANDING_SCHEMA_VERSION,
     pipeline_version: QUARTER_UNDERSTANDING_PIPELINE_VERSION,
-  }, () => new QuarterUnderstandingBuilder());
+  }, () => new QuarterUnderstandingBuilder({
+    promptResolver,
+    llmClient,
+  }));
 
   return new BuilderExecutor(registry, new ArtifactService(repository));
+}
+
+class StaticQuarterUnderstandingPromptResolver {
+  readonly resolvedPromptIds: string[] = [];
+
+  resolve(promptId: string) {
+    this.resolvedPromptIds.push(promptId);
+
+    return {
+      promptId,
+      version: "quarter-understanding-v1",
+      content: "Governed Quarter Understanding prompt.",
+      hash: "quarter-understanding-prompt-hash",
+      source: "filesystem" as const,
+      activationId: null,
+    };
+  }
+}
+
+class StaticQuarterUnderstandingLLMClient implements LLMClient {
+  readonly requests: LLMRequest[] = [];
+
+  async callLLM(request: LLMRequest): Promise<LLMResponse> {
+    this.requests.push(request);
+    const message = request.messages.find(({ role }) => role === "user");
+    const envelope = JSON.parse(message?.content ?? "{}") as {
+      input?: {
+        trust_signals?: unknown;
+        topic_evolution?: unknown;
+        concept_registry?: unknown;
+      };
+    };
+
+    return {
+      output_text: promptOutput({
+        trustSignals: envelope.input?.trust_signals !== null
+          && envelope.input?.trust_signals !== undefined,
+        topicEvolution: envelope.input?.topic_evolution !== null
+          && envelope.input?.topic_evolution !== undefined,
+        conceptRegistry: envelope.input?.concept_registry !== null
+          && envelope.input?.concept_registry !== undefined,
+      }),
+      token_usage: 128,
+    };
+  }
+}
+
+function promptOutput(input: {
+  trustSignals: boolean;
+  topicEvolution: boolean;
+  conceptRegistry: boolean;
+}): string {
+  const revenueUnderstanding = {
+    understanding_id: "revenue:revenue-signals",
+    category: "revenue",
+    ...(input.conceptRegistry ? { concept_id: "concept:revenue" } : {}),
+    title: "Revenue signals show current business momentum",
+    explanation: "Revenue interpretation is grounded in current business signals.",
+    importance: "high",
+    direction: "improving",
+    evidence_package: {
+      signal_refs: ["signal-growth-1"],
+      company_knowledge_refs: ["revenue_drivers.0"],
+      trust_signal_refs: [],
+      topic_refs: input.topicEvolution ? ["cloud"] : [],
+    },
+  };
+  const understandings: Array<Record<string, unknown>> = [revenueUnderstanding];
+
+  if (input.trustSignals) {
+    understandings.push({
+      understanding_id: "trust:commitment-follow-through",
+      category: "trust",
+      ...(input.conceptRegistry ? { concept_id: "concept:trust" } : {}),
+      title: "Commitment follow-through requires attention",
+      explanation: "Trust interpretation is grounded in the available Trust Signal.",
+      importance: "high",
+      direction: "deteriorating",
+      evidence_package: {
+        signal_refs: [],
+        company_knowledge_refs: [],
+        trust_signal_refs: ["trust-signal-1"],
+        topic_refs: [],
+      },
+    });
+  }
+
+  return JSON.stringify({
+    understandings,
+    proposed_concepts: input.conceptRegistry
+      ? []
+      : [
+        {
+          proposed_concept_id: "proposed:revenue:revenue-signals",
+          title: "Revenue signals",
+          description: "Current-period revenue interpretation.",
+          evidence_refs: ["signal-growth-1", "revenue_drivers.0"],
+          rationale: "No governed concept was available.",
+        },
+      ],
+  });
 }

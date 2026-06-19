@@ -1,7 +1,7 @@
 import type { Artifact } from "../../contracts/artifacts/artifact.js";
 import type { CompanyKnowledgeArtifactContent } from "../company-knowledge-builder/types.js";
-import type { BusinessSignal, BusinessSignalsArtifactContent, TopicEvolutionArtifactContent } from "../business-signals-builder/types.js";
-import type { TrustSignalsArtifactContent, TrustSignal } from "../trust-signals-builder/types.js";
+import type { BusinessSignalsArtifactContent, TopicEvolutionArtifactContent } from "../business-signals-builder/types.js";
+import type { TrustSignalsArtifactContent } from "../trust-signals-builder/types.js";
 import type { TrustDimension } from "../trust-signals-builder/contract.js";
 import type {
   DepthLevel,
@@ -25,7 +25,7 @@ export type QuarterUnderstandingBuilderDependencies = {
 
 export type EnrichmentInputStatus = {
   available: boolean;
-  artifact_path: string | null;
+  artifact_ref: string | null;
   artifact_version: number | null;
   absent_reason: string | null;
 };
@@ -102,6 +102,29 @@ export type QuarterUnderstandingLimitations = {
   trust_dimension_gaps: TrustDimension[];
 };
 
+export type QuarterUnderstandingPromptLineage = {
+  prompt_id: string;
+  prompt_version: string;
+  model_version: string;
+};
+
+export type QuarterUnderstandingEvaluationMetadata = Record<string, unknown>;
+
+export type QuarterUnderstandingReplayabilityMetadata = {
+  prompt_lineage: QuarterUnderstandingPromptLineage;
+  prompt_version: string;
+  model_version: string;
+  concept_registry_version: string | null;
+  input_hash: string;
+  output_hash: string;
+  evaluation_hooks: QuarterUnderstandingEvaluationHooks;
+  evaluation_metadata: QuarterUnderstandingEvaluationMetadata;
+  enrichment_status: EnrichmentStatus;
+  depth_indicators: DepthIndicator;
+  builder_version: string;
+  calibration_contract_version: string;
+};
+
 export type QuarterUnderstandingArtifactContent = {
   company_id: string;
   period_id: string;
@@ -112,6 +135,7 @@ export type QuarterUnderstandingArtifactContent = {
   limitations: QuarterUnderstandingLimitations;
   confidence: QuarterUnderstandingConfidence;
   evaluation_hooks: QuarterUnderstandingEvaluationHooks;
+  replayability_metadata: QuarterUnderstandingReplayabilityMetadata;
 };
 
 export type ConceptRegistryContent = {
@@ -135,23 +159,7 @@ export type QuarterUnderstandingBuildContext = {
   conceptRegistryArtifact: Artifact<ConceptRegistryContent> | null;
 };
 
-export type UnderstandingSeed = {
-  category: UnderstandingCategory;
-  title: string;
-  explanation: string;
-  importance: UnderstandingImportance;
-  direction: UnderstandingDirection;
-  signal_refs: string[];
-  company_knowledge_refs: string[];
-  trust_signal_refs: string[];
-  topic_refs: string[];
-};
-
-export type SignalGroup = {
-  category: UnderstandingCategory;
-  signals: BusinessSignal[];
-};
-
-export type TrustSignalGroup = {
-  signals: TrustSignal[];
+export type QuarterUnderstandingPromptOutput = {
+  understandings: Understanding[];
+  proposed_concepts: ProposedConcept[];
 };

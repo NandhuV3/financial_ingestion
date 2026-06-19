@@ -19,7 +19,10 @@ import {
   type StructuredIntelligenceArtifactContent,
 } from "../contract.js";
 import { StructuredIntelligenceBuilder } from "../builder.js";
-import { STRUCTURED_INTELLIGENCE_PROMPT_ID } from "../prompt.js";
+import {
+  buildStructuredIntelligenceUserPrompt,
+  STRUCTURED_INTELLIGENCE_PROMPT_ID,
+} from "../prompt.js";
 import type { FilingArtifactContent, StructuredIntelligenceBuilderInput } from "../types.js";
 
 describe("structured intelligence builder", () => {
@@ -136,7 +139,42 @@ describe("structured intelligence builder", () => {
     );
   });
 
-  it("fails validation when claims do not include evidence", async () => {
+  it("rejects an empty business model evidence_refs array", async () => {
+    const output = {
+      status: "complete",
+      understanding: {
+        ...understanding(),
+        business_model: {
+          ...understanding().business_model,
+          evidence_refs: [],
+        },
+      },
+    };
+    const executor = new BuilderExecutor(
+      registerStructuredBuilder(new StaticLLMClient(JSON.stringify(output))),
+      new ArtifactService(new TestArtifactRepository()),
+    );
+
+    await assert.rejects(
+      () => executor.executeBuilder<StructuredIntelligenceBuilderInput, StructuredIntelligenceArtifactContent>({
+        builderType: STRUCTURED_INTELLIGENCE_BUILDER_TYPE,
+        companyId: "MSFT",
+        periodId: "2026-Q2",
+        executionId: "execution-1",
+        input: input(),
+        inputHash: "structured-input-hash",
+        dependencies: {
+          filing: filingArtifact(),
+          themes: themesArtifact(),
+        },
+      }),
+      (error: unknown) =>
+        error instanceof BuilderValidationError
+        && error.message === "business_model.evidence_refs must contain at least one evidence reference.",
+    );
+  });
+
+  it("rejects an empty repeated claim evidence_refs array", async () => {
     const output = {
       status: "complete",
       understanding: {
@@ -171,6 +209,55 @@ describe("structured intelligence builder", () => {
       }),
       BuilderValidationError,
     );
+  });
+
+  it("accepts valid evidence_refs on every emitted claim", async () => {
+    const executor = new BuilderExecutor(
+      registerStructuredBuilder(new StaticLLMClient(validOutput())),
+      new ArtifactService(new TestArtifactRepository()),
+    );
+
+    const artifact = await executor.executeBuilder<
+      StructuredIntelligenceBuilderInput,
+      StructuredIntelligenceArtifactContent
+    >({
+      builderType: STRUCTURED_INTELLIGENCE_BUILDER_TYPE,
+      companyId: "MSFT",
+      periodId: "2026-Q2",
+      executionId: "valid-evidence-execution",
+      input: input(),
+      inputHash: "structured-input-hash",
+      dependencies: {
+        filing: filingArtifact(),
+        themes: themesArtifact(),
+      },
+    });
+
+    assert.deepEqual(
+      artifact.content.understanding.business_model.evidence_refs,
+      ["theme-1"],
+    );
+    assert.equal(
+      allEvidenceRefs(artifact.content)
+        .every((references) => references.length > 0),
+      true,
+    );
+  });
+
+  it("instructs the model to use non-empty supplied theme evidence references", () => {
+    const prompt = buildStructuredIntelligenceUserPrompt({
+      company_id: "MSFT",
+      period_id: "2026-Q2",
+      filing_id: "msft-2026-q2-10q",
+      filing_type: "10-Q",
+      filing_content: "Microsoft discusses Azure.",
+      themes: themesArtifact().content.themes,
+    });
+
+    assert.equal(prompt.includes('"evidence_refs": []'), false);
+    assert.match(prompt, /at least one evidence_refs entry/);
+    assert.match(prompt, /theme_id values or source_evidence\.excerpt_hash values/);
+    assert.match(prompt, /Never emit an empty evidence_refs array/);
   });
 
   it("records unsupported entity findings as evaluation warnings instead of failing", async () => {
@@ -339,6 +426,25 @@ function understanding(): StructuredIntelligenceArtifactContent["understanding"]
       },
     ],
   };
+}
+
+function allEvidenceRefs(
+  content: StructuredIntelligenceArtifactContent,
+): string[][] {
+  const understanding = content.understanding;
+
+  return [
+    understanding.business_model.evidence_refs,
+    understanding.revenue_model.evidence_refs,
+    ...understanding.products.map(({ evidence_refs }) => evidence_refs),
+    ...understanding.customers.map(({ evidence_refs }) => evidence_refs),
+    ...understanding.revenue_drivers.map(({ evidence_refs }) => evidence_refs),
+    ...understanding.competitive_positioning.map(({ evidence_refs }) => evidence_refs),
+    ...understanding.strategic_priorities.map(({ evidence_refs }) => evidence_refs),
+    ...understanding.management_focus.map(({ evidence_refs }) => evidence_refs),
+    ...understanding.risks.map(({ evidence_refs }) => evidence_refs),
+    ...understanding.dependencies.map(({ evidence_refs }) => evidence_refs),
+  ];
 }
 
 class StaticPromptResolver {
@@ -520,4 +626,3 @@ function lookupKey(lookup: ArtifactLookup): string {
 function cloneArtifact<T>(artifact: Artifact<T>): Artifact<T> {
   return JSON.parse(JSON.stringify(artifact)) as Artifact<T>;
 }
-

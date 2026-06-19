@@ -2,13 +2,26 @@ import type { Artifact } from "../../../contracts/artifacts/artifact.js";
 import type { BusinessSignalsArtifactContent, TopicEvolutionArtifactContent } from "../../business-signals-builder/types.js";
 import type { CompanyKnowledgeArtifactContent } from "../../company-knowledge-builder/types.js";
 import type { TrustSignalsArtifactContent } from "../../trust-signals-builder/types.js";
+import { validTrustSignalsContent } from "../../trust-signals-builder/tests/trust-signals-builder.fixtures.js";
 import { artifact, TestArtifactRepository } from "../../business-signals-builder/tests/artifact-fixtures.js";
 import type {
   ConceptRegistryContent,
   QuarterUnderstandingBuilderInput,
   QuarterUnderstandingArtifactContent,
 } from "../types.js";
-import type { UnderstandingCategory } from "../contract.js";
+import {
+  QUARTER_UNDERSTANDING_MODEL_VERSION,
+  QUARTER_UNDERSTANDING_PROMPT_ID,
+  type UnderstandingCategory,
+} from "../contract.js";
+import {
+  buildQuarterUnderstandingConfidence,
+  buildQuarterUnderstandingEvaluationHooks,
+} from "../confidence.js";
+import {
+  buildQuarterUnderstandingOutputHash,
+  buildQuarterUnderstandingReplayability,
+} from "../replayability.js";
 
 export { artifact, TestArtifactRepository };
 
@@ -161,13 +174,13 @@ export function businessSignalsArtifact(): Artifact<BusinessSignalsArtifactConte
     enrichment_status: {
       quarter_change: {
         available: true,
-        artifact_path: "quarter-change-1",
+        artifact_ref: "quarter-change-1",
         artifact_version: 1,
         absent_reason: null,
       },
       topic_evolution: {
         available: false,
-        artifact_path: null,
+        artifact_ref: null,
         artifact_version: null,
         absent_reason: "Topic Evolution enrichment was not provided.",
       },
@@ -195,98 +208,11 @@ export function businessSignalsArtifact(): Artifact<BusinessSignalsArtifactConte
 }
 
 export function trustSignalsArtifact(): Artifact<TrustSignalsArtifactContent> {
-  return artifact("trust-signals-1", "trust_signals", {
-    company_id: "MSFT",
-    period_id: "2026-Q2",
-    trust_signals: [
-      {
-        signal_id: "trust-signal-1",
-        signal_type: "COMMITMENT_OVERDUE",
-        company_id: "MSFT",
-        period_id: "2026-Q2",
-        dimension: "commitment_follow_through",
-        severity: "high",
-        direction: "negative",
-        observation: "Commitment status observed: overdue.",
-        evidence_refs: ["commitment-evidence-1"],
-        source_artifact_refs: [
-          {
-            artifact_id: "commitment-tracking-1",
-            artifact_type: "commitment_tracking",
-            artifact_version: 1,
-          },
-        ],
-        source_record_refs: ["commitment-1"],
-        source_artifact: "commitment_tracking",
-        rule_ref: "trust_signals.commitment.overdue",
-        confidence: 0.82,
-        lifecycle: {
-          status: "escalated",
-          first_seen_period: "2026-Q2",
-          last_seen_period: "2026-Q2",
-        },
-      },
-    ],
-    summary: {
-      total_signals: 1,
-      positive_signals: 0,
-      negative_signals: 1,
-      neutral_signals: 0,
-      high_severity_signals: 1,
-    },
-    confidence: {
-      overall: 0.8,
-      source_data_confidence: 0.25,
-      rule_evaluation_confidence: 0.82,
-      evidence_completeness_score: 1,
-    },
-    enrichment_status: {
-      commitment_tracking: {
-        available: true,
-        artifact_path: "commitment-tracking-1",
-        artifact_version: 1,
-        absent_reason: null,
-      },
-      narrative_consistency: {
-        available: false,
-        artifact_path: null,
-        artifact_version: null,
-        absent_reason: "Narrative Consistency pillar was not provided.",
-      },
-      accounting_stability: {
-        available: false,
-        artifact_path: null,
-        artifact_version: null,
-        absent_reason: "Accounting Stability pillar was not provided.",
-      },
-      capital_allocation_tracking: {
-        available: false,
-        artifact_path: null,
-        artifact_version: null,
-        absent_reason: "Capital Allocation Tracking pillar was not provided.",
-      },
-    },
-    depth_indicator: {
-      overall: "base",
-      commitment_dimension: "present",
-      narrative_dimension: "absent",
-      explanation_dimension: "absent",
-      accounting_dimension: "absent",
-      capital_allocation_dimension: "absent",
-    },
-    missing_dimensions: [
-      "narrative_consistency",
-      "explanation_quality",
-      "accounting_stability",
-      "capital_allocation_consistency",
-    ],
-    evaluation_hooks: {
-      available_pillar_count: 1,
-      emitted_signal_count: 1,
-      missing_dimension_count: 4,
-      rule_count: 26,
-    },
-  });
+  return artifact(
+    "trust-signals-1",
+    "trust_signals",
+    validTrustSignalsContent(),
+  );
 }
 
 export function topicEvolutionArtifact(): Artifact<TopicEvolutionArtifactContent> {
@@ -322,59 +248,75 @@ export function conceptRegistryArtifact(): Artifact<ConceptRegistryContent> {
 }
 
 export function validQuarterUnderstandingContent(): QuarterUnderstandingArtifactContent {
-  return {
+  const enrichmentStatus = {
+    trust_signals: {
+      available: false,
+      artifact_ref: null,
+      artifact_version: null,
+      absent_reason: "Trust Signals enrichment was not provided.",
+    },
+    topic_evolution: {
+      available: false,
+      artifact_ref: null,
+      artifact_version: null,
+      absent_reason: "Topic Evolution enrichment was not provided.",
+    },
+    concept_registry: {
+      available: false,
+      artifact_ref: null,
+      artifact_version: null,
+      absent_reason: "Concept Registry enrichment was not provided.",
+    },
+  } as const;
+  const depthIndicator = {
+    overall: "base",
+    trust_dimension: "absent",
+    longitudinal_dimension: "absent",
+  } as const;
+  const understandings = [
+    {
+      understanding_id: "revenue:revenue_signals_show_current_business_momentum:signal_growth_1",
+      category: "revenue",
+      title: "Revenue signals show current business momentum",
+      explanation: "Revenue interpretation is grounded in current business signals.",
+      importance: "high",
+      direction: "improving",
+      evidence_package: {
+        signal_refs: ["signal-growth-1"],
+        company_knowledge_refs: ["revenue_drivers.0"],
+        trust_signal_refs: [],
+        topic_refs: [],
+      },
+    },
+  ] satisfies QuarterUnderstandingArtifactContent["understandings"];
+  const proposedConcepts = [
+    {
+      proposed_concept_id: "proposed:revenue:revenue_signals_show_current_business_momentum",
+      title: "Revenue signals show current business momentum",
+      description: "Proposed concept for revenue interpretation.",
+      evidence_refs: ["signal-growth-1", "revenue_drivers.0"],
+      rationale: "Concept Registry enrichment was unavailable, so this understanding is emitted without a concept_id.",
+    },
+  ];
+  const evaluationHooks = buildQuarterUnderstandingEvaluationHooks({
+    understandings,
+    availableSignalCount: 2,
+    proposedConceptCount: proposedConcepts.length,
+    depth: depthIndicator,
+    enrichmentStatus,
+    promptVersion: "quarter-understanding-v1",
+    modelVersion: QUARTER_UNDERSTANDING_MODEL_VERSION,
+  });
+  const contentWithoutReplayability: Omit<
+    QuarterUnderstandingArtifactContent,
+    "replayability_metadata"
+  > = {
     company_id: "MSFT",
     period_id: "2026-Q2",
-    understandings: [
-      {
-        understanding_id: "revenue:revenue_signals_show_current_business_momentum:signal_growth_1",
-        category: "revenue",
-        title: "Revenue signals show current business momentum",
-        explanation: "Revenue interpretation is grounded in current business signals.",
-        importance: "high",
-        direction: "improving",
-        evidence_package: {
-          signal_refs: ["signal-growth-1"],
-          company_knowledge_refs: ["revenue_drivers.0"],
-          trust_signal_refs: [],
-          topic_refs: [],
-        },
-      },
-    ],
-    proposed_concepts: [
-      {
-        proposed_concept_id: "proposed:revenue:revenue_signals_show_current_business_momentum",
-        title: "Revenue signals show current business momentum",
-        description: "Proposed concept for revenue interpretation.",
-        evidence_refs: ["signal-growth-1", "revenue_drivers.0"],
-        rationale: "Concept Registry enrichment was unavailable, so this understanding is emitted without a concept_id.",
-      },
-    ],
-    enrichment_status: {
-      trust_signals: {
-        available: false,
-        artifact_path: null,
-        artifact_version: null,
-        absent_reason: "Trust Signals enrichment was not provided.",
-      },
-      topic_evolution: {
-        available: false,
-        artifact_path: null,
-        artifact_version: null,
-        absent_reason: "Topic Evolution enrichment was not provided.",
-      },
-      concept_registry: {
-        available: false,
-        artifact_path: null,
-        artifact_version: null,
-        absent_reason: "Concept Registry enrichment was not provided.",
-      },
-    },
-    depth_indicator: {
-      overall: "base",
-      trust_dimension: "absent",
-      longitudinal_dimension: "absent",
-    },
+    understandings,
+    proposed_concepts: proposedConcepts,
+    enrichment_status: enrichmentStatus,
+    depth_indicator: depthIndicator,
     limitations: {
       trust_dimension_gaps: [
         "commitment_follow_through",
@@ -384,57 +326,38 @@ export function validQuarterUnderstandingContent(): QuarterUnderstandingArtifact
         "capital_allocation_consistency",
       ],
     },
-    confidence: {
-      overall: 0.8,
-      grounding_score: 0.8,
-      signal_utilization_score: 1,
-      evidence_coverage_score: 1,
-      interpretation_quality_score: 0.8,
-    },
-    evaluation_hooks: {
-      prompt_version: "deterministic-quarter-understanding-v1",
-      model_version: "deterministic",
-      understanding_count: 1,
-      signal_utilization: {
-        available_signal_count: 2,
-        used_signal_count: 1,
-        ignored_signal_count: 1,
+    confidence: buildQuarterUnderstandingConfidence({
+      understandings,
+      availableSignalCount: 2,
+      enrichmentStatus,
+    }),
+    evaluation_hooks: evaluationHooks,
+  };
+
+  return {
+    ...contentWithoutReplayability,
+    replayability_metadata: buildQuarterUnderstandingReplayability({
+      prompt: {
+        promptId: QUARTER_UNDERSTANDING_PROMPT_ID,
+        version: "quarter-understanding-v1",
+        content: "fixture",
+        hash: "quarter-understanding-prompt-hash",
+        source: "filesystem",
+        activationId: null,
       },
-      grounding: {
-        evidence_package_count: 1,
-        missing_evidence_count: 0,
+      modelVersion: QUARTER_UNDERSTANDING_MODEL_VERSION,
+      conceptRegistryVersion: null,
+      inputHash: "quarter-understanding-input-hash",
+      outputHash: buildQuarterUnderstandingOutputHash(
+        contentWithoutReplayability,
+      ),
+      evaluationHooks,
+      evaluationMetadata: {
+        prompt_hash: "quarter-understanding-prompt-hash",
       },
-      concept_usage: {
-        concept_registry_available: false,
-        emitted_concept_count: 0,
-        proposed_concept_count: 1,
-      },
-      depth: {
-        overall: "base",
-        trust_dimension: "absent",
-        longitudinal_dimension: "absent",
-      },
-      enrichment_status: {
-        trust_signals: {
-          available: false,
-          artifact_path: null,
-          artifact_version: null,
-          absent_reason: "Trust Signals enrichment was not provided.",
-        },
-        topic_evolution: {
-          available: false,
-          artifact_path: null,
-          artifact_version: null,
-          absent_reason: "Topic Evolution enrichment was not provided.",
-        },
-        concept_registry: {
-          available: false,
-          artifact_path: null,
-          artifact_version: null,
-          absent_reason: "Concept Registry enrichment was not provided.",
-        },
-      },
-    },
+      enrichmentStatus,
+      depthIndicator,
+    }),
   };
 }
 

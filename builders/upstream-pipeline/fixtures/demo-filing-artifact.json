@@ -1,0 +1,32 @@
+{
+  "identity": {
+    "artifact_id": "demo-filing-msft-2026-q2",
+    "artifact_type": "filing",
+    "company_id": "MSFT",
+    "period_id": "2026-Q2",
+    "version": 1
+  },
+  "metadata": {
+    "version": 1,
+    "schema_version": "filing-artifact-v1",
+    "pipeline_version": "demo-filing-input-v1",
+    "generated_at": "2026-06-19T00:00:00.000Z",
+    "artifact_hash": "cc1526e2ecaf88fe783f96bc4b1cd1ef391c1c409db8fc9feb024ed63a691b88",
+    "input_hash": "demo-filing-input",
+    "generation_duration_ms": 0,
+    "status": "active"
+  },
+  "lineage": {
+    "upstream_dependencies": [],
+    "generation_context": {
+      "builder_type": "demo-filing-input"
+    }
+  },
+  "content": {
+    "filing_id": "msft-2026-q2-10q",
+    "filing_type": "10-Q",
+    "filing_content": "Microsoft provides productivity software, cloud infrastructure, and enterprise applications. Microsoft 365 subscriptions and Azure consumption are recurring revenue drivers, while software licenses contribute transactional revenue. Enterprise and public-sector customers use the integrated Microsoft cloud and productivity platform. Management identified Azure demand, artificial intelligence infrastructure, data-center capacity, security, and Copilot adoption as strategic priorities. The company is investing in data centers and computing capacity to support cloud demand. Competition remains intense across cloud infrastructure, productivity software, and artificial intelligence services. Execution depends on data-center availability, semiconductor supply, customer adoption, partner distribution, and continued product innovation. Risks include infrastructure constraints, cybersecurity incidents, regulation, foreign exchange movements, and changes in enterprise technology spending. Management discussed disciplined operating expense growth and continued investment in cloud capacity.",
+    "filing_hash": "demo-filing-source-hash",
+    "filing_period": "2026-Q2"
+  }
+}

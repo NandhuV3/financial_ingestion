@@ -54,9 +54,14 @@ export function buildTrustSignal(params: {
     severity: rule.severity,
     direction: rule.direction,
     observation: params.observation,
-    evidence_refs: [...new Set(params.evidence_refs)],
-    source_artifact_refs: params.source_artifact_refs,
-    source_record_refs: [...new Set(params.source_record_refs)],
+    evidence_refs: [...new Set(params.evidence_refs)].sort(),
+    source_artifact_refs: [...params.source_artifact_refs].sort(
+      (left, right) =>
+        left.artifact_type.localeCompare(right.artifact_type)
+        || left.artifact_id.localeCompare(right.artifact_id)
+        || left.artifact_version - right.artifact_version,
+    ),
+    source_record_refs: [...new Set(params.source_record_refs)].sort(),
     source_artifact: params.source_artifact,
     rule_ref: params.rule_ref,
     confidence: clampConfidence(params.confidence),

@@ -8,6 +8,9 @@
  * behavior and must not be embedded in builder logic.
  */
 
+export const TRUST_SIGNALS_CALIBRATION_VERSION =
+  "trust-signals-calibration-v1";
+
 export const TRUST_SIGNALS_CALIBRATION = {
   /**
    * Purpose: fallback confidence when Commitment Tracking provides no

@@ -1,7 +1,12 @@
 import { createHash } from "node:crypto";
 import { BuilderValidationError } from "../../packages/builder-framework/src/builder-errors.js";
 import { THEME_CATEGORIES, type Theme, type ThemesArtifactContent } from "./contract.js";
-import type { ThemeCandidate, ThemesBuilderInput, ThemesLLMOutput } from "./types.js";
+import type {
+  FilingEvidenceCatalogEntry,
+  ThemeCandidate,
+  ThemesBuilderInput,
+  ThemesLLMOutput,
+} from "./types.js";
 
 const validFilingTypes = new Set(["10-K", "10-Q", "Transcript"]);
 const validImportance = new Set(["low", "medium", "high"]);
@@ -47,7 +52,11 @@ export function parseThemesLLMOutput(outputText: string): ThemesLLMOutput {
   }
 }
 
-export function validateThemeCandidate(candidate: ThemeCandidate, index: number): void {
+export function validateThemeCandidate(
+  candidate: ThemeCandidate,
+  index: number,
+  evidenceCatalog?: FilingEvidenceCatalogEntry[],
+): void {
   requireText(candidate.title, `themes[${index}].title`);
   requireText(candidate.description, `themes[${index}].description`);
 
@@ -66,6 +75,16 @@ export function validateThemeCandidate(candidate: ThemeCandidate, index: number)
   for (const [evidenceIndex, evidence] of candidate.evidence.entries()) {
     requireText(evidence.section, `themes[${index}].evidence[${evidenceIndex}].section`);
     requireText(evidence.excerpt_hash, `themes[${index}].evidence[${evidenceIndex}].excerpt_hash`);
+
+    if (
+      evidenceCatalog
+      && !evidenceCatalog.some(({ excerpt_hash }) =>
+        excerpt_hash === evidence.excerpt_hash)
+    ) {
+      throw new BuilderValidationError(
+        `themes[${index}].evidence[${evidenceIndex}].excerpt_hash is not present in the filing evidence catalog.`,
+      );
+    }
   }
 
   rejectForbiddenLanguage(candidate.title, `themes[${index}].title`);
@@ -139,4 +158,3 @@ function rejectForbiddenLanguage(value: string, field: string): void {
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
-

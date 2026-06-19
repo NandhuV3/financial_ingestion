@@ -2,13 +2,17 @@ import type { Artifact } from "../../contracts/artifacts/artifact.js";
 import { BuilderDependencyError, BuilderValidationError } from "../../packages/builder-framework/src/builder-errors.js";
 import { TRUST_DIMENSIONS, type TrustDimension } from "../trust-signals-builder/contract.js";
 import type { TrustSignalsArtifactContent } from "../trust-signals-builder/types.js";
+import { buildQuarterUnderstandingConfidence } from "./confidence.js";
 import {
   DEPTH_LEVELS,
   IMPORTANCE_LEVELS,
+  QUARTER_UNDERSTANDING_BUILDER_VERSION,
+  QUARTER_UNDERSTANDING_CALIBRATION_CONTRACT_VERSION,
   UNDERSTANDING_CATEGORIES,
   UNDERSTANDING_DIRECTIONS,
 } from "./contract.js";
 import { buildQuarterUnderstandingDepthIndicator } from "./enrichment.js";
+import { buildQuarterUnderstandingOutputHash } from "./replayability.js";
 import { countLongitudinalReferences, countTrustUnderstandings } from "./summary.js";
 import type {
   ConceptRegistryContent,
@@ -27,6 +31,8 @@ export function requireDependency<T>(
   artifact: Artifact<unknown> | undefined,
   dependencyName: string,
   artifactType: string,
+  companyId: string,
+  periodId: string,
 ): Artifact<T> {
   if (artifact === undefined) {
     throw new BuilderDependencyError(`Missing required Quarter Understanding Builder dependency: ${dependencyName}`);
@@ -38,6 +44,8 @@ export function requireDependency<T>(
     );
   }
 
+  validateDependencyIdentity(artifact, dependencyName, companyId, periodId);
+
   return artifact as Artifact<T>;
 }
 
@@ -45,6 +53,8 @@ export function optionalDependency<T>(
   artifact: Artifact<unknown> | undefined,
   dependencyName: string,
   artifactType: string,
+  companyId: string,
+  periodId: string,
 ): Artifact<T> | null {
   if (artifact === undefined) {
     return null;
@@ -55,6 +65,8 @@ export function optionalDependency<T>(
       `Quarter Understanding Builder dependency ${dependencyName} must be ${artifactType}.`,
     );
   }
+
+  validateDependencyIdentity(artifact, dependencyName, companyId, periodId);
 
   return artifact as Artifact<T>;
 }
@@ -109,6 +121,7 @@ export function validateQuarterUnderstandingArtifactContent(
   }
 
   validateEvaluationHooks(content);
+  validateReplayabilityMetadata(content);
 }
 
 function validateProposedConcept(
@@ -235,7 +248,7 @@ function validateEnrichmentInputStatus(status: EnrichmentInputStatus, field: str
   }
 
   if (status.available) {
-    requireText(status.artifact_path, `${field}.artifact_path`);
+    requireText(status.artifact_ref, `${field}.artifact_ref`);
 
     if (!Number.isSafeInteger(status.artifact_version) || status.artifact_version === null || status.artifact_version <= 0) {
       throw new BuilderValidationError(`${field}.artifact_version must be a positive integer when available.`);
@@ -248,8 +261,8 @@ function validateEnrichmentInputStatus(status: EnrichmentInputStatus, field: str
     return;
   }
 
-  if (status.artifact_path !== null && status.artifact_path !== undefined) {
-    throw new BuilderValidationError(`${field}.artifact_path must be absent when unavailable.`);
+  if (status.artifact_ref !== null && status.artifact_ref !== undefined) {
+    throw new BuilderValidationError(`${field}.artifact_ref must be absent when unavailable.`);
   }
 
   if (status.artifact_version !== null && status.artifact_version !== undefined) {
@@ -323,6 +336,19 @@ function validateConfidence(content: QuarterUnderstandingArtifactContent): void 
   validateConfidenceValue(content.confidence.signal_utilization_score, "quarter_understanding.confidence.signal_utilization_score");
   validateConfidenceValue(content.confidence.evidence_coverage_score, "quarter_understanding.confidence.evidence_coverage_score");
   validateConfidenceValue(content.confidence.interpretation_quality_score, "quarter_understanding.confidence.interpretation_quality_score");
+
+  const expected = buildQuarterUnderstandingConfidence({
+    understandings: content.understandings,
+    availableSignalCount:
+      content.evaluation_hooks.signal_utilization.available_signal_count,
+    enrichmentStatus: content.enrichment_status,
+  });
+
+  if (!sameRecord(content.confidence, expected)) {
+    throw new BuilderValidationError(
+      "quarter_understanding.confidence does not match builder-owned confidence calculation.",
+    );
+  }
 }
 
 function normalizeTrustDimensions(dimensions: TrustDimension[]): string {
@@ -330,6 +356,15 @@ function normalizeTrustDimensions(dimensions: TrustDimension[]): string {
 }
 
 function validateEvaluationHooks(content: QuarterUnderstandingArtifactContent): void {
+  requireText(
+    content.evaluation_hooks.prompt_version,
+    "quarter_understanding.evaluation_hooks.prompt_version",
+  );
+  requireText(
+    content.evaluation_hooks.model_version,
+    "quarter_understanding.evaluation_hooks.model_version",
+  );
+
   if (content.evaluation_hooks.understanding_count !== content.understandings.length) {
     throw new BuilderValidationError("quarter_understanding.evaluation_hooks.understanding_count must match understandings.");
   }
@@ -348,11 +383,11 @@ function validateEvaluationHooks(content: QuarterUnderstandingArtifactContent): 
     throw new BuilderValidationError("quarter_understanding.evaluation_hooks concept availability must match enrichment status.");
   }
 
-  if (JSON.stringify(content.evaluation_hooks.depth) !== JSON.stringify(content.depth_indicator)) {
+  if (!sameRecord(content.evaluation_hooks.depth, content.depth_indicator)) {
     throw new BuilderValidationError("quarter_understanding.evaluation_hooks.depth must match depth_indicator.");
   }
 
-  if (JSON.stringify(content.evaluation_hooks.enrichment_status) !== JSON.stringify(content.enrichment_status)) {
+  if (!sameRecord(content.evaluation_hooks.enrichment_status, content.enrichment_status)) {
     throw new BuilderValidationError("quarter_understanding.evaluation_hooks.enrichment_status must match enrichment_status.");
   }
 
@@ -362,6 +397,150 @@ function validateEvaluationHooks(content: QuarterUnderstandingArtifactContent): 
 
   if (countLongitudinalReferences(content) > 0 && content.depth_indicator.longitudinal_dimension === "absent") {
     throw new BuilderValidationError("quarter_understanding topic references require longitudinal dimension.");
+  }
+}
+
+function validateReplayabilityMetadata(
+  content: QuarterUnderstandingArtifactContent,
+): void {
+  const replay = content.replayability_metadata;
+
+  if (replay === null || typeof replay !== "object") {
+    throw new BuilderValidationError(
+      "quarter_understanding.replayability_metadata must be an object.",
+    );
+  }
+
+  requireText(
+    replay.prompt_lineage.prompt_id,
+    "quarter_understanding.replayability_metadata.prompt_lineage.prompt_id",
+  );
+  requireText(
+    replay.prompt_lineage.prompt_version,
+    "quarter_understanding.replayability_metadata.prompt_lineage.prompt_version",
+  );
+  requireText(
+    replay.prompt_lineage.model_version,
+    "quarter_understanding.replayability_metadata.prompt_lineage.model_version",
+  );
+  requireText(
+    replay.prompt_version,
+    "quarter_understanding.replayability_metadata.prompt_version",
+  );
+  requireText(
+    replay.model_version,
+    "quarter_understanding.replayability_metadata.model_version",
+  );
+  requireText(
+    replay.input_hash,
+    "quarter_understanding.replayability_metadata.input_hash",
+  );
+  requireText(
+    replay.output_hash,
+    "quarter_understanding.replayability_metadata.output_hash",
+  );
+
+  if (
+    replay.prompt_lineage.prompt_version !== replay.prompt_version
+    || replay.prompt_lineage.model_version !== replay.model_version
+    || replay.prompt_version !== content.evaluation_hooks.prompt_version
+    || replay.model_version !== content.evaluation_hooks.model_version
+  ) {
+    throw new BuilderValidationError(
+      "quarter_understanding.replayability_metadata prompt/model versions do not reconcile.",
+    );
+  }
+
+  const expectedConceptVersion =
+    content.enrichment_status.concept_registry.available
+      ? String(content.enrichment_status.concept_registry.artifact_version)
+      : null;
+
+  if (replay.concept_registry_version !== expectedConceptVersion) {
+    throw new BuilderValidationError(
+      "quarter_understanding.replayability_metadata concept registry version does not reconcile.",
+    );
+  }
+
+  if (!sameRecord(replay.evaluation_hooks, content.evaluation_hooks)) {
+    throw new BuilderValidationError(
+      "quarter_understanding.replayability_metadata evaluation hooks do not reconcile.",
+    );
+  }
+
+  if (!sameRecord(replay.enrichment_status, content.enrichment_status)) {
+    throw new BuilderValidationError(
+      "quarter_understanding.replayability_metadata enrichment status does not reconcile.",
+    );
+  }
+
+  if (!sameRecord(replay.depth_indicators, content.depth_indicator)) {
+    throw new BuilderValidationError(
+      "quarter_understanding.replayability_metadata depth indicators do not reconcile.",
+    );
+  }
+
+  if (replay.builder_version !== QUARTER_UNDERSTANDING_BUILDER_VERSION) {
+    throw new BuilderValidationError(
+      "quarter_understanding.replayability_metadata builder version is invalid.",
+    );
+  }
+
+  if (
+    replay.calibration_contract_version
+    !== QUARTER_UNDERSTANDING_CALIBRATION_CONTRACT_VERSION
+  ) {
+    throw new BuilderValidationError(
+      "quarter_understanding.replayability_metadata calibration contract version is invalid.",
+    );
+  }
+
+  const { replayability_metadata: _replayability, ...contentWithoutReplayability } =
+    content;
+  const expectedOutputHash =
+    buildQuarterUnderstandingOutputHash(contentWithoutReplayability);
+
+  if (replay.output_hash !== expectedOutputHash) {
+    throw new BuilderValidationError(
+      "quarter_understanding.replayability_metadata output hash does not reconcile.",
+    );
+  }
+}
+
+function validateDependencyIdentity(
+  artifact: Artifact<unknown>,
+  dependencyName: string,
+  companyId: string,
+  periodId: string,
+): void {
+  if (artifact.identity.company_id !== companyId) {
+    throw new BuilderDependencyError(
+      `Quarter Understanding Builder dependency ${dependencyName} company does not match build target.`,
+    );
+  }
+
+  if (artifact.identity.period_id !== periodId) {
+    throw new BuilderDependencyError(
+      `Quarter Understanding Builder dependency ${dependencyName} period does not match build target.`,
+    );
+  }
+
+  if (artifact.content !== null && typeof artifact.content === "object") {
+    const content = artifact.content as Record<string, unknown>;
+    const contentCompany = content.company_id ?? content.company;
+    const contentPeriod = content.period_id ?? content.period;
+
+    if (contentCompany !== undefined && contentCompany !== companyId) {
+      throw new BuilderDependencyError(
+        `Quarter Understanding Builder dependency ${dependencyName} content company does not match build target.`,
+      );
+    }
+
+    if (contentPeriod !== undefined && contentPeriod !== periodId) {
+      throw new BuilderDependencyError(
+        `Quarter Understanding Builder dependency ${dependencyName} content period does not match build target.`,
+      );
+    }
   }
 }
 
@@ -412,4 +591,8 @@ function validateStringArray(value: unknown, field: string): void {
   for (const item of value) {
     requireText(item, field);
   }
+}
+
+function sameRecord(left: unknown, right: unknown): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
 }

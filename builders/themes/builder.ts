@@ -10,6 +10,10 @@ import {
   type Theme,
   type ThemesArtifactContent,
 } from "./contract.js";
+import {
+  buildFilingEvidenceCatalog,
+  canonicalEvidenceForHash,
+} from "./evidence.js";
 import { calculateThemesConfidence, buildThemesEvaluationHooks } from "./evaluation.js";
 import { buildThemesUserPrompt, THEMES_PROMPT_ID } from "./prompt.js";
 import {
@@ -21,6 +25,7 @@ import {
   validateThemesInput,
 } from "./validator.js";
 import type { ThemeCandidate, ThemesBuilderInput } from "./types.js";
+import type { FilingEvidenceCatalogEntry } from "./types.js";
 
 export type ThemesBuilderOptions = {
   promptResolver: Pick<PromptResolver, "resolve">;
@@ -42,6 +47,7 @@ export class ThemesBuilder implements Builder<ThemesBuilderInput, ThemesArtifact
   async execute(
     context: BuilderContext<ThemesBuilderInput>,
   ): Promise<BuilderResult<ThemesArtifactContent>> {
+    const evidenceCatalog = buildFilingEvidenceCatalog(context.input);
     const prompt = this.options.promptResolver.resolve(THEMES_PROMPT_ID);
     const modelVersion = this.options.modelVersion ?? THEMES_MODEL_VERSION;
 
@@ -70,7 +76,7 @@ export class ThemesBuilder implements Builder<ThemesBuilderInput, ThemesArtifact
           },
           {
             role: "user",
-            content: buildThemesUserPrompt(context.input),
+            content: buildThemesUserPrompt(context.input, evidenceCatalog),
           },
         ],
       });
@@ -81,7 +87,11 @@ export class ThemesBuilder implements Builder<ThemesBuilderInput, ThemesArtifact
     }
 
     const parsed = parseThemesLLMOutput(outputText);
-    const { themes, duplicateCount } = buildThemes(context.input, parsed.themes);
+    const { themes, duplicateCount } = buildThemes(
+      context.input,
+      parsed.themes,
+      evidenceCatalog,
+    );
     const confidence = calculateThemesConfidence(themes, duplicateCount);
     const content: ThemesArtifactContent = {
       company_id: context.input.company_id,
@@ -105,13 +115,14 @@ export class ThemesBuilder implements Builder<ThemesBuilderInput, ThemesArtifact
 function buildThemes(
   input: ThemesBuilderInput,
   candidates: ThemeCandidate[],
+  evidenceCatalog: FilingEvidenceCatalogEntry[],
 ): { themes: Theme[]; duplicateCount: number } {
   const seen = new Set<string>();
   const themes: Theme[] = [];
   let duplicateCount = 0;
 
   for (const [index, candidate] of candidates.entries()) {
-    validateThemeCandidate(candidate, index);
+    validateThemeCandidate(candidate, index, evidenceCatalog);
 
     const key = normalizeThemeKey(candidate.title, candidate.description);
 
@@ -127,7 +138,20 @@ function buildThemes(
       description: candidate.description.trim(),
       category: candidate.category,
       importance: candidate.importance,
-      source_evidence: candidate.evidence,
+      source_evidence: candidate.evidence.map((evidence) => {
+        const canonical = canonicalEvidenceForHash(
+          evidenceCatalog,
+          evidence.excerpt_hash,
+        );
+
+        if (!canonical) {
+          throw new BuilderValidationError(
+            `Theme evidence hash is not present in the filing evidence catalog: ${evidence.excerpt_hash}`,
+          );
+        }
+
+        return canonical;
+      }),
       frequency: candidate.frequency ?? candidate.evidence.length,
       confidence: confidenceFromCandidate(candidate),
     });
@@ -142,4 +166,3 @@ function confidenceFromCandidate(candidate: ThemeCandidate): number {
 
   return Math.round(((evidenceScore + importanceScore) / 2) * 1000) / 1000;
 }
-

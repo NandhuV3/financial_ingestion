@@ -4,6 +4,7 @@ import type { ArtifactLineage } from "../../contracts/artifacts/artifact-lineage
 import type { CompanyKnowledgeCandidateContent } from "../../builders/company-knowledge-builder/contract.js";
 import type { CompanyKnowledgeArtifactContent } from "../../builders/company-knowledge-builder/types.js";
 import { calculateArtifactHash, ArtifactService } from "../../packages/artifact-framework/src/artifact-service.js";
+import type { ReservedArtifactId } from "../../packages/artifact-framework/src/artifact-types.js";
 import {
   COMPANY_KNOWLEDGE_GOVERNANCE_ENGINE,
   COMPANY_KNOWLEDGE_PIPELINE_VERSION,
@@ -228,7 +229,7 @@ export class CompanyKnowledgeGovernanceEngine {
     input: CompanyKnowledgeGovernanceInput,
     governanceDecision: Artifact<GovernanceDecisionContent>,
     generatedAt: string,
-    artifactId?: string,
+    artifactId?: ReservedArtifactId,
   ): Promise<Artifact<CompanyKnowledgeArtifactContent>> {
     return this.artifactService.createArtifact({
       artifact_id: artifactId,
@@ -256,7 +257,7 @@ export class CompanyKnowledgeGovernanceEngine {
     governanceDecision: Artifact<GovernanceDecisionContent>,
     input: CompanyKnowledgeRollbackInput,
     generatedAt: string,
-    artifactId: string,
+    artifactId: ReservedArtifactId,
   ): Promise<Artifact<CompanyKnowledgeArtifactContent>> {
     const content: CompanyKnowledgeArtifactContent = {
       ...targetContent,

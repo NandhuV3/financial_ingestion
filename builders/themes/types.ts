@@ -11,6 +11,10 @@ export type ThemesBuilderInput = {
   period_id: string;
 };
 
+export type FilingEvidenceCatalogEntry = SourceEvidence & {
+  excerpt: string;
+};
+
 export type ThemeCandidate = {
   title: string;
   description: string;
@@ -23,4 +27,3 @@ export type ThemeCandidate = {
 export type ThemesLLMOutput = {
   themes: ThemeCandidate[];
 };
-

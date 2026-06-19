@@ -18,6 +18,8 @@ import {
   type ThemesArtifactContent,
 } from "../contract.js";
 import { ThemesBuilder } from "../builder.js";
+import { buildFilingEvidenceCatalog } from "../evidence.js";
+import { buildThemesUserPrompt } from "../prompt.js";
 import type { ThemesBuilderInput } from "../types.js";
 
 describe("themes builder", () => {
@@ -61,6 +63,13 @@ describe("themes builder", () => {
     assert.equal(artifact.content.themes.length, 2);
     assert.equal(artifact.content.themes[0]?.title, "AI Adoption");
     assert.equal(artifact.content.themes[0]?.theme_id.length, 64);
+    assert.deepEqual(artifact.content.themes[0]?.source_evidence, [
+      {
+        section: "filing_content",
+        excerpt_hash: evidenceHash(),
+        paragraph_reference: "excerpt-0001",
+      },
+    ]);
     assert.equal(artifact.content.confidence.overall, 1);
     assert.equal(artifact.content.evaluation_hooks.prompt_version, "theme-generation-v1");
     assert.equal(artifact.lineage.prompt_reference?.prompt_id, "theme-generation-system");
@@ -144,6 +153,59 @@ describe("themes builder", () => {
     );
   });
 
+  it("rejects fabricated evidence hashes returned by the LLM", async () => {
+    const executor = executorWithBuilder(new StaticLLMClient(JSON.stringify({
+      themes: [
+        {
+          title: "AI Adoption",
+          description: "Management discussed AI adoption.",
+          category: "technology",
+          importance: "high",
+          evidence: [{
+            section: "MD&A",
+            excerpt_hash: "abc123",
+          }],
+        },
+      ],
+    })));
+
+    await assert.rejects(
+      () => executor.executeBuilder<ThemesBuilderInput, ThemesArtifactContent>({
+        builderType: THEMES_BUILDER_TYPE,
+        companyId: "MSFT",
+        periodId: "2026-Q2",
+        executionId: "execution-1",
+        input: input(),
+        inputHash: "filing-input-hash",
+      }),
+      (error: unknown) =>
+        error instanceof BuilderValidationError
+        && error.message.includes("is not present in the filing evidence catalog"),
+    );
+  });
+
+  it("generates stable evidence hashes from normalized filing excerpts", () => {
+    const first = buildFilingEvidenceCatalog(input());
+    const second = buildFilingEvidenceCatalog({
+      ...input(),
+      filing_content: "  Management   discussed AI adoption and cloud expansion.  ",
+    });
+
+    assert.deepEqual(first, second);
+    assert.match(first[0]?.excerpt_hash ?? "", /^[a-f0-9]{64}$/);
+    assert.equal(first[0]?.paragraph_reference, "excerpt-0001");
+    assert.equal(first[0]?.section, "filing_content");
+  });
+
+  it("instructs the LLM to select evidence from the supplied catalog", () => {
+    const catalog = buildFilingEvidenceCatalog(input());
+    const prompt = buildThemesUserPrompt(input(), catalog);
+
+    assert.match(prompt, new RegExp(catalog[0]?.excerpt_hash ?? ""));
+    assert.match(prompt, /Use only excerpt_hash values supplied in the evidence catalog/);
+    assert.match(prompt, /Never create, shorten, transform, or guess an excerpt_hash/);
+  });
+
   it("removes exact normalized duplicate themes without semantic deduplication", async () => {
     const executor = executorWithBuilder(new StaticLLMClient(JSON.stringify({
       themes: [
@@ -152,14 +214,14 @@ describe("themes builder", () => {
           description: "Management discussed AI adoption.",
           category: "technology",
           importance: "high",
-          evidence: [{ section: "MD&A", excerpt_hash: "hash-1" }],
+          evidence: [{ section: "invented", excerpt_hash: evidenceHash() }],
         },
         {
           title: " AI adoption! ",
           description: "Management discussed AI adoption",
           category: "technology",
           importance: "high",
-          evidence: [{ section: "MD&A", excerpt_hash: "hash-2" }],
+          evidence: [{ section: "different", excerpt_hash: evidenceHash() }],
         },
       ],
     })));
@@ -232,17 +294,25 @@ function validLLMOutput(): string {
         description: "Management discussed AI adoption.",
         category: "technology",
         importance: "high",
-        evidence: [{ section: "MD&A", excerpt_hash: "hash-1" }],
+        evidence: [{ section: "MD&A", excerpt_hash: evidenceHash() }],
       },
       {
         title: "Cloud Expansion",
         description: "Management discussed cloud expansion.",
         category: "product",
         importance: "medium",
-        evidence: [{ section: "MD&A", excerpt_hash: "hash-2" }],
+        evidence: [{ section: "MD&A", excerpt_hash: evidenceHash() }],
       },
     ],
   });
+}
+
+function evidenceHash(): string {
+  const evidence = buildFilingEvidenceCatalog(input())[0];
+
+  assert.ok(evidence);
+
+  return evidence.excerpt_hash;
 }
 
 class StaticPromptResolver {
@@ -351,4 +421,3 @@ function lookupKey(lookup: ArtifactLookup): string {
 function cloneArtifact<T>(artifact: Artifact<T>): Artifact<T> {
   return JSON.parse(JSON.stringify(artifact)) as Artifact<T>;
 }
-

@@ -135,9 +135,8 @@ Quarter Understanding Builder owns:
 - dependency resolution
 - dependency validation
 - context assembly
-- prompt execution
-- LLM-assisted interpretation execution
-- interpretation generation
+- prompt resolution and execution orchestration
+- response parsing
 - concept registry enrichment
 - concept validation
 - proposal extraction
@@ -146,6 +145,12 @@ Quarter Understanding Builder owns:
 - evaluation hooks
 - content assembly
 - BuilderResult<QuarterUnderstandingArtifactContent>
+
+The governed Quarter Understanding prompt owns interpretation reasoning.
+
+The builder owns orchestration, parsing, validation, confidence computation,
+replayability metadata generation, and artifact content assembly. It does not
+implement interpretation reasoning in builder code.
 
 Builder does NOT own:
 
@@ -673,21 +678,21 @@ builders/quarter-understanding-builder/calibration-contract.ts
 
 ```typescript
 type QuarterUnderstandingConfidence = {
-  signal_coverage: number;
-
-  concept_compliance: number;
+  overall: number;
 
   grounding_score: number;
 
-  evidence_density: number;
+  signal_utilization_score: number;
 
-  overall: number;
+  evidence_coverage_score: number;
+
+  interpretation_quality_score: number;
 };
 ```
 
 ---
 
-# Signal Coverage
+# Signal Utilization
 
 Measures:
 
@@ -697,12 +702,12 @@ Use Of Available Signals
 
 ---
 
-# Concept Compliance
+# Evidence Coverage
 
 Measures:
 
 ```text
-Registry Compliance
+Evidence Support Across Understandings
 ```
 
 ---
@@ -717,12 +722,12 @@ Evidence Support
 
 ---
 
-# Evidence Density
+# Interpretation Quality
 
 Measures:
 
 ```text
-Evidence Per Understanding
+Quality Of Grounded Business Interpretation
 ```
 
 ---
@@ -1194,8 +1199,18 @@ type QuarterUnderstandingEvaluationMetadata =
 ```
 
 ```typescript
+type QuarterUnderstandingPromptLineage = {
+  prompt_id: string;
+
+  prompt_version: string;
+
+  model_version: string;
+};
+```
+
+```typescript
 type QuarterUnderstandingReplayabilityMetadata = {
-  prompt_lineage: PromptLineage;
+  prompt_lineage: QuarterUnderstandingPromptLineage;
 
   prompt_version: string;
 

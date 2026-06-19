@@ -11,6 +11,7 @@ import {
   buildTrustEnrichmentStatus,
 } from "./enrichment.js";
 import { buildNarrativeSignals } from "./narrative-signals.js";
+import { buildTrustSignalsReplayability } from "./replayability.js";
 import {
   buildTrustSignalConfidence,
   buildTrustSignalSummary,
@@ -53,21 +54,29 @@ export class TrustSignalsBuilder implements Builder<
       context.dependencies.commitment_tracking,
       "commitment_tracking",
       "commitment_tracking",
+      context.input.company_id,
+      context.input.period_id,
     );
     const narrativeConsistencyArtifact = optionalPillarDependency<NarrativeConsistencyArtifactContent>(
       context.dependencies.narrative_consistency,
       "narrative_consistency",
       "narrative_consistency",
+      context.input.company_id,
+      context.input.period_id,
     );
     const accountingStabilityArtifact = optionalPillarDependency<AccountingStabilityArtifactContent>(
       context.dependencies.accounting_stability,
       "accounting_stability",
       "accounting_stability",
+      context.input.company_id,
+      context.input.period_id,
     );
     const capitalAllocationTrackingArtifact = optionalPillarDependency<CapitalAllocationTrackingArtifactContent>(
       context.dependencies.capital_allocation_tracking,
       "capital_allocation_tracking",
       "capital_allocation_tracking",
+      context.input.company_id,
+      context.input.period_id,
     );
     const buildContext: TrustSignalBuildContext = {
       companyId: context.input.company_id,
@@ -90,19 +99,29 @@ export class TrustSignalsBuilder implements Builder<
       capital_allocation_tracking: context.dependencies.capital_allocation_tracking,
     });
     const missingDimensions = buildMissingDimensions(enrichmentStatus);
+    const depthIndicator = buildTrustDepthIndicator(enrichmentStatus);
+    const evaluationHooks = buildTrustSignalsEvaluationHooks({
+      signals: trustSignals,
+      enrichmentStatus,
+      missingDimensionCount: missingDimensions.length,
+    });
     const content: TrustSignalsArtifactContent = {
-      company_id: context.input.company_id,
-      period_id: context.input.period_id,
+      artifact_type: "trust_signals",
+      company: context.input.company_id,
+      period: context.input.period_id,
       trust_signals: trustSignals,
       summary: buildTrustSignalSummary(trustSignals),
       confidence: buildTrustSignalConfidence(trustSignals, enrichmentStatus),
       enrichment_status: enrichmentStatus,
-      depth_indicator: buildTrustDepthIndicator(enrichmentStatus),
+      depth_indicator: depthIndicator,
       missing_dimensions: missingDimensions,
-      evaluation_hooks: buildTrustSignalsEvaluationHooks({
+      evaluation_hooks: evaluationHooks,
+      replayability_metadata: buildTrustSignalsReplayability({
+        generatedAt: context.input.generated_at,
         signals: trustSignals,
         enrichmentStatus,
-        missingDimensionCount: missingDimensions.length,
+        depthIndicator,
+        evaluationHooks,
       }),
     };
 

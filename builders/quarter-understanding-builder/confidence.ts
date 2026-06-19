@@ -61,12 +61,14 @@ export function buildQuarterUnderstandingEvaluationHooks(input: {
   proposedConceptCount: number;
   depth: DepthIndicator;
   enrichmentStatus: EnrichmentStatus;
+  promptVersion: string;
+  modelVersion: string;
 }): QuarterUnderstandingEvaluationHooks {
   const usedSignals = usedSignalCount(input.understandings);
 
   return {
-    prompt_version: "deterministic-quarter-understanding-v1",
-    model_version: "deterministic",
+    prompt_version: input.promptVersion,
+    model_version: input.modelVersion,
     understanding_count: input.understandings.length,
     signal_utilization: {
       available_signal_count: input.availableSignalCount,

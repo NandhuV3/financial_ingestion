@@ -5,6 +5,7 @@ import type { QuarterUnderstandingArtifactContent } from "../../quarter-understa
 import type { CommitmentTrackingArtifactContent, TrustSignalsArtifactContent } from "../../trust-signals-builder/types.js";
 import { artifact, TestArtifactRepository } from "../../business-signals-builder/tests/artifact-fixtures.js";
 import type { InvestorIntelligenceBuilderInput } from "../types.js";
+import { validFirstPopulationContent } from "../../commitment-tracking-builder/tests/commitment-tracking.fixtures.js";
 import {
   businessSignalsArtifact,
   companyKnowledgeArtifact,
@@ -39,25 +40,11 @@ export function trustSignals(): Artifact<TrustSignalsArtifactContent> {
 }
 
 export function commitmentTracking(): Artifact<CommitmentTrackingArtifactContent> {
-  return artifact("commitment-tracking-1", "commitment_tracking", {
-    commitments: [
-      {
-        commitment_id: "commitment-1",
-        status: "overdue",
-        statement: "Expand AI infrastructure capacity.",
-        evidence: [
-          {
-            evidence_id: "commitment-evidence-1",
-            confidence: 0.82,
-          },
-        ],
-        confidence: 0.82,
-      },
-    ],
-    confidence: {
-      overall: 0.82,
-    },
-  });
+  return artifact(
+    "commitment-tracking-1",
+    "commitment_tracking",
+    validFirstPopulationContent(),
+  );
 }
 
 export function quarterUnderstandingBase(): Artifact<QuarterUnderstandingArtifactContent> {
@@ -69,7 +56,7 @@ export function quarterUnderstandingWithTrust(): Artifact<QuarterUnderstandingAr
 
   content.enrichment_status.trust_signals = {
     available: true,
-    artifact_path: "trust-signals-1",
+    artifact_ref: "trust-signals-1",
     artifact_version: 1,
     absent_reason: null,
   };

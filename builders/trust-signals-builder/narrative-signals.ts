@@ -16,10 +16,10 @@ export function buildNarrativeSignals(context: TrustSignalBuildContext): TrustSi
   }
 
   return [
-    ...[...artifact.content.strategic_priorities ?? []]
+    ...artifact.content.strategic_priorities
       .map((priority) => signalForPriority(context, priority))
       .filter((signal): signal is TrustSignal => signal !== null),
-    ...[...artifact.content.language_shifts ?? []].map((shift) => signalForLanguageShift(context, shift)),
+    ...artifact.content.language_shifts.map((shift) => signalForLanguageShift(context, shift)),
     ...stabilitySignals(context),
   ];
 }
@@ -45,13 +45,11 @@ function signalForPriority(
     period_id: context.periodId,
     rule_ref: ruleRef,
     source_artifact: "narrative_consistency",
-    evidence_refs: [`priority:${priority.priority_id}`],
+    evidence_refs: priority.evidence_refs,
     source_artifact_refs: [sourceRef(artifact)],
     source_record_refs: [priority.priority_id],
     observation: `Strategic priority status observed: ${priority.current_status}.`,
-    confidence: priority.confidence
-      ?? artifact.content.confidence?.overall
-      ?? TRUST_SIGNALS_CALIBRATION.NARRATIVE_RECORD_CONFIDENCE_FALLBACK,
+    confidence: priority.confidence,
   });
 }
 
@@ -70,13 +68,11 @@ function signalForLanguageShift(
     period_id: context.periodId,
     rule_ref: `trust_signals.narrative.language_shift_${shift.shift_magnitude}`,
     source_artifact: "narrative_consistency",
-    evidence_refs: shift.supporting_evidence?.length ? shift.supporting_evidence : [`language_shift:${shift.shift_id}`],
+    evidence_refs: shift.supporting_evidence,
     source_artifact_refs: [sourceRef(artifact)],
     source_record_refs: [shift.shift_id],
     observation: `Language shift observed: ${shift.shift_magnitude}.`,
-    confidence: shift.confidence
-      ?? artifact.content.confidence?.overall
-      ?? TRUST_SIGNALS_CALIBRATION.NARRATIVE_RECORD_CONFIDENCE_FALLBACK,
+    confidence: shift.confidence,
   });
 }
 
@@ -87,7 +83,7 @@ function stabilitySignals(context: TrustSignalBuildContext): TrustSignal[] {
     return [];
   }
 
-  const stablePriorityRatio = artifact.content.summary?.stable_priority_ratio;
+  const stablePriorityRatio = artifact.content.summary.stable_priority_ratio;
 
   if (!Number.isFinite(stablePriorityRatio)) {
     return [];
@@ -99,12 +95,11 @@ function stabilitySignals(context: TrustSignalBuildContext): TrustSignal[] {
       period_id: context.periodId,
       rule_ref: "trust_signals.narrative.stability_high",
       source_artifact: "narrative_consistency",
-      evidence_refs: ["narrative_summary.stable_priority_ratio"],
+      evidence_refs: artifact.content.replayability_metadata.evidence_references,
       source_artifact_refs: [sourceRef(artifact)],
       source_record_refs: ["narrative_summary"],
       observation: "Narrative stability ratio observed as high.",
-      confidence: artifact.content.confidence?.overall
-        ?? TRUST_SIGNALS_CALIBRATION.NARRATIVE_STABILITY_CONFIDENCE_FALLBACK,
+      confidence: artifact.content.confidence.overall,
     })];
   }
 
@@ -114,12 +109,11 @@ function stabilitySignals(context: TrustSignalBuildContext): TrustSignal[] {
       period_id: context.periodId,
       rule_ref: "trust_signals.narrative.stability_low",
       source_artifact: "narrative_consistency",
-      evidence_refs: ["narrative_summary.stable_priority_ratio"],
+      evidence_refs: artifact.content.replayability_metadata.evidence_references,
       source_artifact_refs: [sourceRef(artifact)],
       source_record_refs: ["narrative_summary"],
       observation: "Narrative stability ratio observed as low.",
-      confidence: artifact.content.confidence?.overall
-        ?? TRUST_SIGNALS_CALIBRATION.NARRATIVE_STABILITY_CONFIDENCE_FALLBACK,
+      confidence: artifact.content.confidence.overall,
     })];
   }
 

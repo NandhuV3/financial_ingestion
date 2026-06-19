@@ -14,14 +14,23 @@ export function buildCapitalAllocationSignals(context: TrustSignalBuildContext):
     return [];
   }
 
-  return [...artifact.content.gaps ?? []].map((gap) => signalForGap(context, gap));
+  return artifact.content.gaps
+    .map((gap) => signalForGap(context, gap))
+    .filter((signal): signal is TrustSignal => signal !== null);
 }
 
-function signalForGap(context: TrustSignalBuildContext, gap: CapitalAllocationGapInput): TrustSignal {
+function signalForGap(
+  context: TrustSignalBuildContext,
+  gap: CapitalAllocationGapInput,
+): TrustSignal | null {
   const artifact = context.capitalAllocationTrackingArtifact;
 
   if (artifact === null) {
     throw new BuilderValidationError("Capital Allocation Tracking artifact is required for capital allocation signals.");
+  }
+
+  if (gap.evidence_refs.length === 0) {
+    return null;
   }
 
   return buildTrustSignal({
@@ -29,7 +38,7 @@ function signalForGap(context: TrustSignalBuildContext, gap: CapitalAllocationGa
     period_id: context.periodId,
     rule_ref: ruleForGap(gap.gap_type),
     source_artifact: "capital_allocation_tracking",
-    evidence_refs: gap.evidence_refs.length > 0 ? gap.evidence_refs : [`capital_allocation_gap:${gap.gap_id}`],
+    evidence_refs: gap.evidence_refs,
     source_artifact_refs: [sourceRef(artifact)],
     source_record_refs: [gap.gap_id],
     observation: `Capital allocation gap observed: ${gap.gap_type}.`,

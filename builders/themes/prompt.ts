@@ -1,8 +1,14 @@
-import type { ThemesBuilderInput } from "./types.js";
+import type {
+  FilingEvidenceCatalogEntry,
+  ThemesBuilderInput,
+} from "./types.js";
 
 export const THEMES_PROMPT_ID = "theme-generation-system";
 
-export function buildThemesUserPrompt(input: ThemesBuilderInput): string {
+export function buildThemesUserPrompt(
+  input: ThemesBuilderInput,
+  evidenceCatalog: FilingEvidenceCatalogEntry[],
+): string {
   return `Extract observed themes from this filing.
 
 Company ID: ${input.company_id}
@@ -21,8 +27,7 @@ Return JSON only with this shape:
       "evidence": [
         {
           "section": "filing section or source location",
-          "excerpt_hash": "stable hash or source reference",
-          "paragraph_reference": "optional paragraph reference"
+          "excerpt_hash": "<select an exact excerpt_hash from the evidence catalog>"
         }
       ],
       "frequency": 1
@@ -36,8 +41,13 @@ Rules:
 - Do not generate concept IDs.
 - Do not infer business impact, sentiment, valuation, trust, recommendations, or investor conclusions.
 - Every theme must include at least one evidence item.
+- Use only excerpt_hash values supplied in the evidence catalog.
+- Never create, shorten, transform, or guess an excerpt_hash.
+- The platform owns section and paragraph_reference metadata. Return the selected excerpt_hash; platform metadata replaces any model-supplied location metadata.
+
+Evidence catalog:
+${JSON.stringify(evidenceCatalog, null, 2)}
 
 Filing content:
 ${input.filing_content}`;
 }
-

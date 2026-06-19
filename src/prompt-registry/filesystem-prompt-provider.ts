@@ -22,6 +22,12 @@ import {
   INVESTOR_Q4_SYSTEM_PROMPT,
   INVESTOR_Q5_SYSTEM_PROMPT,
 } from "./investor-intelligence-prompts.js";
+import {
+  QUARTER_UNDERSTANDING_PROMPT_ID,
+} from "../../builders/quarter-understanding-builder/contract.js";
+import {
+  QUARTER_UNDERSTANDING_SYSTEM_PROMPT,
+} from "./quarter-understanding-prompt.js";
 import { THEME_SYSTEM_PROMPT } from "../themes/theme-input.js";
 import { calculatePromptHash } from "./prompt-hash.js";
 import type { PromptProvider, ResolvedPrompt } from "./prompt.types.js";
@@ -41,6 +47,10 @@ const prompts: Record<string, Omit<ResolvedPrompt, "promptId" | "source" | "hash
   [STRUCTURED_INTELLIGENCE_BUILDER_PROMPT_ID]: {
     version: "structured-intelligence-builder-v1",
     content: STRUCTURED_INTELLIGENCE_BUILDER_SYSTEM_PROMPT,
+  },
+  [QUARTER_UNDERSTANDING_PROMPT_ID]: {
+    version: "quarter-understanding-v1",
+    content: QUARTER_UNDERSTANDING_SYSTEM_PROMPT,
   },
   [INVESTOR_Q1_PROMPT_ID]: {
     version: "investor-q1-v1",

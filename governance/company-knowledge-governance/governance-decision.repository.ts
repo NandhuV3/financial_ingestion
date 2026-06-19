@@ -1,6 +1,7 @@
 import type { Artifact } from "../../contracts/artifacts/artifact.js";
 import type { ArtifactLineage } from "../../contracts/artifacts/artifact-lineage.js";
 import { ArtifactService } from "../../packages/artifact-framework/src/artifact-service.js";
+import type { ReservedArtifactId } from "../../packages/artifact-framework/src/artifact-types.js";
 import {
   GOVERNANCE_DECISION_PIPELINE_VERSION,
   GOVERNANCE_DECISION_SCHEMA_VERSION,
@@ -15,7 +16,7 @@ export class GovernanceDecisionRepository {
     lineage: ArtifactLineage,
     inputHash: string,
     generatedAt: string,
-    artifactId?: string,
+    artifactId?: ReservedArtifactId,
   ): Promise<Artifact<GovernanceDecisionContent>> {
     return this.artifactService.createArtifact({
       artifact_id: artifactId,

@@ -1,6 +1,9 @@
 import type { Artifact } from "../../contracts/artifacts/artifact.js";
 import { BuilderDependencyError, BuilderValidationError } from "../../packages/builder-framework/src/builder-errors.js";
-import { TRUST_SIGNALS_CALIBRATION } from "./calibration-contract.js";
+import {
+  TRUST_SIGNALS_CALIBRATION,
+  TRUST_SIGNALS_CALIBRATION_VERSION,
+} from "./calibration-contract.js";
 import {
   DEPTH_LEVELS,
   PILLAR_ARTIFACT_TYPES,
@@ -8,6 +11,8 @@ import {
   SIGNAL_LIFECYCLE_STATUSES,
   SIGNAL_SEVERITIES,
   TRUST_DIMENSIONS,
+  TRUST_SIGNALS_RULE_VERSION,
+  TRUST_SIGNALS_SCHEMA_VERSION,
   TRUST_SIGNAL_TYPES,
   type TrustDimension,
   type TrustPillarArtifactType,
@@ -24,12 +29,15 @@ import type {
 export function validateTrustSignalsBuilderInput(input: TrustSignalsBuilderInput): void {
   requireText(input.company_id, "company_id");
   requireText(input.period_id, "period_id");
+  requireText(input.generated_at, "generated_at");
 }
 
 export function optionalPillarDependency<T>(
   artifact: Artifact<unknown> | undefined,
   dependencyName: string,
   artifactType: TrustPillarArtifactType,
+  companyId: string,
+  periodId: string,
 ): Artifact<T> | null {
   if (artifact === undefined) {
     return null;
@@ -40,6 +48,24 @@ export function optionalPillarDependency<T>(
       `Trust Signals Builder dependency ${dependencyName} must be ${artifactType}.`,
     );
   }
+  if (artifact.identity.company_id !== companyId) {
+    throw new BuilderDependencyError(
+      `Trust Signals Builder dependency ${dependencyName} company must match the build target.`,
+    );
+  }
+  if (artifact.identity.period_id !== periodId) {
+    throw new BuilderDependencyError(
+      `Trust Signals Builder dependency ${dependencyName} period must match the build target.`,
+    );
+  }
+
+  validatePillarContentIdentity(
+    artifact as Artifact<unknown>,
+    artifactType,
+    companyId,
+    periodId,
+    dependencyName,
+  );
 
   return artifact as Artifact<T>;
 }
@@ -54,8 +80,11 @@ export function validateAtLeastOnePillar(dependencies: Record<string, Artifact<u
 }
 
 export function validateTrustSignalsArtifactContent(content: TrustSignalsArtifactContent): void {
-  requireText(content.company_id, "trust_signals.company_id");
-  requireText(content.period_id, "trust_signals.period_id");
+  if (content.artifact_type !== "trust_signals") {
+    throw new BuilderValidationError("trust_signals.artifact_type is invalid.");
+  }
+  requireText(content.company, "trust_signals.company");
+  requireText(content.period, "trust_signals.period");
 
   if (!Array.isArray(content.trust_signals)) {
     throw new BuilderValidationError("trust_signals.trust_signals must be an array.");
@@ -73,6 +102,7 @@ export function validateTrustSignalsArtifactContent(content: TrustSignalsArtifac
   validateSummary(content);
   validateConfidence(content);
   validateEvaluationHooks(content);
+  validateReplayability(content);
 }
 
 function validateSignal(signal: TrustSignal, index: number, content: TrustSignalsArtifactContent): void {
@@ -81,6 +111,11 @@ function validateSignal(signal: TrustSignal, index: number, content: TrustSignal
   requireText(signal.period_id, `trust_signals[${index}].period_id`);
   requireText(signal.observation, `trust_signals[${index}].observation`);
   requireText(signal.rule_ref, `trust_signals[${index}].rule_ref`);
+  if (signal.company_id !== content.company || signal.period_id !== content.period) {
+    throw new BuilderValidationError(
+      `trust_signals[${index}] company and period must match artifact content.`,
+    );
+  }
 
   if (!TRUST_SIGNAL_TYPES.includes(signal.signal_type)) {
     throw new BuilderValidationError(`trust_signals[${index}].signal_type is invalid.`);
@@ -173,6 +208,17 @@ function validateDimensionAvailability(
   if (!status.available) {
     throw new BuilderValidationError(`trust_signals[${index}] cannot emit ${signal.dimension} without owning pillar.`);
   }
+  if (
+    !signal.source_artifact_refs.some(
+      (source) =>
+        source.artifact_id === status.artifact_ref
+        && source.artifact_version === status.artifact_version,
+    )
+  ) {
+    throw new BuilderValidationError(
+      `trust_signals[${index}] source artifact does not match enrichment status.`,
+    );
+  }
 }
 
 function statusForSignal(signal: TrustSignal, content: TrustSignalsArtifactContent): EnrichmentInputStatus {
@@ -213,7 +259,7 @@ function validateEnrichmentInputStatus(status: EnrichmentInputStatus, field: str
   }
 
   if (status.available) {
-    requireText(status.artifact_path, `${field}.artifact_path`);
+    requireText(status.artifact_ref, `${field}.artifact_ref`);
 
     if (!Number.isSafeInteger(status.artifact_version) || status.artifact_version === null || status.artifact_version <= 0) {
       throw new BuilderValidationError(`${field}.artifact_version must be a positive integer when available.`);
@@ -226,8 +272,8 @@ function validateEnrichmentInputStatus(status: EnrichmentInputStatus, field: str
     return;
   }
 
-  if (status.artifact_path !== null && status.artifact_path !== undefined) {
-    throw new BuilderValidationError(`${field}.artifact_path must be absent when unavailable.`);
+  if (status.artifact_ref !== null && status.artifact_ref !== undefined) {
+    throw new BuilderValidationError(`${field}.artifact_ref must be absent when unavailable.`);
   }
 
   if (status.artifact_version !== null && status.artifact_version !== undefined) {
@@ -349,6 +395,98 @@ function validateEvaluationHooks(content: TrustSignalsArtifactContent): void {
   }
 }
 
+function validateReplayability(content: TrustSignalsArtifactContent): void {
+  const replay = content.replayability_metadata;
+  if (
+    replay.schema_version !== TRUST_SIGNALS_SCHEMA_VERSION
+    || replay.calibration_version !== TRUST_SIGNALS_CALIBRATION_VERSION
+    || replay.rule_version !== TRUST_SIGNALS_RULE_VERSION
+  ) {
+    throw new BuilderValidationError(
+      "trust_signals.replayability_metadata versions are invalid.",
+    );
+  }
+  requireText(
+    replay.generated_at,
+    "trust_signals.replayability_metadata.generated_at",
+  );
+  if (
+    replay.source_artifact_references.length
+      !== replay.source_artifact_versions.length
+    || replay.source_artifact_versions.some(
+      (version) => !Number.isSafeInteger(version) || version <= 0,
+    )
+  ) {
+    throw new BuilderValidationError(
+      "Trust Signals replayability source references and versions must align.",
+    );
+  }
+
+  requireStringArray(
+    replay.source_artifact_references,
+    "trust_signals.replayability_metadata.source_artifact_references",
+  );
+  requireStringArray(
+    replay.source_record_references,
+    "trust_signals.replayability_metadata.source_record_references",
+  );
+  requireStringArray(
+    replay.evidence_references,
+    "trust_signals.replayability_metadata.evidence_references",
+  );
+
+  const sourcePairs = Object.values(content.enrichment_status)
+    .filter((status) => status.available)
+    .map((status) => ({
+      ref: status.artifact_ref!,
+      version: status.artifact_version!,
+    }))
+    .sort(
+    (left, right) =>
+      left.ref.localeCompare(right.ref) || left.version - right.version,
+  );
+  assertStringArraysEqual(
+    replay.source_artifact_references,
+    sourcePairs.map(({ ref }) => ref),
+    "Replayability source artifact references",
+  );
+  if (
+    replay.source_artifact_versions.some(
+      (version, index) => version !== sourcePairs[index]?.version,
+    )
+  ) {
+    throw new BuilderValidationError(
+      "Replayability source artifact versions do not reconcile.",
+    );
+  }
+  assertStringArraysEqual(
+    replay.source_record_references,
+    sortedUnique(
+      content.trust_signals.flatMap((signal) => signal.source_record_refs),
+    ),
+    "Replayability source record references",
+  );
+  assertStringArraysEqual(
+    replay.evidence_references,
+    sortedUnique(
+      content.trust_signals.flatMap((signal) => signal.evidence_refs),
+    ),
+    "Replayability evidence references",
+  );
+  if (
+    JSON.stringify(replay.enrichment_status)
+      !== JSON.stringify(content.enrichment_status)
+    || JSON.stringify(replay.depth_indicators)
+      !== JSON.stringify(content.depth_indicator)
+    || JSON.stringify(replay.evaluation_hooks)
+      !== JSON.stringify(content.evaluation_hooks)
+  ) {
+    throw new BuilderValidationError(
+      "Trust Signals replayability metadata does not reconcile.",
+    );
+  }
+}
+
 function validateForbiddenLanguage(value: string, field: string): void {
   const forbiddenPatterns = [
     /\bmanagement (appears|is|seems|looks) (un)?reliable\b/i,
@@ -392,5 +530,53 @@ function requireNonEmptyStringArray(value: unknown, field: string): void {
 
   for (const item of value) {
     requireText(item, field);
+  }
+}
+
+function requireStringArray(value: unknown, field: string): void {
+  if (!Array.isArray(value)) {
+    throw new BuilderValidationError(`${field} must be an array.`);
+  }
+  for (const item of value) {
+    requireText(item, field);
+  }
+}
+
+function sortedUnique(values: string[]): string[] {
+  return [...new Set(values)].sort();
+}
+
+function assertStringArraysEqual(
+  actual: string[],
+  expected: string[],
+  field: string,
+): void {
+  if (
+    actual.length !== expected.length
+    || actual.some((value, index) => value !== expected[index])
+  ) {
+    throw new BuilderValidationError(`${field} do not reconcile.`);
+  }
+}
+
+function validatePillarContentIdentity(
+  artifact: Artifact<unknown>,
+  artifactType: TrustPillarArtifactType,
+  companyId: string,
+  periodId: string,
+  dependencyName: string,
+): void {
+  const content = artifact.content as Record<string, unknown>;
+  const contentCompany = artifactType === "capital_allocation_tracking"
+    ? content.company_id
+    : content.company;
+  const contentPeriod = artifactType === "capital_allocation_tracking"
+    ? content.period_id
+    : content.period;
+
+  if (contentCompany !== companyId || contentPeriod !== periodId) {
+    throw new BuilderDependencyError(
+      `Trust Signals Builder dependency ${dependencyName} content identity must match the build target.`,
+    );
   }
 }
