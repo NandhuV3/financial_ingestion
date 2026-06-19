@@ -281,7 +281,7 @@ type UpstreamArtifacts = {
 ```typescript
 type QuarterUnderstandingEnrichmentArtifacts = {
   trust_signals?:
-    TrustSignalArtifact[];
+    TrustSignalsArtifactContent;
 
   topic_evolution?:
     TopicEvolutionArtifact;
@@ -439,6 +439,12 @@ used for execution.
 
 Failure to resolve the governed prompt causes build failure.
 
+The pinned model version is supplied by the governed Builder Framework job
+execution configuration defined by 062-job-execution-spec.md.
+
+The resolved model version must be recorded in prompt lineage. A missing model
+version causes build failure.
+
 ---
 
 # Step 4
@@ -595,21 +601,21 @@ identified by governed prompt-based interpretation.
 # Output
 
 ```typescript
-type ConceptProposal = {
-  proposal_id: string;
+type ProposedConcept = {
+  proposed_concept_id: string;
 
   title: string;
 
-  definition: string;
+  description: string;
 
-  topic_ref: string;
+  evidence_refs: string[];
 
   rationale: string;
-
-  source_artifact:
-    string;
 };
 ```
+
+Prompt-emitted proposed concepts are copied directly into
+`artifact.proposed_concepts`.
 
 ---
 
@@ -654,6 +660,12 @@ Confidence Calculation
 # Ownership
 
 Builder owns confidence.
+
+The active confidence calculation source is:
+
+```text
+builders/quarter-understanding-builder/calibration-contract.ts
+```
 
 ---
 
@@ -721,6 +733,16 @@ Artifact Content Assembly
 
 ---
 
+# Pre-Assembly Metadata
+
+Before artifact content assembly, the builder creates evaluation hooks,
+evaluation metadata, and replayability metadata.
+
+Step 12 emits the already-assembled hooks and metadata to Evaluation
+Architecture; it does not create them after persistence.
+
+---
+
 # Output
 
 ```typescript
@@ -749,6 +771,9 @@ type QuarterUnderstandingArtifactContent = {
 
   evaluation_hooks:
     QuarterUnderstandingEvaluationHooks;
+
+  replayability_metadata:
+    QuarterUnderstandingReplayabilityMetadata;
 };
 ```
 
@@ -779,7 +804,7 @@ Dependency Index owns dependency registration and graph state.
 ```typescript
 type EnrichmentInputStatus = {
   available: boolean;
-  artifact_path: string | null;
+  artifact_ref: string | null;
   artifact_version: number | null;
   absent_reason: string | null;
 };
@@ -832,12 +857,14 @@ Artifact Store
 ```text
 Artifact
 
-Concept Proposals
-
 Lineage
 
 Metadata
 ```
+
+Concept proposals are persisted as `artifact.proposed_concepts`.
+
+No separate concept-proposal write payload is produced.
 
 ---
 
@@ -1162,6 +1189,11 @@ Calibration Contract Version
 # Replayability Metadata Schema
 
 ```typescript
+type QuarterUnderstandingEvaluationMetadata =
+  Record<string, unknown>;
+```
+
+```typescript
 type QuarterUnderstandingReplayabilityMetadata = {
   prompt_lineage: PromptLineage;
 
@@ -1176,6 +1208,8 @@ type QuarterUnderstandingReplayabilityMetadata = {
   output_hash: string;
 
   evaluation_hooks: QuarterUnderstandingEvaluationHooks;
+
+  evaluation_metadata: QuarterUnderstandingEvaluationMetadata;
 
   enrichment_status: EnrichmentStatus;
 

@@ -513,17 +513,20 @@ Prompt does NOT generate confidence.
 
 ```typescript
 type Q3Confidence = {
-  commitment_coverage: number;
+  trust_interpretation_coverage: number;
 
   historical_depth: number;
 
-  signal_strength: number;
+  trust_interpretation_strength: number;
 
   evidence_density: number;
 
   overall: number;
 };
 ```
+
+All Q3 confidence inputs derive from Quarter Understanding trust interpretation,
+with historical context from Prior Investor Intelligence when available.
 
 ---
 

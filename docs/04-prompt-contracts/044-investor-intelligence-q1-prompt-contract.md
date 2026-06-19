@@ -356,6 +356,10 @@ How management positions
 the business.
 ```
 
+```typescript
+type CompetitiveContext = string;
+```
+
 ---
 
 # Important Rule

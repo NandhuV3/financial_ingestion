@@ -433,6 +433,9 @@ Capital Discipline
 
 ```typescript
 type ChangeCondition = {
+  condition_type:
+    ConditionType;
+
   title: string;
 
   description: string;
@@ -449,6 +452,18 @@ type ChangeCondition = {
 
   signal_to_watch: string;
 };
+```
+
+```typescript
+type ConditionType =
+  | "revenue_model_change"
+  | "trust_deterioration"
+  | "competitive_displacement"
+  | "valuation_threshold"
+  | "management_change"
+  | "regulatory_change"
+  | "capital_allocation_shift"
+  | "strategic_priority_abandonment";
 ```
 
 ---

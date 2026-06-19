@@ -379,16 +379,16 @@ type UpstreamArtifacts = {
     QuarterUnderstandingArtifact;
 
   business_signals:
-    BusinessSignalsArtifact | null;
+    BusinessSignalsArtifactContent | null;
 
   topic_evolution:
     TopicEvolutionArtifact | null;
 
   prior_investor_intelligence:
-    InvestorIntelligenceArtifact | null;
+    InvestorIntelligenceArtifactContent | null;
 
   market_data:
-    MarketDataArtifact | null;
+    unknown | null;
 };
 ```
 
@@ -485,6 +485,10 @@ Quarter Understanding
 Company Knowledge
 
 Quarter Understanding
+
+Business Signals, when available
+
+Topic Evolution, when available
 ```
 
 ---
@@ -493,6 +497,9 @@ Quarter Understanding
 
 ```text
 Quarter Understanding trust interpretation
+
+Prior Investor Intelligence, when available, for historical comparison,
+trend tracking, longitudinal context, and prior Q3 comparison only
 ```
 
 Q3 may not consume:
@@ -506,11 +513,16 @@ Raw trust evidence
 
 Quarter Understanding is the sole trust interpretation source.
 
+Prior Investor Intelligence must not independently ground or alter trust
+interpretation.
+
 ---
 
 # Q4 Context
 
 ```text
+Company Knowledge
+
 Q1
 
 Q2
@@ -556,6 +568,17 @@ Q5 must:
 
 Violation of any rule is a builder failure.
 
+Q5 prompt execution consumes Q1-Q4 only.
+
+After prompt parsing, the builder determines Q5 status:
+
+```text
+partial
+```
+
+only when Historical Investor Intelligence or Topic Evolution enrichment is
+unavailable. Q4 insufficient-data status alone does not produce partial status.
+
 ---
 
 # Prompt Resolution
@@ -583,6 +606,16 @@ resolvePrompt(
 ```typescript
 resolvePrompt("investor_q1");
 ```
+
+---
+
+# Model Resolution
+
+The pinned model version is supplied by the governed Builder Framework job
+execution configuration defined by 062-job-execution-spec.md.
+
+The same resolved model version is recorded in each question's prompt lineage.
+A missing model version causes build failure.
 
 ---
 
@@ -810,6 +843,16 @@ Assemble Artifact Content
 
 ---
 
+# Pre-Assembly Metadata
+
+Before artifact content assembly, the builder creates evaluation hooks,
+evaluation metadata, and replayability metadata.
+
+Step 18 emits the already-assembled hooks and metadata to Evaluation
+Architecture; it does not create them after persistence.
+
+---
+
 # Output
 
 ```typescript
@@ -864,6 +907,9 @@ type InvestorIntelligenceArtifactContent = {
 
   evaluation_hooks:
     InvestorIntelligenceEvaluationHooks;
+
+  replayability_metadata:
+    InvestorIntelligenceReplayabilityMetadata;
 };
 ```
 
@@ -909,6 +955,12 @@ Compute Confidence
 # Ownership
 
 Builder owns confidence.
+
+The active confidence calculation source is:
+
+```text
+builders/investor-intelligence-builder/confidence-contract.ts
+```
 
 ---
 
@@ -1258,6 +1310,19 @@ Q5
 # Replayability Metadata Schema
 
 ```typescript
+type ModelVersions = {
+  q1: string;
+  q2: string;
+  q3: string;
+  q4: string;
+  q5: string;
+};
+
+type InvestorIntelligenceEvaluationMetadata =
+  Record<string, unknown>;
+```
+
+```typescript
 type InvestorIntelligenceReplayabilityMetadata = {
   prompt_lineage: InvestorPromptLineage;
 
@@ -1301,6 +1366,26 @@ type InvestorIntelligenceReplayabilityMetadata = {
 
 This structure is content-level replayability metadata owned by Investor
 Intelligence Builder.
+
+`replayability_metadata` is the source of truth for replayability values.
+
+For compatibility, duplicated top-level fields must equal their corresponding
+replayability values:
+
+```text
+prompt_lineage = replayability_metadata.prompt_lineage
+
+per_question_input_hashes =
+  replayability_metadata.per_question_input_hashes
+
+coherence_hash = replayability_metadata.coherence_hash
+
+enrichment_status = replayability_metadata.enrichment_status
+
+depth_indicator = replayability_metadata.depth_indicators
+```
+
+Any mismatch causes artifact validation failure.
 
 It is not Artifact Framework lineage.
 
@@ -1379,7 +1464,21 @@ Wait
 Prompt Failure:
 
 ```text
-Retry
+Maximum attempts = 3
+
+Retryable:
+Transient Failure
+Infrastructure Failure
+Timeout
+
+Not retryable:
+Schema Failure
+Validation Failure
+Governance Failure
+
+After attempts are exhausted:
+Return QUESTION_EXECUTION_FAILURE
+Do not assemble or persist artifact content
 ```
 
 Boundary Violation:

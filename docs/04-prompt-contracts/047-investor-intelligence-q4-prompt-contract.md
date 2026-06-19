@@ -300,14 +300,7 @@ External Opinion Contamination
 # Output Contract
 
 ```typescript
-type Q4Answer = {
-  status:
-    | "answered"
-    | "insufficient_data";
-
-  absent_reason?:
-    Q4AbsentReason;
-
+type Q4AnswerContent = {
   valuation_summary: string;
 
   valuation_supports:
@@ -321,6 +314,19 @@ type Q4Answer = {
   evidence_package:
     Q4EvidencePackage;
 };
+
+type Q4Answer =
+  Q4AnswerContent
+  & (
+    | {
+        status: "answered";
+        absent_reason?: never;
+      }
+    | {
+        status: "insufficient_data";
+        absent_reason: Q4AbsentReason;
+      }
+  );
 ```
 
 ```typescript

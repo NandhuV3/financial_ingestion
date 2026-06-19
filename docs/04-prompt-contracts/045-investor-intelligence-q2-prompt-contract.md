@@ -242,6 +242,9 @@ type Q2Answer = {
   revenue_direction:
     RevenueDirection;
 
+  limitations:
+    string[];
+
   confidence: null;
 
   evidence_package:
@@ -313,7 +316,11 @@ Every driver must trace to:
 Company Knowledge
 
 Quarter Understanding
+```
 
+When used, enrichment evidence must trace to:
+
+```text
 Business Signals
 
 Topic Evolution
@@ -437,10 +444,11 @@ type RevenueDirection =
 Must be supported by:
 
 ```text
-Business Signals
-
 Quarter Understanding
 ```
+
+When Business Signals are available and used, revenue direction must also
+reference them.
 
 ---
 
@@ -512,7 +520,11 @@ Every growth claim must trace to:
 Company Knowledge
 
 Quarter Understanding
+```
 
+When used, enrichment evidence must trace to:
+
+```text
 Business Signals
 
 Topic Evolution
@@ -588,7 +600,7 @@ Most Material Constraints
 
 # Topic Evolution Usage
 
-Required.
+When available.
 
 ---
 
@@ -613,8 +625,16 @@ of themes.
 When Topic Evolution is unavailable:
 
 ```text
-Record limitation.
+Record limitation in limitations[].
 ```
+
+When Business Signals are unavailable:
+
+```text
+Record limitation in limitations[].
+```
+
+Missing enrichment must not cause prompt failure.
 
 ---
 
@@ -817,7 +837,7 @@ Creates ownership theses
 
 Uses unsupported growth drivers
 
-Ignores Topic Evolution
+Ignores available Topic Evolution without recording a limitation
 
 Produces recommendation language
 
