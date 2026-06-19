@@ -37,15 +37,46 @@ export function buildConfidence(
 }
 
 function uniqueRecords(sources: ResolvedCommitmentSource[]): CommitmentSourceRecord[] {
-  const records = new Map<string, CommitmentSourceRecord>();
+  const records = new Map<
+    string,
+    Array<{ period: string; record: CommitmentSourceRecord }>
+  >();
 
   for (const source of sources) {
     for (const record of source.artifact.content.commitment_records) {
-      records.set(record.commitment_id, record);
+      const grouped = records.get(record.commitment_id) ?? [];
+      grouped.push({
+        period: source.declaration.period_id,
+        record,
+      });
+      records.set(record.commitment_id, grouped);
     }
   }
 
-  return [...records.values()];
+  return [...records.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([commitmentId, grouped]) => {
+      const ordered = [...grouped].sort(
+        (left, right) => left.period.localeCompare(right.period),
+      );
+      const latest = ordered.at(-1)!.record;
+
+      return {
+        ...latest,
+        commitment_id: commitmentId,
+        confidence: {
+          extraction_confidence: average(
+            ordered.map(({ record }) => record.confidence.extraction_confidence),
+          ),
+          linkage_confidence: average(
+            ordered.map(({ record }) => record.confidence.linkage_confidence),
+          ),
+          resolution_confidence: average(
+            ordered.map(({ record }) => record.confidence.resolution_confidence),
+          ),
+        },
+      };
+    });
 }
 
 function historyDepthScore(periods: number): number {

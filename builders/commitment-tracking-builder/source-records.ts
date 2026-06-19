@@ -48,17 +48,49 @@ export function assertSourceRecordAgreement(
     }
   }
 
-  if (JSON.stringify(left.identity_basis) !== JSON.stringify(right.identity_basis)) {
+  if (!sameIdentityBasis(left.identity_basis, right.identity_basis)) {
     throw new BuilderValidationError(
       `Commitment ${left.commitment_id} has conflicting identity basis across sources.`,
     );
   }
 
-  if (JSON.stringify(left.resolution) !== JSON.stringify(right.resolution)) {
+  if (!sameResolution(left.resolution, right.resolution)) {
     throw new BuilderValidationError(
       `Commitment ${left.commitment_id} has conflicting resolution across sources.`,
     );
   }
+}
+
+function sameIdentityBasis(
+  left: CommitmentSourceRecord["identity_basis"],
+  right: CommitmentSourceRecord["identity_basis"],
+): boolean {
+  return left.company_id === right.company_id
+    && left.commitment_type === right.commitment_type
+    && left.canonical_statement === right.canonical_statement
+    && left.initial_commitment_period === right.initial_commitment_period
+    && left.expected_resolution_period === right.expected_resolution_period
+    && left.creation_evidence_ref === right.creation_evidence_ref
+    && left.identity_rule_version === right.identity_rule_version;
+}
+
+function sameResolution(
+  left: CommitmentSourceRecord["resolution"],
+  right: CommitmentSourceRecord["resolution"],
+): boolean {
+  if (left === null || right === null) {
+    return left === right;
+  }
+
+  return left.result === right.result
+    && left.assessed_period === right.assessed_period
+    && left.rule_version === right.rule_version
+    && sameStringSet(left.evidence_refs, right.evidence_refs);
+}
+
+function sameStringSet(left: string[], right: string[]): boolean {
+  return left.length === right.length
+    && [...left].sort().every((value, index) => value === [...right].sort()[index]);
 }
 
 export function buildCommitmentEvidence(

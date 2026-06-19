@@ -154,7 +154,14 @@ describe("commitment tracking builder", () => {
   it("derives overdue timing without changing lifecycle status", async () => {
     const record = sourceRecord({
       status: "active",
-      expected_resolution_passed: true,
+      commitment_period: "2025-Q4",
+      expected_resolution_period: "2026-Q1",
+      expected_resolution_passed: false,
+      identity_basis: {
+        ...sourceRecord().identity_basis,
+        initial_commitment_period: "2025-Q4",
+        expected_resolution_period: "2026-Q1",
+      },
       evidence: [
         sourceRecord().evidence[0]!,
         {
@@ -184,6 +191,234 @@ describe("commitment tracking builder", () => {
     assert.equal(evidence?.source_artifact_version, 1);
     assert.equal(evidence?.source_record_ref, "filing-2026-q2:item2:commitment-1");
     assert.equal(evidence?.filing_period, "2026-Q2");
+  });
+
+  it("carries unresolved prior commitments forward when current sources omit them", async () => {
+    const unrelatedRecord = sourceRecord({
+      commitment_id: "commitment-product-launch",
+      commitment_type: "product_launch",
+      statement: "Launch the next product release.",
+      commitment_period: "2026-Q3",
+      expected_resolution_period: "2026-Q4",
+      identity_basis: {
+        company_id: "MSFT",
+        commitment_type: "product_launch",
+        canonical_statement: "Launch the next product release.",
+        initial_commitment_period: "2026-Q3",
+        expected_resolution_period: "2026-Q4",
+        creation_evidence_ref: "evidence-product-launch-created",
+        identity_rule_version: "commitment-tracking-rules-v1",
+      },
+      evidence: [
+        {
+          evidence_id: "evidence-product-launch-created",
+          source_record_ref: "filing-2026-q3:item2:commitment-2",
+          evidence_text: "We plan to launch the next product release by Q4.",
+          evidence_role: "creation",
+          confidence: 0.88,
+        },
+      ],
+    });
+    const result = await execute(
+      new TestArtifactRepository(),
+      {
+        current_filing: sourceArtifact([unrelatedRecord], {
+          artifactId: "filing-2026-q3",
+          periodId: "2026-Q3",
+        }),
+        prior_commitment_tracking: priorCommitmentArtifact(),
+      },
+      inputForPeriod("2026-Q3"),
+    );
+
+    assert.deepEqual(
+      result.content.commitments.map((commitment) => commitment.commitment_id),
+      ["commitment-ai-capacity", "commitment-product-launch"],
+    );
+    assert.equal(
+      result.content.commitments.find(
+        (commitment) => commitment.commitment_id === "commitment-ai-capacity",
+      )?.timeline.length,
+      1,
+    );
+  });
+
+  it("rejects source artifacts from another company", async () => {
+    const source = sourceArtifact();
+    source.identity.company_id = "AAPL";
+
+    await assert.rejects(
+      execute(new TestArtifactRepository(), { current_filing: source }),
+      BuilderDependencyError,
+    );
+  });
+
+  it("rejects source artifacts whose period differs from the declaration", async () => {
+    const source = sourceArtifact([], { periodId: "2026-Q1" });
+
+    await assert.rejects(
+      execute(new TestArtifactRepository(), { current_filing: source }),
+      BuilderDependencyError,
+    );
+  });
+
+  it("is stable when equivalent source dependencies are reordered", async () => {
+    const filingRecord = sourceRecord();
+    const callRecord = sourceRecord({
+      evidence: [
+        {
+          evidence_id: "evidence-ai-capacity-call",
+          source_record_ref: "call-2026-q2:commitment-1",
+          evidence_text: "The AI datacenter capacity expansion remains planned.",
+          evidence_role: "confirmation",
+          confidence: 0.85,
+        },
+      ],
+      confidence: {
+        extraction_confidence: 0.8,
+        linkage_confidence: 0,
+        resolution_confidence: 0,
+      },
+    });
+    const dependencies = {
+      current_filing: sourceArtifact([filingRecord]),
+      current_call: sourceArtifact([callRecord], {
+        artifactId: "call-2026-q2",
+      }),
+    };
+    const firstInput = builderInput({
+      source_dependencies: [
+        {
+          dependency_name: "current_filing",
+          period_id: "2026-Q2",
+          source_type: "10Q",
+          artifact_type: "filing",
+          absent_reason: null,
+        },
+        {
+          dependency_name: "current_call",
+          period_id: "2026-Q2",
+          source_type: "earnings_call",
+          artifact_type: "filing",
+          absent_reason: null,
+        },
+      ],
+    });
+    const secondInput = builderInput({
+      source_dependencies: [...firstInput.source_dependencies].reverse(),
+    });
+    const first = await execute(new TestArtifactRepository(), dependencies, firstInput);
+    const second = await execute(new TestArtifactRepository(), dependencies, secondInput);
+
+    assert.deepEqual(first.content, second.content);
+  });
+
+  it("preserves artifact/version pairing across multi-period source history", async () => {
+    const historical = sourceArtifact([sourceRecord()], {
+      artifactId: "filing-shared",
+      periodId: "2026-Q2",
+    });
+    const current = sourceArtifact([
+      sourceRecord({
+        status: "active",
+        evidence: [
+          {
+            evidence_id: "evidence-ai-capacity-q3-confirmed",
+            source_record_ref: "filing-2026-q3:item2:commitment-1",
+            evidence_text: "The capacity expansion remains active.",
+            evidence_role: "confirmation",
+            confidence: 0.92,
+          },
+        ],
+        confidence: {
+          extraction_confidence: 0.9,
+          linkage_confidence: 0.91,
+          resolution_confidence: 0,
+        },
+      }),
+    ], {
+      artifactId: "filing-shared",
+      periodId: "2026-Q3",
+    });
+    current.identity.version = 2;
+    current.metadata.version = 2;
+    const input = builderInput({
+      period_id: "2026-Q3",
+      source_dependencies: [
+        {
+          dependency_name: "historical_filing",
+          period_id: "2026-Q2",
+          source_type: "10Q",
+          artifact_type: "filing",
+          absent_reason: null,
+        },
+        {
+          dependency_name: "current_filing",
+          period_id: "2026-Q3",
+          source_type: "10Q",
+          artifact_type: "filing",
+          absent_reason: null,
+        },
+      ],
+    });
+    const result = await execute(
+      new TestArtifactRepository(),
+      {
+        historical_filing: historical,
+        current_filing: current,
+      },
+      input,
+    );
+
+    assert.deepEqual(
+      result.content.commitments[0]?.timeline.map((event) => event.status),
+      ["new", "active"],
+    );
+    assert.deepEqual(
+      result.content.replayability_metadata.source_artifact_references,
+      ["filing-shared", "filing-shared"],
+    );
+    assert.deepEqual(
+      result.content.replayability_metadata.source_artifact_versions,
+      [1, 2],
+    );
+  });
+
+  it("uses current-period evidence for the current timeline event", async () => {
+    const activeRecord = sourceRecord({
+      status: "active",
+      evidence: [
+        sourceRecord().evidence[0]!,
+        {
+          evidence_id: "evidence-ai-capacity-q3-confirmed",
+          source_record_ref: "filing-2026-q3:item2:commitment-1",
+          evidence_text: "The capacity expansion remains active.",
+          evidence_role: "confirmation",
+          confidence: 0.92,
+        },
+      ],
+      confidence: {
+        extraction_confidence: 0.9,
+        linkage_confidence: 0.9,
+        resolution_confidence: 0,
+      },
+    });
+    const result = await execute(
+      new TestArtifactRepository(),
+      {
+        current_filing: sourceArtifact([activeRecord], {
+          artifactId: "filing-2026-q3",
+          periodId: "2026-Q3",
+        }),
+        prior_commitment_tracking: priorCommitmentArtifact(),
+      },
+      inputForPeriod("2026-Q3"),
+    );
+    const currentEvent = result.content.commitments[0]?.timeline.find(
+      (event) => event.period === "2026-Q3",
+    );
+
+    assert.equal(currentEvent?.evidence_ref, "evidence-ai-capacity-q3-confirmed");
   });
 
   it("rejects a stable identity basis change", async () => {
@@ -292,6 +527,39 @@ describe("commitment tracking builder", () => {
 
     assert.throws(
       () => validateCommitmentTrackingArtifactContent(replayMismatch),
+      BuilderValidationError,
+    );
+
+    const referenceMismatch = validFirstPopulationContent();
+    referenceMismatch.replayability_metadata.evidence_references = ["unknown-evidence"];
+
+    assert.throws(
+      () => validateCommitmentTrackingArtifactContent(referenceMismatch),
+      BuilderValidationError,
+    );
+  });
+
+  it("rejects malformed prior artifacts before lifecycle processing", async () => {
+    const prior = priorCommitmentArtifact();
+    prior.content.commitments[0]!.resolution = {
+      result: "fulfilled",
+      assessed_period: "2026-Q2",
+      evidence_refs: ["evidence-ai-capacity-created"],
+      rule_version: "commitment-tracking-rules-v1",
+    };
+
+    await assert.rejects(
+      execute(
+        new TestArtifactRepository(),
+        {
+          current_filing: sourceArtifact([], {
+            artifactId: "filing-2026-q3",
+            periodId: "2026-Q3",
+          }),
+          prior_commitment_tracking: prior,
+        },
+        inputForPeriod("2026-Q3"),
+      ),
       BuilderValidationError,
     );
   });

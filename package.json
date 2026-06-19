@@ -52,7 +52,7 @@
     "web:dev": "vite --config apps/partner-web/vite.config.ts",
     "web:build": "vite build --config apps/partner-web/vite.config.ts",
     "typecheck": "tsc --noEmit && tsc -p apps/partner-web/tsconfig.json --noEmit",
-    "test": "tsx --test tests/*.test.ts tests/contracts/*.test.ts packages/artifact-framework/tests/*.test.ts packages/builder-framework/tests/*.test.ts builders/themes/tests/*.test.ts builders/structured-intelligence/tests/*.test.ts builders/company-knowledge-builder/tests/*.test.ts builders/business-signals-builder/tests/*.test.ts builders/capital-allocation-tracking-builder/tests/*.test.ts builders/commitment-tracking-builder/tests/*.test.ts builders/trust-signals-builder/tests/*.test.ts builders/quarter-understanding-builder/tests/*.test.ts builders/investor-intelligence-builder/tests/*.test.ts governance/company-knowledge-governance/tests/*.test.ts"
+    "test": "tsx --test tests/*.test.ts tests/contracts/*.test.ts packages/artifact-framework/tests/*.test.ts packages/builder-framework/tests/*.test.ts builders/themes/tests/*.test.ts builders/structured-intelligence/tests/*.test.ts builders/company-knowledge-builder/tests/*.test.ts builders/business-signals-builder/tests/*.test.ts builders/capital-allocation-tracking-builder/tests/*.test.ts builders/commitment-tracking-builder/tests/*.test.ts builders/narrative-consistency-builder/tests/*.test.ts builders/accounting-stability-builder/tests/*.test.ts builders/trust-signals-builder/tests/*.test.ts builders/quarter-understanding-builder/tests/*.test.ts builders/investor-intelligence-builder/tests/*.test.ts governance/company-knowledge-governance/tests/*.test.ts"
   },
   "keywords": [],
   "author": "",

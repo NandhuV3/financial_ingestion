@@ -1,7 +1,9 @@
 import { BuilderValidationError } from "../../packages/builder-framework/src/builder-errors.js";
 import {
   COMMITMENT_STATUSES,
+  COMMITMENT_TRACKING_RULE_SET,
   COMMITMENT_TYPES,
+  RESOLUTION_RESULTS_BY_STATUS,
   SOURCE_TYPES,
 } from "./contract.js";
 import { validateCommitmentTrackingMetadata } from "./metadata-validator.js";
@@ -15,6 +17,7 @@ import {
   requireProbability,
   requireText,
 } from "./validation-helpers.js";
+import { isPeriodAfter } from "./period.js";
 
 export function validateCommitmentTrackingArtifactContent(
   content: CommitmentTrackingArtifactContent,
@@ -32,7 +35,7 @@ export function validateCommitmentTrackingArtifactContent(
 
   const commitmentIds = new Set<string>();
   for (const [index, commitment] of content.commitments.entries()) {
-    validateCommitment(commitment, `commitments[${index}]`);
+    validateCommitment(commitment, content, `commitments[${index}]`);
 
     if (commitmentIds.has(commitment.commitment_id)) {
       throw new BuilderValidationError(
@@ -46,7 +49,11 @@ export function validateCommitmentTrackingArtifactContent(
   validateCommitmentTrackingMetadata(content);
 }
 
-function validateCommitment(commitment: Commitment, field: string): void {
+function validateCommitment(
+  commitment: Commitment,
+  content: CommitmentTrackingArtifactContent,
+  field: string,
+): void {
   requireText(commitment.commitment_id, `${field}.commitment_id`);
   requireAllowed(commitment.commitment_type, COMMITMENT_TYPES, `${field}.commitment_type`);
   requireText(commitment.statement, `${field}.statement`);
@@ -58,6 +65,15 @@ function validateCommitment(commitment: Commitment, field: string): void {
     throw new BuilderValidationError(`${field}.timing.overdue must be boolean.`);
   }
 
+  const expectedOverdue = commitment.expected_resolution_period !== null
+    && isPeriodAfter(content.period, commitment.expected_resolution_period)
+    && commitment.actual_resolution_period === null
+    && !["achieved", "abandoned", "expired"].includes(commitment.status);
+
+  if (commitment.timing.overdue !== expectedOverdue) {
+    throw new BuilderValidationError(`${field}.timing.overdue is inconsistent.`);
+  }
+
   if (!Array.isArray(commitment.evidence) || commitment.evidence.length === 0) {
     throw new BuilderValidationError(`${field}.evidence must be a non-empty array.`);
   }
@@ -65,6 +81,9 @@ function validateCommitment(commitment: Commitment, field: string): void {
   if (!Array.isArray(commitment.timeline) || commitment.timeline.length === 0) {
     throw new BuilderValidationError(`${field}.timeline must be a non-empty array.`);
   }
+
+  validateIdentity(commitment, content, field);
+  validateResolution(commitment, field);
 
   const evidenceIds = new Set(commitment.evidence.map((evidence) => evidence.evidence_id));
 
@@ -91,6 +110,86 @@ function validateCommitment(commitment: Commitment, field: string): void {
         `${field}.timeline[${index}] references unknown evidence ${event.evidence_ref}.`,
       );
     }
+
+    const eventEvidence = commitment.evidence.find(
+      (evidence) => evidence.evidence_id === event.evidence_ref,
+    );
+
+    if (eventEvidence?.filing_period !== event.period) {
+      throw new BuilderValidationError(
+        `${field}.timeline[${index}] must reference evidence from the same period.`,
+      );
+    }
+  }
+}
+
+function validateIdentity(
+  commitment: Commitment,
+  content: CommitmentTrackingArtifactContent,
+  field: string,
+): void {
+  const identity = commitment.identity_basis;
+  requireText(identity.company_id, `${field}.identity_basis.company_id`);
+  requireText(identity.canonical_statement, `${field}.identity_basis.canonical_statement`);
+  requireText(identity.initial_commitment_period, `${field}.identity_basis.initial_commitment_period`);
+  requireText(identity.creation_evidence_ref, `${field}.identity_basis.creation_evidence_ref`);
+  requireText(identity.identity_rule_version, `${field}.identity_basis.identity_rule_version`);
+
+  if (
+    identity.company_id !== content.company
+    || identity.commitment_type !== commitment.commitment_type
+    || identity.initial_commitment_period !== commitment.commitment_period
+    || identity.expected_resolution_period !== commitment.expected_resolution_period
+  ) {
+    throw new BuilderValidationError(`${field}.identity_basis is inconsistent.`);
+  }
+
+  if (identity.identity_rule_version !== COMMITMENT_TRACKING_RULE_SET.version) {
+    throw new BuilderValidationError(`${field}.identity_basis rule version is unsupported.`);
+  }
+
+  const creationEvidence = commitment.evidence.find(
+    (evidence) => evidence.evidence_id === identity.creation_evidence_ref,
+  );
+
+  if (creationEvidence?.evidence_role !== "creation") {
+    throw new BuilderValidationError(
+      `${field}.identity_basis must reference creation evidence.`,
+    );
+  }
+}
+
+function validateResolution(commitment: Commitment, field: string): void {
+  const allowedResults = RESOLUTION_RESULTS_BY_STATUS[commitment.status];
+
+  if (commitment.status === "new" || commitment.status === "active") {
+    if (commitment.resolution !== null) {
+      throw new BuilderValidationError(`${field}.resolution is incompatible with status.`);
+    }
+    return;
+  }
+
+  if (commitment.status === "delayed" && commitment.resolution === null) {
+    return;
+  }
+
+  if (
+    commitment.resolution === null
+    || !allowedResults.includes(commitment.resolution.result)
+  ) {
+    throw new BuilderValidationError(`${field}.resolution is incompatible with status.`);
+  }
+
+  if (commitment.resolution.rule_version !== COMMITMENT_TRACKING_RULE_SET.version) {
+    throw new BuilderValidationError(`${field}.resolution rule version is unsupported.`);
+  }
+
+  const evidenceIds = new Set(commitment.evidence.map((evidence) => evidence.evidence_id));
+  if (
+    commitment.resolution.evidence_refs.length === 0
+    || commitment.resolution.evidence_refs.some((reference) => !evidenceIds.has(reference))
+  ) {
+    throw new BuilderValidationError(`${field}.resolution evidence is invalid.`);
   }
 }
 

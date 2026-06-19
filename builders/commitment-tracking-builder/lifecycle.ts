@@ -18,6 +18,7 @@ import {
   groupCommitmentRecords,
   type SourcedCommitmentRecord,
 } from "./source-records.js";
+import { isPeriodAfter } from "./period.js";
 
 export function buildCommitments(
   sources: ResolvedCommitmentSource[],
@@ -26,14 +27,76 @@ export function buildCommitments(
 ): Commitment[] {
   const priorById = new Map(priorCommitments.map((commitment) => [commitment.commitment_id, commitment]));
   const recordsById = groupCommitmentRecords(sources);
-
-  return [...recordsById.entries()]
-    .map(([commitmentId, records]) => buildCommitment(
+  const sourcedCommitments = [...recordsById.entries()]
+    .map(([commitmentId, records]) => buildCommitmentHistory(
       records,
       priorById.get(commitmentId) ?? null,
       currentPeriod,
     ))
+    .filter((commitment): commitment is Commitment => commitment !== null);
+  const sourcedIds = new Set(sourcedCommitments.map((commitment) => commitment.commitment_id));
+  const carriedCommitments = priorCommitments
+    .filter((commitment) =>
+      !sourcedIds.has(commitment.commitment_id)
+      && !isTerminalStatus(commitment.status))
+    .map((commitment) => carryForwardCommitment(commitment, currentPeriod));
+
+  return [...sourcedCommitments, ...carriedCommitments]
     .sort((left, right) => left.commitment_id.localeCompare(right.commitment_id));
+}
+
+function buildCommitmentHistory(
+  records: SourcedCommitmentRecord[],
+  prior: Commitment | null,
+  targetPeriod: string,
+): Commitment | null {
+  const recordsByPeriod = new Map<string, SourcedCommitmentRecord[]>();
+
+  for (const sourcedRecord of records) {
+    const period = sourcedRecord.source.declaration.period_id;
+    const periodRecords = recordsByPeriod.get(period) ?? [];
+    periodRecords.push(sourcedRecord);
+    recordsByPeriod.set(period, periodRecords);
+  }
+
+  let commitment = prior;
+  const lastPriorPeriod = prior?.timeline.at(-1)?.period ?? null;
+
+  for (const [period, periodRecords] of [...recordsByPeriod.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))) {
+    if (
+      prior !== null
+      && lastPriorPeriod !== null
+      && period.localeCompare(lastPriorPeriod) < 0
+    ) {
+      validateHistoricalRecords(periodRecords, prior);
+      continue;
+    }
+
+    commitment = buildCommitment(periodRecords, commitment, period);
+  }
+
+  if (commitment === null || isTerminalStatus(commitment.status)) {
+    return commitment;
+  }
+
+  return carryForwardCommitment(commitment, targetPeriod);
+}
+
+function validateHistoricalRecords(
+  records: SourcedCommitmentRecord[],
+  prior: Commitment,
+): void {
+  const primary = records[0];
+
+  if (primary === undefined) {
+    return;
+  }
+
+  assertStableIdentity(prior, primary.record);
+  for (const candidate of records.slice(1)) {
+    assertSourceRecordAgreement(primary.record, candidate.record);
+  }
 }
 
 function buildCommitment(
@@ -58,6 +121,7 @@ function buildCommitment(
 
   validateResolution(primary.record);
 
+  const currentEvidence = buildCommitmentEvidence(records, []);
   const evidence = buildCommitmentEvidence(records, prior?.evidence ?? []);
   const evidenceIds = new Set(evidence.map((item) => item.evidence_id));
 
@@ -75,7 +139,7 @@ function buildCommitment(
     }
   }
 
-  const timeline = buildTimeline(prior, primary.record, currentPeriod, evidence);
+  const timeline = buildTimeline(prior, primary.record, currentPeriod, currentEvidence);
 
   return {
     commitment_id: primary.record.commitment_id,
@@ -86,7 +150,7 @@ function buildCommitment(
     actual_resolution_period: primary.record.actual_resolution_period,
     status: primary.record.status,
     timing: {
-      overdue: isOverdue(primary.record),
+      overdue: isOverdue(primary.record, currentPeriod),
     },
     identity_basis: primary.record.identity_basis,
     resolution: primary.record.resolution,
@@ -97,7 +161,17 @@ function buildCommitment(
 }
 
 function assertStableIdentity(prior: Commitment, current: CommitmentSourceRecord): void {
-  if (JSON.stringify(prior.identity_basis) !== JSON.stringify(current.identity_basis)) {
+  const left = prior.identity_basis;
+  const right = current.identity_basis;
+  const sameIdentity = left.company_id === right.company_id
+    && left.commitment_type === right.commitment_type
+    && left.canonical_statement === right.canonical_statement
+    && left.initial_commitment_period === right.initial_commitment_period
+    && left.expected_resolution_period === right.expected_resolution_period
+    && left.creation_evidence_ref === right.creation_evidence_ref
+    && left.identity_rule_version === right.identity_rule_version;
+
+  if (!sameIdentity) {
     throw new BuilderValidationError(
       `Commitment ${current.commitment_id} changed its stable identity basis.`,
     );
@@ -189,8 +263,9 @@ function evidenceForStatus(
   return selected;
 }
 
-function isOverdue(record: CommitmentSourceRecord): boolean {
-  return record.expected_resolution_passed
+function isOverdue(record: CommitmentSourceRecord, currentPeriod = record.commitment_period): boolean {
+  return record.expected_resolution_period !== null
+    && isPeriodAfter(currentPeriod, record.expected_resolution_period)
     && record.actual_resolution_period === null
     && !isTerminalStatus(record.status);
 }
@@ -205,4 +280,28 @@ function average(values: number[]): number {
 
 function isTerminalStatus(status: CommitmentStatus): boolean {
   return (TERMINAL_COMMITMENT_STATUSES as readonly CommitmentStatus[]).includes(status);
+}
+
+function carryForwardCommitment(
+  commitment: Commitment,
+  currentPeriod: string,
+): Commitment {
+  return {
+    ...commitment,
+    timing: {
+      overdue: commitment.expected_resolution_period !== null
+        && isPeriodAfter(currentPeriod, commitment.expected_resolution_period)
+        && commitment.actual_resolution_period === null
+        && !isTerminalStatus(commitment.status),
+    },
+    identity_basis: { ...commitment.identity_basis },
+    resolution: commitment.resolution === null
+      ? null
+      : {
+          ...commitment.resolution,
+          evidence_refs: [...commitment.resolution.evidence_refs],
+        },
+    evidence: commitment.evidence.map((evidence) => ({ ...evidence })),
+    timeline: commitment.timeline.map((event) => ({ ...event })),
+  };
 }

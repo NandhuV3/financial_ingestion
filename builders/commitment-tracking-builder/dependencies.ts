@@ -38,6 +38,24 @@ export function resolveCommitmentTrackingDependencies(
       );
     }
 
+    if (artifact.identity.company_id !== context.input.company_id) {
+      throw new BuilderDependencyError(
+        `Commitment Tracking source ${declaration.dependency_name} must belong to ${context.input.company_id}.`,
+      );
+    }
+
+    if (artifact.identity.period_id !== declaration.period_id) {
+      throw new BuilderDependencyError(
+        `Commitment Tracking source ${declaration.dependency_name} period must match its declaration.`,
+      );
+    }
+
+    if (declaration.absent_reason !== null) {
+      throw new BuilderDependencyError(
+        `Available Commitment Tracking source ${declaration.dependency_name} must not provide absent_reason.`,
+      );
+    }
+
     sources.push({
       declaration,
       artifact: artifact as Artifact<CommitmentSourceArtifactContent>,
@@ -61,8 +79,21 @@ export function resolveCommitmentTrackingDependencies(
     );
   }
 
+  if (
+    priorArtifact !== undefined
+    && priorArtifact.identity.company_id !== context.input.company_id
+  ) {
+    throw new BuilderDependencyError(
+      `Commitment Tracking prior artifact must belong to ${context.input.company_id}.`,
+    );
+  }
+
   return {
-    sources,
+    sources: sources.sort(
+      (left, right) => left.declaration.period_id.localeCompare(right.declaration.period_id)
+        || left.artifact.identity.artifact_id.localeCompare(right.artifact.identity.artifact_id)
+        || left.artifact.identity.version - right.artifact.identity.version,
+    ),
     missing_sources: missingSources,
     prior: priorArtifact as Artifact<CommitmentTrackingArtifactContent> | undefined ?? null,
   };

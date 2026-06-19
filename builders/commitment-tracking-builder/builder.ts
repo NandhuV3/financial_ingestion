@@ -12,6 +12,7 @@ import type {
   CommitmentTrackingArtifactContent,
   CommitmentTrackingBuilderInput,
 } from "./types.js";
+import { BuilderDependencyError } from "../../packages/builder-framework/src/builder-errors.js";
 import {
   validateCommitmentSourceArtifact,
   validateCommitmentTrackingArtifactContent,
@@ -37,6 +38,25 @@ export class CommitmentTrackingBuilder implements Builder<
 
     for (const source of dependencies.sources) {
       validateCommitmentSourceArtifact(source.artifact, source.declaration.dependency_name);
+    }
+
+    if (dependencies.prior !== null) {
+      validateCommitmentTrackingArtifactContent(dependencies.prior.content);
+
+      if (
+        dependencies.prior.content.company !== context.input.company_id
+        || dependencies.prior.identity.company_id !== context.input.company_id
+      ) {
+        throw new BuilderDependencyError(
+          "Prior Commitment Tracking artifact company must match the builder input.",
+        );
+      }
+
+      if (dependencies.prior.content.period !== dependencies.prior.identity.period_id) {
+        throw new BuilderDependencyError(
+          "Prior Commitment Tracking artifact period must match its Artifact Framework identity.",
+        );
+      }
     }
 
     const commitments = buildCommitments(

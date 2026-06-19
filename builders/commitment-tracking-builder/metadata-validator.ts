@@ -1,6 +1,11 @@
 import { BuilderValidationError } from "../../packages/builder-framework/src/builder-errors.js";
 import type { CommitmentTrackingArtifactContent } from "./types.js";
 import {
+  COMMITMENT_TRACKING_CALIBRATION,
+  COMMITMENT_TRACKING_RULE_SET,
+  COMMITMENT_TRACKING_SCHEMA_VERSION,
+} from "./contract.js";
+import {
   requireNonEmptyStringArray,
   requireNonNegativeInteger,
   requirePositiveInteger,
@@ -116,11 +121,78 @@ function validateReplayability(content: CommitmentTrackingArtifactContent): void
   requireStringArray(replay.lifecycle_references, "replayability_metadata.lifecycle_references");
 
   if (
+    replay.schema_version !== COMMITMENT_TRACKING_SCHEMA_VERSION
+    || replay.rule_set_ref !== COMMITMENT_TRACKING_RULE_SET.ref
+    || replay.rule_version !== COMMITMENT_TRACKING_RULE_SET.version
+    || replay.calibration_ref !== COMMITMENT_TRACKING_CALIBRATION.ref
+    || replay.calibration_version !== COMMITMENT_TRACKING_CALIBRATION.version
+  ) {
+    throw new BuilderValidationError("replayability_metadata versions are unsupported.");
+  }
+
+  if (
     (replay.prior_commitment_tracking_ref === null)
     !== (replay.prior_commitment_tracking_version === null)
   ) {
     throw new BuilderValidationError(
       "replayability_metadata prior artifact reference and version must appear together.",
+    );
+  }
+
+  validateReplayabilityReferences(content);
+}
+
+function validateReplayabilityReferences(content: CommitmentTrackingArtifactContent): void {
+  const replay = content.replayability_metadata;
+  const artifactPairs = replay.source_artifact_references.map(
+    (artifactRef, index) => `${artifactRef}:${replay.source_artifact_versions[index]}`,
+  );
+  const artifactPairSet = new Set(artifactPairs);
+
+  if (artifactPairSet.size !== artifactPairs.length) {
+    throw new BuilderValidationError(
+      "replayability_metadata source artifact/version pairs must be unique.",
+    );
+  }
+
+  const evidence = content.commitments.flatMap((commitment) => commitment.evidence);
+  for (const item of evidence) {
+    if (!artifactPairSet.has(`${item.source_artifact_ref}:${item.source_artifact_version}`)) {
+      throw new BuilderValidationError(
+        "replayability_metadata must include every evidence artifact/version pair.",
+      );
+    }
+  }
+
+  assertSameStrings(
+    replay.source_record_references,
+    evidence.map((item) => item.source_record_ref),
+    "source_record_references",
+  );
+  assertSameStrings(
+    replay.evidence_references,
+    evidence.map((item) => item.evidence_id),
+    "evidence_references",
+  );
+  assertSameStrings(
+    replay.lifecycle_references,
+    content.commitments.flatMap((commitment) =>
+      commitment.timeline.map((event) =>
+        `${commitment.commitment_id}:${event.period}:${event.status}`)),
+    "lifecycle_references",
+  );
+}
+
+function assertSameStrings(actual: string[], expected: string[], field: string): void {
+  const normalizedActual = [...new Set(actual)].sort();
+  const normalizedExpected = [...new Set(expected)].sort();
+
+  if (
+    normalizedActual.length !== normalizedExpected.length
+    || normalizedActual.some((value, index) => value !== normalizedExpected[index])
+  ) {
+    throw new BuilderValidationError(
+      `replayability_metadata.${field} does not reconcile with artifact content.`,
     );
   }
 }
