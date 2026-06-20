@@ -18,6 +18,8 @@ import type { ResolvedPrompt } from "../../../src/prompt-registry/prompt.types.j
 import type { FilingArtifactContent } from "../../structured-intelligence/types.js";
 import type { CompanyKnowledgeArtifactContent } from "../../company-knowledge-builder/types.js";
 import type { BusinessSignalsArtifactContent } from "../../business-signals-builder/types.js";
+import type { TopicRegistryArtifactContent } from "../../topic-assignment-builder/types.js";
+import type { TopicAssignmentArtifactContent } from "../../topic-assignment-builder/types.js";
 import { buildFilingEvidenceCatalog } from "../../themes/evidence.js";
 import {
   STRUCTURED_INTELLIGENCE_PROMPT_ID,
@@ -38,15 +40,19 @@ describe("upstream pipeline", () => {
       repository,
       promptResolver: new UpstreamPromptResolver(),
       llmClient,
+      semanticEmbeddingProvider: llmClient,
       themesModelVersion: "themes-demo-model-v1",
       structuredIntelligenceModelVersion: "structured-demo-model-v1",
     });
     const filing = filingArtifact();
+    const topicRegistry = topicRegistryArtifact();
     await repository.create(filing);
+    await repository.create(topicRegistry);
 
     const result = await runUpstreamPipeline({
       runtime,
       filingArtifact: filing,
+      topicRegistryArtifact: topicRegistry,
       companyId: "MSFT",
       periodId: "2026-Q2",
       generatedAt: "2026-06-19T00:00:00.000Z",
@@ -66,6 +72,7 @@ describe("upstream pipeline", () => {
 
     for (const artifactType of [
       "themes",
+      "topic_assignment",
       "structured_intelligence",
       "company_knowledge_candidate",
       "governance_decision",
@@ -95,11 +102,34 @@ describe("upstream pipeline", () => {
       company_id: "MSFT",
       period_id: "2026-Q2",
     });
+    const topicAssignment =
+      await repository.getCurrent<TopicAssignmentArtifactContent>({
+        artifact_type: "topic_assignment",
+        company_id: "MSFT",
+        period_id: "2026-Q2",
+      });
 
     assert.equal(approvedKnowledge?.content.company_knowledge_version, 1);
     assert.equal(
       businessSignals?.lineage.upstream_dependencies[0]?.artifact_id,
       approvedKnowledge?.identity.artifact_id,
+    );
+    assert.equal(
+      topicAssignment?.lineage.model_reference?.model_version,
+      "text-embedding-3-small",
+    );
+    assert.deepEqual(
+      topicAssignment?.lineage.upstream_dependencies
+        .map(({ artifact_type }) => artifact_type)
+        .sort(),
+      ["themes", "topic_registry"],
+    );
+    assert.equal(
+      topicAssignment?.lineage.upstream_dependencies.every(
+        ({ artifact_hash, input_hash }) =>
+          artifact_hash.length > 0 && input_hash.length > 0,
+      ),
+      true,
     );
     assert.equal(llmClient.requests.length, 2);
     assert.equal(
@@ -109,11 +139,12 @@ describe("upstream pipeline", () => {
 
     const expectedDumps = [
       ["01-themes.json", "themes"],
-      ["02-structured-intelligence.json", "structured_intelligence"],
-      ["03-company-knowledge-candidate.json", "company_knowledge_candidate"],
-      ["04-governance-decision.json", "governance_decision"],
-      ["05-company-knowledge.json", "company_knowledge"],
-      ["06-business-signals.json", "business_signals"],
+      ["02-topic-assignment.json", "topic_assignment"],
+      ["03-structured-intelligence.json", "structured_intelligence"],
+      ["04-company-knowledge-candidate.json", "company_knowledge_candidate"],
+      ["05-governance-decision.json", "governance_decision"],
+      ["06-company-knowledge.json", "company_knowledge"],
+      ["07-business-signals.json", "business_signals"],
     ] as const;
 
     for (const [filename, artifactType] of expectedDumps) {
@@ -126,6 +157,50 @@ describe("upstream pipeline", () => {
     }
   });
 });
+
+function topicRegistryArtifact(): Artifact<TopicRegistryArtifactContent> {
+  const content: TopicRegistryArtifactContent = {
+    registry_version: "1.0.0",
+    registry_status: "active",
+    similarity_model_version: "text-embedding-3-small",
+    topics: [
+      {
+        topic_id: "cloud",
+        topic_name: "Cloud",
+        status: "active",
+        theme_variants: ["Cloud Growth"],
+        embedding: [1, 0],
+      },
+    ],
+  };
+
+  return {
+    identity: {
+      artifact_id: "topic-registry-v1",
+      artifact_type: "topic_registry",
+      company_id: null,
+      period_id: null,
+      version: 1,
+    },
+    metadata: {
+      version: 1,
+      schema_version: "topic-registry-artifact-v1",
+      pipeline_version: "topic-registry-loader-v1",
+      generated_at: "2026-06-19T00:00:00.000Z",
+      artifact_hash: calculateArtifactHash(content),
+      input_hash: "topic-registry-input-hash",
+      generation_duration_ms: 0,
+      status: ArtifactStatus.ACTIVE,
+    },
+    lineage: {
+      upstream_dependencies: [],
+      generation_context: {
+        builder_type: "topic-registry-loader",
+      },
+    },
+    content,
+  };
+}
 
 class UpstreamPromptResolver {
   resolve(promptId: string): ResolvedPrompt {
@@ -190,6 +265,15 @@ class UpstreamLLMClient implements LLMClient {
     }
 
     throw new Error(`Unexpected prompt: ${systemPrompt ?? "missing"}`);
+  }
+
+  async embed(input: {
+    model: string;
+    texts: string[];
+  }): Promise<number[][]> {
+    assert.equal(input.model, "text-embedding-3-small");
+
+    return input.texts.map(() => [1, 0]);
   }
 }
 

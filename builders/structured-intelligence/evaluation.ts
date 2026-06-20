@@ -3,17 +3,18 @@ import type {
   StructuredIntelligenceEvaluationHooks,
   StructuredUnderstanding,
 } from "./contract.js";
+import type { Theme } from "../themes/contract.js";
 
 const totalSections = 10;
 
 export function calculateStructuredIntelligenceConfidence(
   understanding: StructuredUnderstanding,
-  themeCount: number,
+  themes: Theme[],
   unsupportedWarnings: string[],
 ): StructuredIntelligenceConfidence {
   const evidenceCoverage = evidenceCoverageScore(understanding);
   const fieldCompleteness = fieldCompletenessScore(understanding);
-  const themeUtilization = themeCount === 0 ? 0 : Math.min(referencedEvidenceCount(understanding) / themeCount, 1);
+  const themeUtilization = themeUtilizationScore(understanding, themes);
   const hallucinationRisk = Math.max(0, 1 - unsupportedWarnings.length / Math.max(claimCount(understanding), 1));
   const overall = round((evidenceCoverage + fieldCompleteness + themeUtilization + hallucinationRisk) / 4);
 
@@ -28,13 +29,13 @@ export function calculateStructuredIntelligenceConfidence(
 
 export function buildStructuredIntelligenceEvaluationHooks(
   understanding: StructuredUnderstanding,
-  themeCount: number,
+  themes: Theme[],
   promptVersion: string,
   modelVersion: string,
   genericLanguageCount: number,
   unsupportedEntityWarnings: string[],
 ): StructuredIntelligenceEvaluationHooks {
-  const confidence = calculateStructuredIntelligenceConfidence(understanding, themeCount, unsupportedEntityWarnings);
+  const confidence = calculateStructuredIntelligenceConfidence(understanding, themes, unsupportedEntityWarnings);
 
   return {
     prompt_version: promptVersion,
@@ -108,8 +109,15 @@ function fieldCompletenessScore(understanding: StructuredUnderstanding): number 
   return values.length === 0 ? 0 : values.filter((value) => value.trim() !== "" && value !== "unknown").length / values.length;
 }
 
-function referencedEvidenceCount(understanding: StructuredUnderstanding): number {
-  return new Set([
+function themeUtilizationScore(
+  understanding: StructuredUnderstanding,
+  themes: Theme[],
+): number {
+  if (themes.length === 0) {
+    return 0;
+  }
+
+  const references = new Set([
     ...understanding.business_model.evidence_refs,
     ...understanding.revenue_model.evidence_refs,
     ...understanding.products.flatMap((item) => item.evidence_refs),
@@ -120,7 +128,13 @@ function referencedEvidenceCount(understanding: StructuredUnderstanding): number
     ...understanding.management_focus.flatMap((item) => item.evidence_refs),
     ...understanding.risks.flatMap((item) => item.evidence_refs),
     ...understanding.dependencies.flatMap((item) => item.evidence_refs),
-  ]).size;
+  ]);
+  const utilizedThemes = themes.filter((theme) =>
+    references.has(theme.theme_id)
+    || theme.source_evidence.some(({ excerpt_hash }) =>
+      references.has(excerpt_hash)));
+
+  return utilizedThemes.length / themes.length;
 }
 
 function claimCount(understanding: StructuredUnderstanding): number {
@@ -138,4 +152,3 @@ function claimCount(understanding: StructuredUnderstanding): number {
 function round(value: number): number {
   return Math.round(value * 1000) / 1000;
 }
-

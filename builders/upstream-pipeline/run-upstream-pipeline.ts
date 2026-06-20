@@ -34,11 +34,20 @@ import type {
   FilingType,
   ThemesBuilderInput,
 } from "../themes/types.js";
+import {
+  TOPIC_ASSIGNMENT_BUILDER_TYPE,
+} from "../topic-assignment-builder/contract.js";
+import type {
+  TopicAssignmentArtifactContent,
+  TopicAssignmentBuilderInput,
+  TopicRegistryArtifactContent,
+} from "../topic-assignment-builder/types.js";
 import type { UpstreamPipelineRuntime } from "./register-builders.js";
 
 export type RunUpstreamPipelineInput = {
   runtime: UpstreamPipelineRuntime;
   filingArtifact: Artifact<FilingArtifactContent>;
+  topicRegistryArtifact: Artifact<TopicRegistryArtifactContent>;
   companyId: string;
   periodId: string;
   generatedAt?: string;
@@ -47,6 +56,7 @@ export type RunUpstreamPipelineInput = {
 
 export const UPSTREAM_PIPELINE_STAGES = [
   "themes",
+  "topic_assignment",
   "structured_intelligence",
   "company_knowledge_candidate",
   "governance_decision",
@@ -90,6 +100,32 @@ export async function runUpstreamPipeline(
     generatedAt: input.generatedAt,
   });
   await emitArtifact(input, "themes", themes);
+
+  const topicAssignmentInput: TopicAssignmentBuilderInput = {
+    company_id: input.companyId,
+    period_id: input.periodId,
+    filing_id: input.filingArtifact.content.filing_id,
+  };
+  const topicAssignment = await input.runtime.executor.executeBuilder<
+    TopicAssignmentBuilderInput,
+    TopicAssignmentArtifactContent
+  >({
+    builderType: TOPIC_ASSIGNMENT_BUILDER_TYPE,
+    companyId: input.companyId,
+    periodId: input.periodId,
+    executionId: executionId(input, "topic-assignment"),
+    input: topicAssignmentInput,
+    inputHash: calculateArtifactHash({
+      themes: themes.metadata.artifact_hash,
+      topic_registry: input.topicRegistryArtifact.metadata.artifact_hash,
+    }),
+    dependencies: {
+      themes,
+      topic_registry: input.topicRegistryArtifact,
+    },
+    generatedAt: input.generatedAt,
+  });
+  await emitArtifact(input, "topic_assignment", topicAssignment);
 
   const structuredInput: StructuredIntelligenceBuilderInput = {
     company_id: input.companyId,

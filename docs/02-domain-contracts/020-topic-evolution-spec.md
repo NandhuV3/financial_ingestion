@@ -1,10 +1,8 @@
-# 020-topic-evolution-spec.md
-
 # Topic Evolution Specification
 
 Version: 1.0
 Status: LOCKED
-Owner: Longitudinal Intelligence Layer
+Owner: Longitudinal Topic Intelligence Layer
 
 ---
 
@@ -13,154 +11,31 @@ Owner: Longitudinal Intelligence Layer
 Topic Evolution answers:
 
 ```text
-How is a topic changing over time?
+How has a canonical topic changed across periods?
 ```
 
-It is the first longitudinal artifact in the platform.
+Topic Evolution owns all topic-level temporal behavior.
 
-Themes and Topic Assignment are filing-scoped.
-
-Topic Evolution is company-scoped and multi-period.
+Topic Delta is not a separate architecture layer.
 
 ---
 
 # Architectural Position
 
 ```text
+Filing
+   ↓
 Themes
-    ↓
+   ↓
 Topic Assignment
-    ↓
+   ↓
 Topic Evolution
-    ↓
+   ↓
 Business Signals
-    ↓
-Quarter Understanding
 ```
 
-Topic Evolution is the source of truth for:
-
-```text
-Topic Trend Analysis
-```
-
-across time.
-
----
-
-# Core Responsibility
-
-Track:
-
-- topic persistence
-- topic emergence
-- topic decline
-- topic acceleration
-- topic deceleration
-- topic volatility
-
-across filing periods.
-
----
-
-# Topic Evolution Does NOT Do
-
-Topic Evolution never:
-
-- interpret business meaning
-- generate investor conclusions
-- create signals
-- assess importance
-- assess trust
-- assess management quality
-
-Those belong downstream.
-
----
-
-# Example
-
-Periods:
-
-```text
-Q1
-AI Strategy
-frequency: 2
-
-Q2
-AI Strategy
-frequency: 5
-
-Q3
-AI Strategy
-frequency: 9
-```
-
-Topic Evolution Output:
-
-```text
-AI Strategy
-
-trajectory:
-accelerating
-
-trend_strength:
-high
-```
-
-NOT:
-
-```text
-AI will drive future growth
-```
-
-That is interpretation.
-
----
-
-# Design Principles
-
----
-
-## Principle 1
-
-Topic Evolution is deterministic.
-
-No LLM.
-
-LOCKED.
-
----
-
-## Principle 2
-
-Topic Evolution operates only on assigned topics.
-
-Never themes.
-
----
-
-## Principle 3
-
-Topic Evolution measures change.
-
-Not meaning.
-
----
-
-## Principle 4
-
-Topic Evolution is company-specific.
-
-Cross-company comparisons belong elsewhere.
-
----
-
-## Principle 5
-
-Every trend must be explainable.
-
-No black-box scoring.
+Topic Evolution and Quarter Change are independent enrichment producers for
+Business Signals.
 
 ---
 
@@ -168,39 +43,84 @@ No black-box scoring.
 
 ```typescript
 type TopicEvolutionInputs = {
-  topic_assignments: TopicAssignmentArtifact[];
+  current_topic_assignments: TopicAssignmentArtifact;
+
+  historical_topic_assignments: TopicAssignmentArtifact[];
 };
 ```
 
-Requires historical periods.
+Topic Assignments must carry the source Theme title and Theme Summary.
+
+Topic Evolution consumes:
+
+* canonical Topic IDs
+* assignment confidence
+* Theme Summaries
+* historical Topic Assignments
+
+Topic Evolution never consumes raw filing text.
 
 ---
 
 # Minimum History Requirement
 
-LOCKED
+Topic Evolution requires at least:
 
 ```text
 2 periods
 ```
 
-minimum.
+With fewer than two periods:
 
----
-
-# Recommended History
-
-LOCKED
-
-```text
-8 periods
+```typescript
+status: "insufficient_history"
 ```
 
-target.
+No persistence, emergence, disappearance, strengthening, weakening, or
+narrative-drift classification may be emitted.
 
 ---
 
-# Outputs
+# Core Ownership
+
+Topic Evolution owns:
+
+* persistence
+* emergence
+* disappearance
+* strengthening
+* weakening
+* narrative drift
+
+These responsibilities must not be duplicated by Quarter Change.
+
+---
+
+# Topic Evolution Does NOT Own
+
+Topic Evolution does not:
+
+* interpret business meaning
+* generate investor conclusions
+* generate Business Signals
+* compare Structured Intelligence business dimensions
+* create or govern topics
+* assess trust or management quality
+
+---
+
+# Deterministic Behavior
+
+Topic Evolution is deterministic.
+
+No LLM is allowed.
+
+Identical ordered input artifacts, Theme Summaries, rules version, and Topic
+Registry version must produce identical output.
+
+---
+
+# Output
 
 ```typescript
 type TopicEvolutionArtifact = {
@@ -209,6 +129,10 @@ type TopicEvolutionArtifact = {
   company: string;
 
   period: string;
+
+  status:
+    | "complete"
+    | "insufficient_history";
 
   topic_evolutions: TopicEvolution[];
 
@@ -234,13 +158,15 @@ type TopicEvolution = {
 
   periods_present: number;
 
-  current_state: TopicState;
+  persistence: PersistenceState;
 
-  trajectory: TopicTrajectory;
+  emergence: EmergenceState;
 
-  trend_strength: TrendStrength;
+  disappearance: DisappearanceState;
 
-  volatility_score: number;
+  strength_direction: StrengthDirection;
+
+  narrative_drift: NarrativeDrift;
 
   evidence: TopicEvolutionEvidence;
 };
@@ -248,295 +174,76 @@ type TopicEvolution = {
 
 ---
 
-# Topic States
+# Temporal States
 
 ```typescript
-type TopicState =
+type PersistenceState =
   | "new"
-  | "active"
+  | "recurring"
   | "persistent"
-  | "declining"
+  | "interrupted";
+
+type EmergenceState =
+  | "emerging"
+  | "not_emerging";
+
+type DisappearanceState =
+  | "present"
   | "dormant"
-  | "retired";
-```
+  | "disappeared";
 
----
-
-# State Definitions
-
----
-
-## New
-
-Appears first time.
-
----
-
-## Active
-
-Present but history limited.
-
----
-
-## Persistent
-
-Present consistently.
-
----
-
-## Declining
-
-Presence decreasing.
-
----
-
-## Dormant
-
-Absent recently but historically important.
-
----
-
-## Retired
-
-Absent for extended period.
-
----
-
-# Topic Trajectory
-
-```typescript
-type TopicTrajectory =
-  | "accelerating"
-  | "growing"
+type StrengthDirection =
+  | "strengthening"
   | "stable"
-  | "slowing"
-  | "declining"
-  | "volatile";
+  | "weakening";
 ```
 
 ---
 
-# Trend Strength
+# Narrative Drift
+
+Narrative drift compares Theme Summaries assigned to the same canonical topic
+across periods.
 
 ```typescript
-type TrendStrength =
-  | "low"
-  | "medium"
-  | "high";
+type NarrativeDrift = {
+  state:
+    | "unchanged"
+    | "evolved"
+    | "materially_shifted";
+
+  prior_theme_summaries: string[];
+
+  current_theme_summaries: string[];
+
+  supporting_assignment_refs: string[];
+};
 ```
+
+Narrative drift measures textual subject change.
+
+It does not explain why the change matters.
 
 ---
 
-# Evidence Schema
+# Evidence
 
 ```typescript
 type TopicEvolutionEvidence = {
   periods_analyzed: string[];
 
-  topic_occurrences: {
-    period: string;
-    frequency: number;
-  }[];
+  supporting_assignment_refs: string[];
 
-  supporting_assignments: string[];
+  theme_summaries_by_period: {
+    period: string;
+
+    theme_summaries: string[];
+  }[];
 };
 ```
 
----
-
-# Evolution Calculation
-
-Based on:
-
-```text
-Frequency
-
-Persistence
-
-Consistency
-```
-
-only.
-
----
-
-# Frequency
-
-Derived from:
-
-```text
-Number of Topic Assignments
-```
-
-per period.
-
----
-
-# Persistence
-
-Measures:
-
-```text
-How often topic appears
-across periods.
-```
-
----
-
-# Consistency
-
-Measures:
-
-```text
-Continuous appearance
-without gaps.
-```
-
----
-
-# Volatility Score
-
-Measures instability.
-
-```typescript
-0.0 → stable
-
-1.0 → highly volatile
-```
-
----
-
-# Example
-
-```text
-Q1 Present
-
-Q2 Missing
-
-Q3 Present
-
-Q4 Missing
-```
-
-Produces:
-
-```text
-High Volatility
-```
-
----
-
-# Trend Detection
-
----
-
-## Accelerating
-
-Frequency increasing.
-
-Multiple consecutive periods.
-
----
-
-## Growing
-
-Frequency increasing moderately.
-
----
-
-## Stable
-
-Minimal change.
-
----
-
-## Slowing
-
-Frequency growth decreasing.
-
----
-
-## Declining
-
-Frequency decreasing.
-
----
-
-## Volatile
-
-No clear direction.
-
----
-
-# Emergence Detection
-
-Topic becomes:
-
-```text
-New
-```
-
-when:
-
-```text
-First observed
-```
-
-for company.
-
----
-
-# Persistence Detection
-
-Topic becomes:
-
-```text
-Persistent
-```
-
-after:
-
-```text
-4 consecutive periods
-```
-
-LOCKED.
-
----
-
-# Dormancy Detection
-
-Topic becomes:
-
-```text
-Dormant
-```
-
-after:
-
-```text
-2 consecutive absences
-```
-
-LOCKED.
-
----
-
-# Retirement Detection
-
-Topic becomes:
-
-```text
-Retired
-```
-
-after:
-
-```text
-4 consecutive absences
-```
-
-LOCKED.
+Every temporal classification must reconcile with Topic Assignment references
+and propagated Theme Summaries.
 
 ---
 
@@ -548,262 +255,55 @@ type TopicEvolutionConfidence = {
 
   history_depth_score: number;
 
-  consistency_score: number;
+  assignment_coverage_score: number;
 
-  coverage_score: number;
+  summary_coverage_score: number;
 };
 ```
 
----
+Confidence measures source completeness and temporal evidence depth.
 
-# Confidence Meaning
-
-High confidence:
-
-```text
-Long history
-+
-Stable observations
-```
+It does not measure business importance.
 
 ---
 
-Low confidence:
+# Invalidation
 
-```text
-Short history
-+
-Sparse observations
-```
+Topic Evolution becomes stale when:
+
+* any contributing Topic Assignment changes
+* any contributing Theme Summary changes
+* Topic Registry canonicalization changes
+* evolution rules change
+
+Rebuild the affected period and all dependent future periods for the company.
 
 ---
 
 # Outputs Used By
 
-Primary consumers:
-
 ```text
 Business Signals
 
-Investor Intelligence
-
-Quarter Understanding
+Quarter Understanding enrichment
 ```
 
----
-
-# Relationship to Quarter Change
-
-Important distinction:
-
----
-
-## Topic Evolution
-
-Measures:
-
-```text
-Long-term trajectory
-```
-
----
-
-## Quarter Change
-
-Measures:
-
-```text
-Current-period delta
-```
-
----
-
-# Example
-
-Topic:
-
-```text
-AI Strategy
-```
-
-May be:
-
-```text
-Evolution:
-Persistent Growth
-
-Quarter Change:
-Flat This Quarter
-```
-
-Both can be true.
-
----
-
-# Invalidation Rules
-
-Topic Evolution becomes stale when:
-
-- Topic Assignment changes
-- Topic Registry changes
-- Evolution rules change
-
----
-
-# Regeneration Rules
-
-Regenerate:
-
-```text
-Current Period
-
-+
-Affected Future Periods
-```
-
-for company.
-
----
-
-# Evaluation Metrics
-
----
-
-## Topic Continuity Accuracy
-
-Measures:
-
-```text
-Correct persistence tracking
-```
-
----
-
-## Trend Accuracy
-
-Measures:
-
-```text
-Correct trajectory assignment
-```
-
-against ground truth.
-
----
-
-## Volatility Accuracy
-
-Measures:
-
-```text
-Observed instability
-vs
-calculated instability
-```
-
----
-
-## Coverage
-
-Measures:
-
-```text
-Topics Evaluated
-/
-Topics Available
-```
-
----
-
-# Governance
-
-Topic Evolution has:
-
-```text
-No Human Review
-```
-
-Deterministic layer.
-
----
-
-# Metadata
-
-```typescript
-type ArtifactMetadata = {
-  schema_version: string;
-
-  evolution_rules_version: string;
-
-  generated_at: string;
-
-  artifact_version: number;
-};
-```
-
----
-
-# Lineage
-
-```typescript
-type ArtifactLineage = {
-  topic_assignment_versions: number[];
-
-  topic_registry_version: number;
-
-  input_hash: string;
-};
-```
-
----
-
-# Archive Strategy
-
-Store:
-
-```text
-current.json
-
-archive/
-```
-
-for every company-period.
-
----
-
-# Scaling Requirements
-
-Target:
-
-```text
-10,000+ companies
-```
-
----
-
-# Performance Target
-
-```text
-< 5 seconds
-```
-
-per company-period.
+Topic Evolution is the sole source of topic emergence, disappearance,
+strengthening, weakening, persistence, and narrative drift.
 
 ---
 
 # Architectural Invariants
 
-The following are LOCKED:
-
 1. Topic Evolution is deterministic.
 2. Topic Evolution uses no LLM.
-3. Topic Evolution operates on topics, not themes.
-4. Topic Evolution measures change, not meaning.
-5. Topic Evolution is company-scoped.
-6. Topic Evolution is longitudinal.
-7. Quarter Change and Topic Evolution are separate responsibilities.
-8. Persistence requires 4 consecutive periods.
-9. Dormancy requires 2 consecutive absences.
-10. Retirement requires 4 consecutive absences.
+3. Topic Evolution requires at least two periods.
+4. Topic Evolution consumes Topic Assignments and propagated Theme Summaries.
+5. Topic Evolution owns all topic-level temporal behavior.
+6. Topic Delta is not a separate architecture layer.
+7. Quarter Change does not duplicate topic temporal behavior.
+8. Topic Evolution measures change and does not interpret business meaning.
+9. Topic Evolution cannot create or govern topics.
+10. Every output must trace to Topic Assignments and Theme Summaries.
 
 End of Specification.

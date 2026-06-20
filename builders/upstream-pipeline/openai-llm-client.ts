@@ -3,8 +3,10 @@ import type {
   LLMRequest,
   LLMResponse,
 } from "../../packages/llm-framework/src/llm-client.js";
+import type { SemanticEmbeddingProvider } from "../topic-assignment-builder/types.js";
 
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
+const OPENAI_EMBEDDINGS_URL = "https://api.openai.com/v1/embeddings";
 
 type OpenAIResponsePayload = {
   output_text?: string;
@@ -19,7 +21,8 @@ type OpenAIResponsePayload = {
   };
 };
 
-export class OpenAIResponsesLLMClient implements LLMClient {
+export class OpenAIResponsesLLMClient
+implements LLMClient, SemanticEmbeddingProvider {
   constructor(
     private readonly apiKey: string,
     private readonly endpoint = OPENAI_RESPONSES_URL,
@@ -63,6 +66,46 @@ export class OpenAIResponsesLLMClient implements LLMClient {
         ? {}
         : { token_usage: payload.usage.total_tokens }),
     };
+  }
+
+  async embed(input: {
+    model: string;
+    texts: string[];
+  }): Promise<number[][]> {
+    const response = await fetch(OPENAI_EMBEDDINGS_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: input.model,
+        input: input.texts,
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(
+        `OpenAI embeddings request failed: ${response.status} ${response.statusText}\n${body}`,
+      );
+    }
+
+    const payload = await response.json() as {
+      data?: Array<{ embedding?: number[] }>;
+    };
+    const embeddings = payload.data?.map(({ embedding }) => embedding);
+
+    if (
+      embeddings === undefined
+      || embeddings.some((embedding) => !Array.isArray(embedding))
+    ) {
+      throw new Error(
+        "OpenAI embeddings response did not include valid embeddings.",
+      );
+    }
+
+    return embeddings as number[][];
   }
 }
 

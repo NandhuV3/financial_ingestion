@@ -1,7 +1,12 @@
+import type { Artifact } from "../../contracts/artifacts/artifact.js";
 import { BuilderValidationError } from "../../packages/builder-framework/src/builder-errors.js";
 import { STRUCTURED_INTELLIGENCE_STATUS_VALUES, type StructuredIntelligenceArtifactContent, type StructuredUnderstanding } from "./contract.js";
 import type { FilingArtifactContent, StructuredIntelligenceBuilderInput, StructuredIntelligenceLLMOutput } from "./types.js";
-import type { ThemesArtifactContent } from "../themes/contract.js";
+import type { Theme, ThemesArtifactContent } from "../themes/contract.js";
+import {
+  buildStructuredIntelligenceEvaluationHooks,
+  calculateStructuredIntelligenceConfidence,
+} from "./evaluation.js";
 
 const importanceValues = new Set(["high", "medium", "low"]);
 const forbiddenPatterns = [
@@ -44,6 +49,111 @@ export function validateThemesArtifact(content: ThemesArtifactContent): void {
 
   if (!Array.isArray(content.themes)) {
     throw new BuilderValidationError("themes.themes must be an array.");
+  }
+}
+
+export function validateStructuredIntelligenceDependencies(params: {
+  input: StructuredIntelligenceBuilderInput;
+  companyId: string;
+  periodId: string;
+  filingArtifact: Artifact<FilingArtifactContent>;
+  themesArtifact: Artifact<ThemesArtifactContent>;
+}): void {
+  const {
+    input,
+    companyId,
+    periodId,
+    filingArtifact,
+    themesArtifact,
+  } = params;
+
+  validateDependencyIdentity(
+    filingArtifact,
+    "filing",
+    companyId,
+    periodId,
+  );
+  validateDependencyIdentity(
+    themesArtifact,
+    "themes",
+    companyId,
+    periodId,
+  );
+
+  if (
+    input.company_id !== companyId
+    || input.period_id !== periodId
+    || input.filing_id !== filingArtifact.content.filing_id
+  ) {
+    throw new BuilderValidationError(
+      "Structured Intelligence input identity must match the build target and Filing artifact.",
+    );
+  }
+
+  if (
+    filingArtifact.content.filing_period !== periodId
+    || themesArtifact.content.company_id !== companyId
+    || themesArtifact.content.period_id !== periodId
+    || themesArtifact.content.filing_id !== filingArtifact.content.filing_id
+  ) {
+    throw new BuilderValidationError(
+      "Structured Intelligence dependency content identity is inconsistent.",
+    );
+  }
+}
+
+export function validateStructuredEvidenceReferences(
+  understanding: StructuredUnderstanding,
+  themes: Theme[],
+): void {
+  const allowedReferences = new Set(
+    themes.flatMap((theme) => [
+      theme.theme_id,
+      ...theme.source_evidence.map(({ excerpt_hash }) => excerpt_hash),
+    ]),
+  );
+
+  for (const reference of evidenceReferences(understanding)) {
+    if (!allowedReferences.has(reference)) {
+      throw new BuilderValidationError(
+        `Structured Intelligence evidence reference is not present in the supplied Themes artifact: ${reference}`,
+      );
+    }
+  }
+}
+
+export function validateStructuredIntelligenceReconciliation(params: {
+  content: StructuredIntelligenceArtifactContent;
+  themes: Theme[];
+  genericLanguageCount: number;
+  unsupportedEntityWarnings: string[];
+  promptVersion: string;
+  modelVersion: string;
+}): void {
+  const expectedConfidence = calculateStructuredIntelligenceConfidence(
+    params.content.understanding,
+    params.themes,
+    params.unsupportedEntityWarnings,
+  );
+  const expectedEvaluationHooks = buildStructuredIntelligenceEvaluationHooks(
+    params.content.understanding,
+    params.themes,
+    params.promptVersion,
+    params.modelVersion,
+    params.genericLanguageCount,
+    params.unsupportedEntityWarnings,
+  );
+
+  if (!sameValue(params.content.confidence, expectedConfidence)) {
+    throw new BuilderValidationError(
+      "Structured Intelligence confidence does not reconcile with builder calculation.",
+    );
+  }
+
+  if (!sameValue(params.content.evaluation_hooks, expectedEvaluationHooks)) {
+    throw new BuilderValidationError(
+      "Structured Intelligence evaluation hooks do not reconcile with builder calculation.",
+    );
   }
 }
 
@@ -253,6 +363,44 @@ function validateScore(value: number, field: string): void {
   if (!Number.isFinite(value) || value < 0 || value > 1) {
     throw new BuilderValidationError(`${field} must be between 0 and 1.`);
   }
+}
+
+function validateDependencyIdentity(
+  artifact: Artifact<unknown>,
+  expectedType: "filing" | "themes",
+  companyId: string,
+  periodId: string,
+): void {
+  if (
+    artifact.identity.artifact_type !== expectedType
+    || artifact.identity.company_id !== companyId
+    || artifact.identity.period_id !== periodId
+  ) {
+    throw new BuilderValidationError(
+      `Structured Intelligence ${expectedType} dependency identity does not match the build target.`,
+    );
+  }
+}
+
+function evidenceReferences(
+  understanding: StructuredUnderstanding,
+): string[] {
+  return [
+    ...understanding.business_model.evidence_refs,
+    ...understanding.revenue_model.evidence_refs,
+    ...understanding.products.flatMap(({ evidence_refs }) => evidence_refs),
+    ...understanding.customers.flatMap(({ evidence_refs }) => evidence_refs),
+    ...understanding.revenue_drivers.flatMap(({ evidence_refs }) => evidence_refs),
+    ...understanding.competitive_positioning.flatMap(({ evidence_refs }) => evidence_refs),
+    ...understanding.strategic_priorities.flatMap(({ evidence_refs }) => evidence_refs),
+    ...understanding.management_focus.flatMap(({ evidence_refs }) => evidence_refs),
+    ...understanding.risks.flatMap(({ evidence_refs }) => evidence_refs),
+    ...understanding.dependencies.flatMap(({ evidence_refs }) => evidence_refs),
+  ];
+}
+
+function sameValue(left: unknown, right: unknown): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
 }
 
 function requireText(value: unknown, field: string): void {

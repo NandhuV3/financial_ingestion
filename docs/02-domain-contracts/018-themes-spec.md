@@ -46,8 +46,6 @@ Themes
 Topic Assignment
    ↓
 Topic Evolution
-   ↓
-Quarter Change
 ```
 
 Themes is the root artifact for all topic intelligence.
@@ -56,7 +54,8 @@ Themes is the root artifact for all topic intelligence.
 
 # Core Responsibility
 
-Extract:
+Extract filing-specific observation clusters representing coherent business
+narratives discussed by management:
 
 - recurring business discussions
 - management focus areas
@@ -74,13 +73,16 @@ from filing content.
 
 Themes never:
 
+- emit canonical topic labels
 - classify into registry topics
 - interpret meaning
 - infer impact
-- infer direction
 - infer sentiment
 - infer importance
 - infer investor relevance
+- compare periods
+- generate evolution signals
+- generate durable company knowledge
 
 ---
 
@@ -99,11 +101,15 @@ Enterprise AI adoption accelerated.
 Themes Output:
 
 ```text
-AI Demand
+Title:
+Cloud and AI infrastructure priorities
 
-GPU Infrastructure Expansion
+Summary:
+Management discussed AI demand, infrastructure expansion,
+and enterprise adoption.
 
-Enterprise AI Adoption
+Evidence:
+Filing excerpts supporting the observation
 ```
 
 NOT:
@@ -148,7 +154,10 @@ Themes are period-specific.
 
 ## Principle 4
 
-Themes must be reusable across companies.
+The Theme schema and extraction rules must be reusable across companies.
+
+Individual Theme instances remain filing-specific and are never reused across
+companies or periods.
 
 ---
 
@@ -198,17 +207,33 @@ type ThemesArtifact = {
 type Theme = {
   theme_id: string;
 
-  theme_text: string;
+  title: string;
+
+  summary: string;
 
   category: ThemeCategory;
 
   source_evidence: SourceEvidence[];
 
-  frequency: number;
+  evidence_count: number;
+
+  directional_framing?: string;
 
   confidence: number;
 };
 ```
+
+`directional_framing`, when present, must be copied from explicit filing
+language. Themes must not infer direction.
+
+`evidence_count` must equal the number of supporting evidence references.
+
+`summary` is the canonical Theme Summary.
+
+Themes owns extraction of the Theme Summary from the current filing.
+
+Topic Assignment must propagate the Theme Summary unchanged for Topic
+Evolution. Downstream layers may not rewrite it as interpretation.
 
 ---
 
@@ -264,13 +289,16 @@ Theme IDs are not durable.
 theme_id =
 SHA256(
  filing_id +
- normalized_theme_text
+ normalized_title +
+ normalized_summary
 )
 ```
 
 Themes are not reused across periods.
 
-Topic Assignment creates durability.
+Topic Assignment creates canonical normalization.
+
+Topic Evolution creates longitudinal continuity.
 
 ---
 
@@ -299,7 +327,7 @@ type ThemesConfidence = {
 High confidence means:
 
 ```text
-Theme clearly exists
+Observation cluster clearly exists
 in filing
 ```
 
@@ -665,5 +693,8 @@ The following are LOCKED:
 8. Temperature must be 0.
 9. Deduplication is mandatory.
 10. Topic Assignment owns classification, not Themes.
+11. Themes are observation clusters, not topic labels.
+12. Themes owns Theme Summary extraction.
+13. Themes never performs cross-period comparison.
 
 End of Specification.

@@ -314,12 +314,18 @@ Available when this enrichment input is used:
 Quarter Change
 ```
 
+Quarter Change supplies business-level deltas derived from current and prior
+Structured Intelligence.
+
 Examples:
 
 ```text
-Revenue Acceleration
-Margin Expansion
-Customer Growth Acceleration
+Revenue Driver Changed
+Strategic Priority Added
+Competitive Positioning Modified
+Risk Characterization Changed
+Operating Model Changed
+Management Emphasis Changed
 ```
 
 ---
@@ -331,6 +337,9 @@ Available when this enrichment input is used:
 ```text
 Topic Evolution
 ```
+
+Topic Evolution supplies topic persistence, emergence, disappearance,
+strengthening, weakening, and narrative drift.
 
 Examples:
 

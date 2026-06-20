@@ -15,14 +15,22 @@ This document is considered a foundational architecture specification.
 # Layer Overview
 
 ```text
-Themes
-    ├──→ Topic Assignment
-    │        ├──→ Topic Evolution
-    │        └──→ Quarter Change
+Filing
+    ├──→ Themes
+    │        ↓
+    │    Topic Assignment
+    │        ↓
+    │    Topic Evolution
     │
     └──→ Structured Intelligence
-    ↓
+             ├──→ Company Knowledge
+             └──→ Quarter Change
+                    ↑
+          Prior Structured Intelligence
+
 Company Knowledge
+Topic Evolution
+Quarter Change
     ↓
 Business Signals
     ↓
@@ -53,28 +61,24 @@ Each layer has a single primary responsibility.
 
 ## Business Question
 
-What topics is management discussing in this filing?
+What coherent business narratives did management discuss in this filing?
 
 ## Owns
 
-* Raw topic observations extracted from filing text
-* Filing-specific discussion themes
-* Topic evidence references
-
-Examples:
-
-* Cloud
-* Cybersecurity
-* AI
-* Supply Chain
-* Regulatory Pressure
+* Filing-specific observation clusters
+* Coherent management discussion narratives
+* Observation summaries
+* Directional framing stated in the filing
+* Filing evidence references and evidence counts
 
 ## Does Not Own
 
 * Canonical topic classification
 * Topic normalization
-* Topic importance
-* Topic trend analysis
+* Cross-period comparison
+* Topic evolution
+* Business interpretation
+* Durable company knowledge
 * Investor interpretation
 
 ## Inputs
@@ -91,9 +95,46 @@ Themes represent what was discussed.
 
 Themes do not represent what the discussion means.
 
+Themes are observations, not topic labels.
+
 ---
 
-# 2. Topic Assignment
+# 2. Topic Registry
+
+## Business Question
+
+What canonical business topics may filing observations normalize to?
+
+## Owns
+
+* Canonical Topic IDs
+* Topic definitions
+* Topic aliases
+* Topic lifecycle status
+* Topic governance
+
+## Does Not Own
+
+* Company-specific observations
+* Filing-specific themes
+* Topic evolution
+* Business interpretation
+
+## Inputs
+
+* Governed Topic Proposals
+
+## Outputs
+
+* Active Topic Registry
+
+Topic creation is governed.
+
+Topic Assignment cannot create topics.
+
+---
+
+# 3. Topic Assignment
 
 ## Business Question
 
@@ -103,7 +144,9 @@ Which canonical topics are represented by the extracted themes?
 
 * Mapping themes to canonical Topic IDs
 * Topic Registry usage
-* Topic normalization
+* Assignment confidence
+* Canonical topic normalization
+* Theme Summary propagation
 
 Example:
 
@@ -119,6 +162,8 @@ cloud_computing
 
 * Topic importance
 * Topic trend analysis
+* Topic creation
+* Topic evolution
 * Investor relevance
 * Topic interpretation
 
@@ -133,7 +178,7 @@ cloud_computing
 
 ---
 
-# 3. Topic Evolution
+# 4. Topic Evolution
 
 ## Business Question
 
@@ -142,20 +187,24 @@ How has a topic evolved across multiple periods?
 ## Owns
 
 * Longitudinal topic behavior
-* Topic strengthening
-* Topic weakening
-* Topic emergence
-* Topic disappearance
+* Persistence
+* Emergence
+* Disappearance
+* Strengthening
+* Weakening
+* Narrative drift
 
 ## Does Not Own
 
-* Single-period changes
+* Business-level period deltas
 * Investor interpretation
 * Business conclusions
 
 ## Inputs
 
-* Topic Assignment history
+* Topic Assignments
+* Propagated Theme Summaries
+* Historical Topic Assignments
 
 ## Outputs
 
@@ -165,37 +214,45 @@ Examples:
 
 ```text
 Emerging
-Growing
+Strengthening
 Stable
-Declining
+Weakening
 Disappearing
+Narrative Drift
 ```
 
 ---
 
-# 4. Quarter Change
+# 5. Quarter Change
 
 ## Business Question
 
-What changed between this filing and the previous filing?
+What changed in the business between the current and prior period?
 
 ## Owns
 
-* Filing-to-filing delta computation
-* Topic appearance
-* Topic disappearance
-* Topic intensity changes
+* Revenue driver changes
+* Strategic priority changes
+* Competitive positioning changes
+* Risk characterization changes
+* Operating model changes
+* Management emphasis changes
 
 ## Does Not Own
 
 * Why changes matter
-* Trend analysis
+* Topic persistence
+* Topic emergence
+* Topic disappearance
+* Topic strengthening
+* Topic weakening
+* Narrative drift
 * Investor interpretation
 
 ## Inputs
 
-* Current Topic Assignment
-* Previous Topic Assignment
+* Current Structured Intelligence
+* Prior Structured Intelligence
 
 ## Outputs
 
@@ -205,9 +262,11 @@ Quarter Change measures.
 
 Quarter Change does not interpret.
 
+Quarter Change is a business-delta layer, not a topic-delta layer.
+
 ---
 
-# 5. Structured Intelligence
+# 6. Structured Intelligence
 
 ## Business Question
 
@@ -245,7 +304,7 @@ It is not company-scoped.
 
 ---
 
-# 6. Company Knowledge
+# 7. Company Knowledge
 
 ## Business Question
 
@@ -285,7 +344,7 @@ It is not a simple overwrite of Structured Intelligence.
 
 ---
 
-# 7. Business Signals
+# 8. Business Signals
 
 ## Business Question
 
@@ -330,7 +389,7 @@ Signals are not opinions.
 
 ---
 
-# 8. Quarter Understanding
+# 9. Quarter Understanding
 
 ## Business Question
 
@@ -370,7 +429,7 @@ Its responsibility ends at understanding the quarter.
 
 ---
 
-# 9. Investor Intelligence
+# 10. Investor Intelligence
 
 ## Business Question
 
@@ -434,7 +493,7 @@ These ownership boundaries must remain separate.
 
 ---
 
-# 10. Partner Domain
+# 11. Partner Domain
 
 ## Business Question
 
@@ -510,8 +569,20 @@ All intelligence must exist upstream.
 The following ownership model is considered locked:
 
 ```text
-Structured Intelligence
-→ Company Knowledge
+Filing
+├──→ Themes
+│    → Topic Assignment
+│    → Topic Evolution
+│
+└──→ Structured Intelligence
+     ├──→ Company Knowledge
+     └──→ Quarter Change
+            ↑
+          Prior Structured Intelligence
+
+Company Knowledge
+Topic Evolution
+Quarter Change
 → Business Signals
 → Quarter Understanding
 → Investor Intelligence

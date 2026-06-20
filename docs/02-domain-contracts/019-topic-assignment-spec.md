@@ -37,8 +37,6 @@ Themes
 Topic Assignment
    ↓
 Topic Evolution
-   ↓
-Quarter Change
 ```
 
 Topic Assignment is the bridge between:
@@ -65,6 +63,10 @@ Topic Registry Entries
 
 using deterministic classification.
 
+Topic Assignment normalizes observations.
+
+It does not interpret them.
+
 ---
 
 # Topic Assignment Does NOT Do
@@ -78,6 +80,9 @@ Topic Assignment never:
 - infer sentiment
 - generate concepts
 - create topics
+- detect trends
+- detect temporal change
+- rewrite Theme Summaries
 
 ---
 
@@ -205,6 +210,10 @@ type TopicAssignment = {
 
   topic_id: string;
 
+  theme_title: string;
+
+  theme_summary: string;
+
   assignment_method: AssignmentMethod;
 
   similarity_score: number;
@@ -212,6 +221,11 @@ type TopicAssignment = {
   confidence: number;
 };
 ```
+
+`theme_title` and `theme_summary` are copied unchanged from the source Theme.
+
+They are carried forward because Topic Evolution requires the observed
+narrative for temporal comparison.
 
 ---
 
@@ -221,7 +235,6 @@ type TopicAssignment = {
 type AssignmentMethod =
   | "exact_match"
   | "semantic_match"
-  | "keyword_match"
   | "human_override";
 ```
 
@@ -247,7 +260,9 @@ Themes that cannot be mapped.
 type UnassignedTheme = {
   theme_id: string;
 
-  theme_text: string;
+  theme_title: string;
+
+  theme_summary: string;
 
   highest_similarity_score: number;
 
@@ -312,14 +327,6 @@ Embedding similarity.
 ---
 
 ## Step 3
-
-Keyword Matching
-
-Fallback mechanism.
-
----
-
-## Step 4
 
 Unassigned Queue
 
@@ -441,6 +448,35 @@ contains unknown discussions.
 
 ---
 
+# Semantic Similarity Contract
+
+Non-exact assignments must use cosine similarity between:
+
+```text
+Theme embedding
+
+Topic Registry embedding
+```
+
+Both vectors must originate from the same pinned embedding model version.
+
+Runtime token overlap, keyword matching, regex classification, and
+string-contains classification are forbidden.
+
+```typescript
+similarity_score =
+  cosine_similarity(
+    theme_embedding,
+    topic_embedding
+  )
+```
+
+`confidence` equals the normalized `similarity_score`.
+
+Similarity values are rounded to four decimal places for stable replay.
+
+---
+
 # Registry Governance Integration
 
 Topic Assignment cannot modify registry.
@@ -518,8 +554,6 @@ Downstream consumers:
 
 ```text
 Topic Evolution
-
-Quarter Change
 ```
 
 Only.
@@ -627,6 +661,12 @@ Topic Assignment owns:
 
 ```text
 Topic Classification
+
+Assignment Confidence
+
+Canonical Topic Normalization
+
+Theme Summary Propagation
 ```
 
 Only.
@@ -641,6 +681,10 @@ Topic Creation
 Topic Governance
 
 Topic Evolution
+
+Trend Detection
+
+Business Delta Detection
 
 Business Meaning
 ```
@@ -713,5 +757,7 @@ The following are LOCKED:
 8. Unassigned themes may trigger topic proposals.
 9. Topic Assignment never interprets business meaning.
 10. Topic Evolution begins only after Topic Assignment.
+11. Topic Assignment propagates Theme Summaries unchanged.
+12. Topic Assignment never performs temporal comparison.
 
 End of Specification.

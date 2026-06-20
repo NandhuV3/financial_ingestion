@@ -29,8 +29,11 @@ import {
   detectUnsupportedEntityWarnings,
   parseStructuredIntelligenceLLMOutput,
   validateFilingArtifact,
+  validateStructuredEvidenceReferences,
+  validateStructuredIntelligenceDependencies,
   validateStructuredIntelligenceContent,
   validateStructuredIntelligenceInput,
+  validateStructuredIntelligenceReconciliation,
   validateStructuredUnderstanding,
   validateThemesArtifact,
 } from "./validator.js";
@@ -58,11 +61,26 @@ export class StructuredIntelligenceBuilder implements Builder<
   async execute(
     context: BuilderContext<StructuredIntelligenceBuilderInput>,
   ): Promise<BuilderResult<StructuredIntelligenceArtifactContent>> {
-    const filing = dependencyContent<FilingArtifactContent>(context.dependencies.filing, "filing");
-    const themes = dependencyContent<ThemesArtifactContent>(context.dependencies.themes, "themes");
+    const filingArtifact = dependencyArtifact<FilingArtifactContent>(
+      context.dependencies.filing,
+      "filing",
+    );
+    const themesArtifact = dependencyArtifact<ThemesArtifactContent>(
+      context.dependencies.themes,
+      "themes",
+    );
+    const filing = filingArtifact.content;
+    const themes = themesArtifact.content;
 
     validateFilingArtifact(filing);
     validateThemesArtifact(themes);
+    validateStructuredIntelligenceDependencies({
+      input: context.input,
+      companyId: context.companyId,
+      periodId: context.periodId,
+      filingArtifact,
+      themesArtifact,
+    });
 
     const prompt = this.options.promptResolver.resolve(STRUCTURED_INTELLIGENCE_PROMPT_ID);
     const modelVersion = this.options.modelVersion ?? STRUCTURED_INTELLIGENCE_MODEL_VERSION;
@@ -119,10 +137,11 @@ export class StructuredIntelligenceBuilder implements Builder<
 
     const themeTexts = themes.themes.flatMap((theme) => [theme.title, theme.description]);
     validateStructuredUnderstanding(output.understanding);
+    validateStructuredEvidenceReferences(output.understanding, themes.themes);
 
     const genericLanguage = detectGenericLanguage(output.understanding);
     const unsupportedWarnings = detectUnsupportedEntityWarnings(output.understanding, filing.filing_content, themeTexts);
-    const confidence = calculateStructuredIntelligenceConfidence(output.understanding, themes.themes.length, unsupportedWarnings);
+    const confidence = calculateStructuredIntelligenceConfidence(output.understanding, themes.themes, unsupportedWarnings);
     const content: StructuredIntelligenceArtifactContent = {
       company_id: context.input.company_id,
       period_id: context.input.period_id,
@@ -133,7 +152,7 @@ export class StructuredIntelligenceBuilder implements Builder<
       confidence,
       evaluation_hooks: buildStructuredIntelligenceEvaluationHooks(
         output.understanding,
-        themes.themes.length,
+        themes.themes,
         prompt.version,
         modelVersion,
         genericLanguage.length,
@@ -142,6 +161,14 @@ export class StructuredIntelligenceBuilder implements Builder<
     };
 
     validateStructuredIntelligenceContent(content);
+    validateStructuredIntelligenceReconciliation({
+      content,
+      themes: themes.themes,
+      genericLanguageCount: genericLanguage.length,
+      unsupportedEntityWarnings: unsupportedWarnings,
+      promptVersion: prompt.version,
+      modelVersion,
+    });
 
     return {
       content,
@@ -150,10 +177,13 @@ export class StructuredIntelligenceBuilder implements Builder<
   }
 }
 
-function dependencyContent<T>(artifact: Artifact<unknown> | undefined, dependencyName: string): T {
+function dependencyArtifact<T>(
+  artifact: Artifact<unknown> | undefined,
+  dependencyName: string,
+): Artifact<T> {
   if (!artifact) {
     throw new BuilderDependencyError(`Missing required Structured Intelligence dependency: ${dependencyName}`);
   }
 
-  return artifact.content as T;
+  return artifact as Artifact<T>;
 }

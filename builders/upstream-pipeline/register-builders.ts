@@ -4,6 +4,7 @@ import { BuilderExecutor } from "../../packages/builder-framework/src/builder-ex
 import { BuilderRegistry } from "../../packages/builder-framework/src/builder-registry.js";
 import type { LLMClient } from "../../packages/llm-framework/src/llm-client.js";
 import type { PromptResolver } from "../../src/prompt-registry/prompt-resolver.js";
+import type { SemanticEmbeddingProvider } from "../topic-assignment-builder/types.js";
 import { BusinessSignalsBuilder } from "../business-signals-builder/builder.js";
 import {
   BUSINESS_SIGNALS_BUILDER_TYPE,
@@ -32,6 +33,13 @@ import {
   THEMES_PIPELINE_VERSION,
   THEMES_SCHEMA_VERSION,
 } from "../themes/contract.js";
+import { TopicAssignmentBuilder } from "../topic-assignment-builder/builder.js";
+import {
+  TOPIC_ASSIGNMENT_BUILDER_TYPE,
+  TOPIC_ASSIGNMENT_BUILDER_VERSION,
+  TOPIC_ASSIGNMENT_PIPELINE_VERSION,
+  TOPIC_ASSIGNMENT_SCHEMA_VERSION,
+} from "../topic-assignment-builder/contract.js";
 import {
   InMemoryCompanyKnowledgeAuditRepository,
   type CompanyKnowledgeAuditRepository,
@@ -51,6 +59,7 @@ export type UpstreamPipelineRuntimeOptions = {
   repository: ArtifactRepository;
   promptResolver: Pick<PromptResolver, "resolve">;
   llmClient: LLMClient;
+  semanticEmbeddingProvider: SemanticEmbeddingProvider;
   themesModelVersion?: string;
   structuredIntelligenceModelVersion?: string;
   reviewQueueRepository?: ReviewQueueRepository;
@@ -81,6 +90,14 @@ export function registerUpstreamBuilders(
     llmClient: options.llmClient,
     modelVersion: options.themesModelVersion,
   }));
+
+  registry.registerBuilder({
+    builder_type: TOPIC_ASSIGNMENT_BUILDER_TYPE,
+    artifact_type: "topic_assignment",
+    version: TOPIC_ASSIGNMENT_BUILDER_VERSION,
+    schema_version: TOPIC_ASSIGNMENT_SCHEMA_VERSION,
+    pipeline_version: TOPIC_ASSIGNMENT_PIPELINE_VERSION,
+  }, () => new TopicAssignmentBuilder(options.semanticEmbeddingProvider));
 
   registry.registerBuilder({
     builder_type: STRUCTURED_INTELLIGENCE_BUILDER_TYPE,

@@ -24,6 +24,9 @@ import {
   STRUCTURED_INTELLIGENCE_PROMPT_ID,
 } from "../prompt.js";
 import type { FilingArtifactContent, StructuredIntelligenceBuilderInput } from "../types.js";
+import {
+  validateStructuredIntelligenceReconciliation,
+} from "../validator.js";
 
 describe("structured intelligence builder", () => {
   it("generates and persists Structured Intelligence from Filing and Themes artifacts", async () => {
@@ -107,6 +110,35 @@ describe("structured intelligence builder", () => {
         },
       }),
       BuilderDependencyError,
+    );
+  });
+
+  it("rejects dependency company and period identity mismatches", async () => {
+    const filing = filingArtifact();
+    filing.identity.company_id = "AAPL";
+    const themes = themesArtifact();
+    themes.identity.period_id = "2026-Q1";
+    const executor = new BuilderExecutor(
+      registerStructuredBuilder(new StaticLLMClient(validOutput())),
+      new ArtifactService(new TestArtifactRepository()),
+    );
+
+    await assert.rejects(
+      () => executor.executeBuilder<StructuredIntelligenceBuilderInput, StructuredIntelligenceArtifactContent>({
+        builderType: STRUCTURED_INTELLIGENCE_BUILDER_TYPE,
+        companyId: "MSFT",
+        periodId: "2026-Q2",
+        executionId: "identity-mismatch",
+        input: input(),
+        inputHash: "structured-input-hash",
+        dependencies: {
+          filing,
+          themes,
+        },
+      }),
+      (error: unknown) =>
+        error instanceof BuilderValidationError
+        && error.message.includes("dependency identity does not match"),
     );
   });
 
@@ -241,6 +273,111 @@ describe("structured intelligence builder", () => {
       allEvidenceRefs(artifact.content)
         .every((references) => references.length > 0),
       true,
+    );
+  });
+
+  it("rejects evidence references absent from the supplied Themes artifact", async () => {
+    const output = {
+      status: "complete",
+      understanding: {
+        ...understanding(),
+        business_model: {
+          ...understanding().business_model,
+          evidence_refs: ["unknown-evidence-reference"],
+        },
+      },
+    };
+    const executor = new BuilderExecutor(
+      registerStructuredBuilder(new StaticLLMClient(JSON.stringify(output))),
+      new ArtifactService(new TestArtifactRepository()),
+    );
+
+    await assert.rejects(
+      () => executor.executeBuilder<StructuredIntelligenceBuilderInput, StructuredIntelligenceArtifactContent>({
+        builderType: STRUCTURED_INTELLIGENCE_BUILDER_TYPE,
+        companyId: "MSFT",
+        periodId: "2026-Q2",
+        executionId: "unknown-evidence",
+        input: input(),
+        inputHash: "structured-input-hash",
+        dependencies: {
+          filing: filingArtifact(),
+          themes: themesArtifact(),
+        },
+      }),
+      (error: unknown) =>
+        error instanceof BuilderValidationError
+        && error.message.includes("not present in the supplied Themes artifact"),
+    );
+  });
+
+  it("calculates theme utilization from referenced themes rather than raw reference count", async () => {
+    const output = {
+      status: "complete",
+      understanding: withAllEvidenceReferences(understanding(), "theme-1"),
+    };
+    const executor = new BuilderExecutor(
+      registerStructuredBuilder(new StaticLLMClient(JSON.stringify(output))),
+      new ArtifactService(new TestArtifactRepository()),
+    );
+
+    const artifact = await executor.executeBuilder<
+      StructuredIntelligenceBuilderInput,
+      StructuredIntelligenceArtifactContent
+    >({
+      builderType: STRUCTURED_INTELLIGENCE_BUILDER_TYPE,
+      companyId: "MSFT",
+      periodId: "2026-Q2",
+      executionId: "theme-utilization",
+      input: input(),
+      inputHash: "structured-input-hash",
+      dependencies: {
+        filing: filingArtifact(),
+        themes: themesArtifact(),
+      },
+    });
+
+    assert.equal(artifact.content.confidence.theme_utilization, 0.5);
+    assert.equal(artifact.content.evaluation_hooks.theme_utilization, 0.5);
+  });
+
+  it("rejects confidence that does not reconcile with builder calculation", async () => {
+    const repository = new TestArtifactRepository();
+    const executor = new BuilderExecutor(
+      registerStructuredBuilder(new StaticLLMClient(validOutput())),
+      new ArtifactService(repository),
+    );
+    const themes = themesArtifact();
+    const artifact = await executor.executeBuilder<
+      StructuredIntelligenceBuilderInput,
+      StructuredIntelligenceArtifactContent
+    >({
+      builderType: STRUCTURED_INTELLIGENCE_BUILDER_TYPE,
+      companyId: "MSFT",
+      periodId: "2026-Q2",
+      executionId: "confidence-reconciliation",
+      input: input(),
+      inputHash: "structured-input-hash",
+      dependencies: {
+        filing: filingArtifact(),
+        themes,
+      },
+    });
+    const tampered = structuredClone(artifact.content);
+    tampered.confidence.overall = 0;
+
+    assert.throws(
+      () => validateStructuredIntelligenceReconciliation({
+        content: tampered,
+        themes: themes.content.themes,
+        genericLanguageCount: 0,
+        unsupportedEntityWarnings: [],
+        promptVersion: "structured-intelligence-builder-v1",
+        modelVersion: "structured-model-v1",
+      }),
+      (error: unknown) =>
+        error instanceof BuilderValidationError
+        && error.message.includes("confidence does not reconcile"),
     );
   });
 
@@ -445,6 +582,54 @@ function allEvidenceRefs(
     ...understanding.risks.map(({ evidence_refs }) => evidence_refs),
     ...understanding.dependencies.map(({ evidence_refs }) => evidence_refs),
   ];
+}
+
+function withAllEvidenceReferences(
+  value: StructuredIntelligenceArtifactContent["understanding"],
+  reference: string,
+): StructuredIntelligenceArtifactContent["understanding"] {
+  return {
+    business_model: {
+      ...value.business_model,
+      evidence_refs: [reference],
+    },
+    revenue_model: {
+      ...value.revenue_model,
+      evidence_refs: [reference],
+    },
+    products: value.products.map((item) => ({
+      ...item,
+      evidence_refs: [reference],
+    })),
+    customers: value.customers.map((item) => ({
+      ...item,
+      evidence_refs: [reference],
+    })),
+    revenue_drivers: value.revenue_drivers.map((item) => ({
+      ...item,
+      evidence_refs: [reference],
+    })),
+    competitive_positioning: value.competitive_positioning.map((item) => ({
+      ...item,
+      evidence_refs: [reference],
+    })),
+    strategic_priorities: value.strategic_priorities.map((item) => ({
+      ...item,
+      evidence_refs: [reference],
+    })),
+    management_focus: value.management_focus.map((item) => ({
+      ...item,
+      evidence_refs: [reference],
+    })),
+    risks: value.risks.map((item) => ({
+      ...item,
+      evidence_refs: [reference],
+    })),
+    dependencies: value.dependencies.map((item) => ({
+      ...item,
+      evidence_refs: [reference],
+    })),
+  };
 }
 
 class StaticPromptResolver {
