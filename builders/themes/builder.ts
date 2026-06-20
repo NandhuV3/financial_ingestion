@@ -124,7 +124,7 @@ function buildThemes(
   for (const [index, candidate] of candidates.entries()) {
     validateThemeCandidate(candidate, index, evidenceCatalog);
 
-    const key = normalizeThemeKey(candidate.title, candidate.description);
+    const key = normalizeThemeKey(candidate.title, candidate.summary);
 
     if (seen.has(key)) {
       duplicateCount += 1;
@@ -133,11 +133,11 @@ function buildThemes(
 
     seen.add(key);
     themes.push({
-      theme_id: createThemeId(input.filing_id, candidate.title, candidate.description),
+      theme_id: createThemeId(input.filing_id, candidate.title, candidate.summary),
       title: candidate.title.trim(),
-      summary: candidate.description.trim(),
+      summary: candidate.summary.trim(),
       category: candidate.category,
-      source_evidence: candidate.evidence.map((evidence) => {
+      evidence: candidate.evidence.map((evidence) => {
         const canonical = canonicalEvidenceForHash(
           evidenceCatalog,
           evidence.excerpt_hash,
@@ -160,8 +160,5 @@ function buildThemes(
 }
 
 function confidenceFromCandidate(candidate: ThemeCandidate): number {
-  const evidenceScore = Math.min(candidate.evidence.length / 3, 1);
-  const importanceScore = candidate.importance === "high" ? 1 : candidate.importance === "medium" ? 0.75 : 0.5;
-
-  return Math.round(((evidenceScore + importanceScore) / 2) * 1000) / 1000;
+  return candidate.evidence.length > 0 ? 1 : 0;
 }

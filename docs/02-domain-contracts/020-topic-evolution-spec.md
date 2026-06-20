@@ -81,6 +81,34 @@ narrative-drift classification may be emitted.
 
 ---
 
+# Version 1 Scope
+
+Topic Evolution V1 supports only:
+
+```typescript
+type TopicEvolutionState =
+  | "PERSISTENT"
+  | "EMERGING"
+  | "DISAPPEARED";
+```
+
+V1 compares the current Topic Assignment period with the immediately preceding
+Topic Assignment period.
+
+The following capabilities are reserved for future versions:
+
+* strengthening
+* weakening
+* narrative drift
+* dormant state
+* interrupted or recurring lifecycle classification
+* advanced scoring
+
+Reserved capabilities remain owned by Topic Evolution. Deferring their
+implementation does not transfer ownership to another layer.
+
+---
+
 # Core Ownership
 
 Topic Evolution owns:
@@ -158,15 +186,13 @@ type TopicEvolution = {
 
   periods_present: number;
 
-  persistence: PersistenceState;
-
-  emergence: EmergenceState;
-
-  disappearance: DisappearanceState;
+  evolution_state: TopicEvolutionState;
 
   strength_direction: StrengthDirection;
 
   narrative_drift: NarrativeDrift;
+
+  confidence: number;
 
   evidence: TopicEvolutionEvidence;
 };
@@ -174,55 +200,61 @@ type TopicEvolution = {
 
 ---
 
-# Temporal States
+# V1 Transition Rules
 
 ```typescript
-type PersistenceState =
-  | "new"
-  | "recurring"
-  | "persistent"
-  | "interrupted";
-
-type EmergenceState =
-  | "emerging"
-  | "not_emerging";
-
-type DisappearanceState =
-  | "present"
-  | "dormant"
-  | "disappeared";
-
-type StrengthDirection =
-  | "strengthening"
-  | "stable"
-  | "weakening";
+type TopicEvolutionState =
+  | "PERSISTENT"
+  | "EMERGING"
+  | "DISAPPEARED";
 ```
+
+V1 applies the following deterministic transition matrix:
+
+| Prior Period | Current Period | V1 Output |
+|---|---|---|
+| Present | Present | `PERSISTENT` |
+| Absent | Present | `EMERGING` |
+| Present | Absent | `DISAPPEARED` |
+| Absent | Absent | no output |
+
+Presence means that at least one Topic Assignment references the canonical
+`topic_id` in that period.
+
+For V1:
+
+* `PERSISTENT` uses assignment references from both periods.
+* `EMERGING` uses current-period assignment references.
+* `DISAPPEARED` uses prior-period assignment references.
+* Topics absent from both periods are not emitted.
+* Output ordering is ascending by `topic_id`.
 
 ---
 
-# Narrative Drift
-
-Narrative drift compares Theme Summaries assigned to the same canonical topic
-across periods.
+# Deferred Assessment Fields
 
 ```typescript
-type NarrativeDrift = {
-  state:
-    | "unchanged"
-    | "evolved"
-    | "materially_shifted";
+type StrengthDirection =
+  | "strengthening"
+  | "weakening"
+  | "stable"
+  | "not_assessed";
 
-  prior_theme_summaries: string[];
-
-  current_theme_summaries: string[];
-
-  supporting_assignment_refs: string[];
-};
+type NarrativeDrift =
+  | "changed"
+  | "unchanged"
+  | "not_assessed";
 ```
 
-Narrative drift measures textual subject change.
+V1 must emit:
 
-It does not explain why the change matters.
+```typescript
+strength_direction: "not_assessed";
+narrative_drift: "not_assessed";
+```
+
+V1 must not infer `stable` or `unchanged` merely because advanced comparison is
+not implemented.
 
 ---
 
@@ -252,18 +284,61 @@ and propagated Theme Summaries.
 ```typescript
 type TopicEvolutionConfidence = {
   overall: number;
-
-  history_depth_score: number;
-
-  assignment_coverage_score: number;
-
-  summary_coverage_score: number;
 };
 ```
 
-Confidence measures source completeness and temporal evidence depth.
+Each emitted `TopicEvolution` also records its own deterministic `confidence`.
 
-It does not measure business importance.
+For a topic with multiple assignments in one period:
+
+```typescript
+period_assignment_confidence =
+  average(all assignment confidence values for that topic in that period)
+```
+
+V1 classification confidence is:
+
+```typescript
+PERSISTENT =
+  average(
+    prior_period_assignment_confidence,
+    current_period_assignment_confidence
+  )
+
+EMERGING =
+  current_period_assignment_confidence
+
+DISAPPEARED =
+  prior_period_assignment_confidence
+```
+
+All classification confidence values are rounded to four decimal places after
+the final calculation.
+
+Artifact confidence is:
+
+```typescript
+TopicEvolutionConfidence.overall =
+  average(all emitted TopicEvolution confidence values)
+```
+
+Artifact confidence is rounded to four decimal places.
+
+When no evolutions are emitted:
+
+```typescript
+confidence.overall = 0
+```
+
+When `status = "insufficient_history"`:
+
+```typescript
+topic_evolutions = []
+confidence.overall = 0
+```
+
+Confidence measures assignment support for the temporal classification. It
+does not measure business importance.
 
 ---
 
@@ -291,6 +366,10 @@ Quarter Understanding enrichment
 Topic Evolution is the sole source of topic emergence, disappearance,
 strengthening, weakening, persistence, and narrative drift.
 
+V1 emits only persistence, emergence, and disappearance classifications.
+Strengthening, weakening, narrative drift, and dormant-state classification
+remain reserved for future Topic Evolution versions.
+
 ---
 
 # Architectural Invariants
@@ -305,5 +384,9 @@ strengthening, weakening, persistence, and narrative drift.
 8. Topic Evolution measures change and does not interpret business meaning.
 9. Topic Evolution cannot create or govern topics.
 10. Every output must trace to Topic Assignments and Theme Summaries.
+11. V1 emits only `PERSISTENT`, `EMERGING`, and `DISAPPEARED`.
+12. V1 emits `not_assessed` for strength direction and narrative drift.
+13. V1 confidence follows the locked assignment-confidence formulas and is
+    rounded to four decimal places.
 
 End of Specification.

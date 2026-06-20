@@ -33,7 +33,7 @@ export type Theme = {
   title: string;
   summary: string;
   category: ThemeCategory;
-  source_evidence: SourceEvidence[];
+  evidence: SourceEvidence[];
   evidence_count: number;
   directional_framing?: string;
   confidence: number;

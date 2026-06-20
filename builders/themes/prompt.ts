@@ -21,26 +21,29 @@ Return JSON only with this shape:
   "themes": [
     {
       "title": "short observation",
-      "description": "what management discussed",
+      "summary": "what management discussed",
       "category": "strategy | product | customer | competition | operations | financial | capital_allocation | management | trust | regulatory | technology | other",
-      "importance": "low | medium | high",
+      "evidence_count": 1,
       "evidence": [
         {
           "section": "filing section or source location",
           "excerpt_hash": "<select an exact excerpt_hash from the evidence catalog>"
         }
-      ],
-      "frequency": 1
+      ]
     }
   ]
 }
 
 Rules:
 - Themes are observations, not interpretations.
+- category must be exactly one of: strategy, product, customer, competition, operations, financial, capital_allocation, management, trust, regulatory, technology, other.
+- Do not create category names or use synonyms such as growth, margins, liquidity, cybersecurity, or artificial_intelligence.
 - Do not assign topic IDs.
 - Do not generate concept IDs.
 - Do not infer business impact, sentiment, valuation, trust, recommendations, or investor conclusions.
 - Every theme must include at least one evidence item.
+- evidence_count must equal the number of evidence items.
+- Return only title, summary, category, evidence_count, and evidence for each theme.
 - Use only excerpt_hash values supplied in the evidence catalog.
 - Never create, shorten, transform, or guess an excerpt_hash.
 - The platform owns section and paragraph_reference metadata. Return the selected excerpt_hash; platform metadata replaces any model-supplied location metadata.

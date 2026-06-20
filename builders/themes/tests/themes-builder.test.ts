@@ -63,13 +63,18 @@ describe("themes builder", () => {
     assert.equal(artifact.content.themes.length, 2);
     assert.equal(artifact.content.themes[0]?.title, "AI Adoption");
     assert.equal(artifact.content.themes[0]?.theme_id.length, 64);
-    assert.deepEqual(artifact.content.themes[0]?.source_evidence, [
+    assert.deepEqual(artifact.content.themes[0]?.evidence, [
       {
         section: "filing_content",
         excerpt_hash: evidenceHash(),
         paragraph_reference: "excerpt-0001",
       },
     ]);
+    assert.equal(artifact.content.themes[0]?.summary, "Management discussed AI adoption.");
+    assert.equal(artifact.content.themes[0]?.evidence_count, 1);
+    assert.equal("description" in artifact.content.themes[0]!, false);
+    assert.equal("importance" in artifact.content.themes[0]!, false);
+    assert.equal("frequency" in artifact.content.themes[0]!, false);
     assert.equal(artifact.content.confidence.overall, 1);
     assert.equal(artifact.content.evaluation_hooks.prompt_version, "theme-generation-v1");
     assert.equal(artifact.lineage.prompt_reference?.prompt_id, "theme-generation-system");
@@ -132,9 +137,9 @@ describe("themes builder", () => {
       themes: [
         {
           title: "AI Adoption",
-          description: "Management discussed AI adoption.",
+          summary: "Management discussed AI adoption.",
           category: "technology",
-          importance: "high",
+          evidence_count: 0,
           evidence: [],
         },
       ],
@@ -158,9 +163,9 @@ describe("themes builder", () => {
       themes: [
         {
           title: "AI Adoption",
-          description: "Management discussed AI adoption.",
+          summary: "Management discussed AI adoption.",
           category: "technology",
-          importance: "high",
+          evidence_count: 1,
           evidence: [{
             section: "MD&A",
             excerpt_hash: "abc123",
@@ -184,6 +189,66 @@ describe("themes builder", () => {
     );
   });
 
+  it("rejects invalid categories with index, received value, and allowed values", async () => {
+    const executor = executorWithBuilder(new StaticLLMClient(JSON.stringify({
+      themes: [
+        {
+          title: "AI Adoption",
+          summary: "Management discussed AI adoption.",
+          category: "growth",
+          evidence_count: 1,
+          evidence: [{ section: "MD&A", excerpt_hash: evidenceHash() }],
+        },
+      ],
+    })));
+
+    await assert.rejects(
+      () => executor.executeBuilder<ThemesBuilderInput, ThemesArtifactContent>({
+        builderType: THEMES_BUILDER_TYPE,
+        companyId: "MSFT",
+        periodId: "2026-Q2",
+        executionId: "execution-1",
+        input: input(),
+        inputHash: "filing-input-hash",
+      }),
+      (error: unknown) =>
+        error instanceof BuilderValidationError
+        && error.message.includes('themes[0].category received "growth"')
+        && error.message.includes("allowed values: strategy, product"),
+    );
+  });
+
+  it("rejects legacy Theme output fields during parsing", async () => {
+    const executor = executorWithBuilder(new StaticLLMClient(JSON.stringify({
+      themes: [
+        {
+          title: "AI Adoption",
+          summary: "Management discussed AI adoption.",
+          description: "Legacy summary.",
+          category: "technology",
+          importance: "high",
+          frequency: 1,
+          evidence_count: 1,
+          evidence: [{ section: "MD&A", excerpt_hash: evidenceHash() }],
+        },
+      ],
+    })));
+
+    await assert.rejects(
+      () => executor.executeBuilder<ThemesBuilderInput, ThemesArtifactContent>({
+        builderType: THEMES_BUILDER_TYPE,
+        companyId: "MSFT",
+        periodId: "2026-Q2",
+        executionId: "execution-1",
+        input: input(),
+        inputHash: "filing-input-hash",
+      }),
+      (error: unknown) =>
+        error instanceof BuilderValidationError
+        && error.message.includes("Unknown: description, importance, frequency"),
+    );
+  });
+
   it("generates stable evidence hashes from normalized filing excerpts", () => {
     const first = buildFilingEvidenceCatalog(input());
     const second = buildFilingEvidenceCatalog({
@@ -204,6 +269,8 @@ describe("themes builder", () => {
     assert.match(prompt, new RegExp(catalog[0]?.excerpt_hash ?? ""));
     assert.match(prompt, /Use only excerpt_hash values supplied in the evidence catalog/);
     assert.match(prompt, /Never create, shorten, transform, or guess an excerpt_hash/);
+    assert.match(prompt, /category must be exactly one of/);
+    assert.match(prompt, /Do not create category names or use synonyms/);
   });
 
   it("removes exact normalized duplicate themes without semantic deduplication", async () => {
@@ -211,16 +278,16 @@ describe("themes builder", () => {
       themes: [
         {
           title: "AI Adoption",
-          description: "Management discussed AI adoption.",
+          summary: "Management discussed AI adoption.",
           category: "technology",
-          importance: "high",
+          evidence_count: 1,
           evidence: [{ section: "invented", excerpt_hash: evidenceHash() }],
         },
         {
           title: " AI adoption! ",
-          description: "Management discussed AI adoption",
+          summary: "Management discussed AI adoption",
           category: "technology",
-          importance: "high",
+          evidence_count: 1,
           evidence: [{ section: "different", excerpt_hash: evidenceHash() }],
         },
       ],
@@ -238,6 +305,34 @@ describe("themes builder", () => {
     assert.equal(artifact.content.themes.length, 1);
     assert.equal(artifact.content.evaluation_hooks.duplicate_count, 1);
     assert.equal(artifact.content.confidence.extraction_consistency, 0);
+  });
+
+  it("is deterministic for identical canonical output", async () => {
+    const first = await executorWithBuilder(
+      new StaticLLMClient(validLLMOutput()),
+    ).executeBuilder<ThemesBuilderInput, ThemesArtifactContent>({
+      builderType: THEMES_BUILDER_TYPE,
+      companyId: "MSFT",
+      periodId: "2026-Q2",
+      executionId: "execution-1",
+      input: input(),
+      inputHash: "filing-input-hash",
+      generatedAt: "2026-06-15T00:00:00.000Z",
+    });
+    const second = await executorWithBuilder(
+      new StaticLLMClient(validLLMOutput()),
+    ).executeBuilder<ThemesBuilderInput, ThemesArtifactContent>({
+      builderType: THEMES_BUILDER_TYPE,
+      companyId: "MSFT",
+      periodId: "2026-Q2",
+      executionId: "execution-1",
+      input: input(),
+      inputHash: "filing-input-hash",
+      generatedAt: "2026-06-15T00:00:00.000Z",
+    });
+
+    assert.deepEqual(first.content, second.content);
+    assert.equal(first.metadata.artifact_hash, second.metadata.artifact_hash);
   });
 
   it("wraps LLM invocation failures in typed execution errors", async () => {
@@ -291,16 +386,16 @@ function validLLMOutput(): string {
     themes: [
       {
         title: "AI Adoption",
-        description: "Management discussed AI adoption.",
+        summary: "Management discussed AI adoption.",
         category: "technology",
-        importance: "high",
+        evidence_count: 1,
         evidence: [{ section: "MD&A", excerpt_hash: evidenceHash() }],
       },
       {
         title: "Cloud Expansion",
-        description: "Management discussed cloud expansion.",
+        summary: "Management discussed cloud expansion.",
         category: "product",
-        importance: "medium",
+        evidence_count: 1,
         evidence: [{ section: "MD&A", excerpt_hash: evidenceHash() }],
       },
     ],

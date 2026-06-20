@@ -131,7 +131,7 @@ function themeUtilizationScore(
   ]);
   const utilizedThemes = themes.filter((theme) =>
     references.has(theme.theme_id)
-    || theme.source_evidence.some(({ excerpt_hash }) =>
+    || theme.evidence.some(({ excerpt_hash }) =>
       references.has(excerpt_hash)));
 
   return utilizedThemes.length / themes.length;

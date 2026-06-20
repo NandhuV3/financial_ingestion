@@ -17,11 +17,10 @@ export type FilingEvidenceCatalogEntry = SourceEvidence & {
 
 export type ThemeCandidate = {
   title: string;
-  description: string;
+  summary: string;
   category: ThemeCategory;
-  importance: "low" | "medium" | "high";
+  evidence_count: number;
   evidence: SourceEvidence[];
-  frequency?: number;
 };
 
 export type ThemesLLMOutput = {

@@ -393,7 +393,7 @@ describe("structured intelligence builder", () => {
 
     assert.equal(prompt.includes('"evidence_refs": []'), false);
     assert.match(prompt, /at least one evidence_refs entry/);
-    assert.match(prompt, /theme_id values or source_evidence\.excerpt_hash values/);
+    assert.match(prompt, /theme_id values or evidence\.excerpt_hash values/);
     assert.match(prompt, /Never emit an empty evidence_refs array/);
   });
 
@@ -765,7 +765,7 @@ function themesArtifact(): Artifact<ThemesArtifactContent> {
           title: "Azure Cloud Demand",
           summary: "Management discussed Azure cloud services and enterprise customers.",
           category: "technology",
-          source_evidence: [{ section: "MD&A", excerpt_hash: "theme-1" }],
+          evidence: [{ section: "MD&A", excerpt_hash: "theme-1" }],
           evidence_count: 1,
           confidence: 0.9,
         },
@@ -774,7 +774,7 @@ function themesArtifact(): Artifact<ThemesArtifactContent> {
           title: "AI Adoption",
           summary: "Management discussed AI adoption and technology execution risks.",
           category: "technology",
-          source_evidence: [{ section: "MD&A", excerpt_hash: "theme-2" }],
+          evidence: [{ section: "MD&A", excerpt_hash: "theme-2" }],
           evidence_count: 1,
           confidence: 0.8,
         },

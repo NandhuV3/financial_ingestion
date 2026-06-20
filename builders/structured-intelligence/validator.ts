@@ -109,7 +109,7 @@ export function validateStructuredEvidenceReferences(
   const allowedReferences = new Set(
     themes.flatMap((theme) => [
       theme.theme_id,
-      ...theme.source_evidence.map(({ excerpt_hash }) => excerpt_hash),
+      ...theme.evidence.map(({ excerpt_hash }) => excerpt_hash),
     ]),
   );
 

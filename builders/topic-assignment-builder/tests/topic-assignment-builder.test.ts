@@ -512,7 +512,7 @@ function theme(
     title,
     summary,
     category: "technology",
-    source_evidence: [{
+    evidence: [{
       section: "MD&A",
       excerpt_hash: "evidence-hash",
     }],

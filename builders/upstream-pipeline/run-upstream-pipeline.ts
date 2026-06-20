@@ -42,12 +42,21 @@ import type {
   TopicAssignmentBuilderInput,
   TopicRegistryArtifactContent,
 } from "../topic-assignment-builder/types.js";
+import {
+  historicalTopicAssignmentDependencyKey,
+  TOPIC_EVOLUTION_BUILDER_TYPE,
+} from "../topic-evolution-builder/contract.js";
+import type {
+  TopicEvolutionArtifactContent,
+  TopicEvolutionBuilderInput,
+} from "../topic-evolution-builder/types.js";
 import type { UpstreamPipelineRuntime } from "./register-builders.js";
 
 export type RunUpstreamPipelineInput = {
   runtime: UpstreamPipelineRuntime;
   filingArtifact: Artifact<FilingArtifactContent>;
   topicRegistryArtifact: Artifact<TopicRegistryArtifactContent>;
+  historicalTopicAssignmentArtifacts?: Artifact<TopicAssignmentArtifactContent>[];
   companyId: string;
   periodId: string;
   generatedAt?: string;
@@ -57,6 +66,7 @@ export type RunUpstreamPipelineInput = {
 export const UPSTREAM_PIPELINE_STAGES = [
   "themes",
   "topic_assignment",
+  "topic_evolution",
   "structured_intelligence",
   "company_knowledge_candidate",
   "governance_decision",
@@ -126,6 +136,42 @@ export async function runUpstreamPipeline(
     generatedAt: input.generatedAt,
   });
   await emitArtifact(input, "topic_assignment", topicAssignment);
+
+  const historicalTopicAssignments = [
+    ...(input.historicalTopicAssignmentArtifacts ?? []),
+  ];
+  const topicEvolutionInput: TopicEvolutionBuilderInput = {
+    company_id: input.companyId,
+    period_id: input.periodId,
+    historical_periods: historicalTopicAssignments.map(
+      ({ content }) => content.period,
+    ),
+  };
+  const topicEvolution = await input.runtime.executor.executeBuilder<
+    TopicEvolutionBuilderInput,
+    TopicEvolutionArtifactContent
+  >({
+    builderType: TOPIC_EVOLUTION_BUILDER_TYPE,
+    companyId: input.companyId,
+    periodId: input.periodId,
+    executionId: executionId(input, "topic-evolution"),
+    input: topicEvolutionInput,
+    inputHash: calculateArtifactHash({
+      current_topic_assignments: topicAssignment.metadata.artifact_hash,
+      historical_topic_assignments: historicalTopicAssignments.map(
+        ({ metadata }) => metadata.artifact_hash,
+      ),
+    }),
+    dependencies: {
+      current_topic_assignments: topicAssignment,
+      ...Object.fromEntries(historicalTopicAssignments.map((artifact) => [
+        historicalTopicAssignmentDependencyKey(artifact.content.period),
+        artifact,
+      ])),
+    },
+    generatedAt: input.generatedAt,
+  });
+  await emitArtifact(input, "topic_evolution", topicEvolution);
 
   const structuredInput: StructuredIntelligenceBuilderInput = {
     company_id: input.companyId,

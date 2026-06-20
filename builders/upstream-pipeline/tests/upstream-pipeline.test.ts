@@ -20,6 +20,7 @@ import type { CompanyKnowledgeArtifactContent } from "../../company-knowledge-bu
 import type { BusinessSignalsArtifactContent } from "../../business-signals-builder/types.js";
 import type { TopicRegistryArtifactContent } from "../../topic-assignment-builder/types.js";
 import type { TopicAssignmentArtifactContent } from "../../topic-assignment-builder/types.js";
+import type { TopicEvolutionArtifactContent } from "../../topic-evolution-builder/types.js";
 import { buildFilingEvidenceCatalog } from "../../themes/evidence.js";
 import {
   STRUCTURED_INTELLIGENCE_PROMPT_ID,
@@ -46,13 +47,16 @@ describe("upstream pipeline", () => {
     });
     const filing = filingArtifact();
     const topicRegistry = topicRegistryArtifact();
+    const historicalTopicAssignment = historicalTopicAssignmentArtifact();
     await repository.create(filing);
     await repository.create(topicRegistry);
+    await repository.create(historicalTopicAssignment);
 
     const result = await runUpstreamPipeline({
       runtime,
       filingArtifact: filing,
       topicRegistryArtifact: topicRegistry,
+      historicalTopicAssignmentArtifacts: [historicalTopicAssignment],
       companyId: "MSFT",
       periodId: "2026-Q2",
       generatedAt: "2026-06-19T00:00:00.000Z",
@@ -73,6 +77,7 @@ describe("upstream pipeline", () => {
     for (const artifactType of [
       "themes",
       "topic_assignment",
+      "topic_evolution",
       "structured_intelligence",
       "company_knowledge_candidate",
       "governance_decision",
@@ -108,6 +113,12 @@ describe("upstream pipeline", () => {
         company_id: "MSFT",
         period_id: "2026-Q2",
       });
+    const topicEvolution =
+      await repository.getCurrent<TopicEvolutionArtifactContent>({
+        artifact_type: "topic_evolution",
+        company_id: "MSFT",
+        period_id: "2026-Q2",
+      });
 
     assert.equal(approvedKnowledge?.content.company_knowledge_version, 1);
     assert.equal(
@@ -139,6 +150,28 @@ describe("upstream pipeline", () => {
       ),
       true,
     );
+    assert.equal(topicEvolution?.content.status, "complete");
+    assert.equal(
+      topicEvolution?.content.topic_evolutions[0]?.evolution_state,
+      "PERSISTENT",
+    );
+    assert.equal(
+      topicEvolution?.content.topic_evolutions[0]?.confidence,
+      0.9,
+    );
+    assert.deepEqual(
+      topicEvolution?.content.topic_evolutions[0]?.evidence.periods_analyzed,
+      ["2026-Q1", "2026-Q2"],
+    );
+    assert.deepEqual(
+      topicEvolution?.lineage.upstream_dependencies
+        .map(({ artifact_id }) => artifact_id)
+        .sort(),
+      [
+        historicalTopicAssignment.identity.artifact_id,
+        topicAssignment?.identity.artifact_id,
+      ].sort(),
+    );
     assert.equal(llmClient.requests.length, 2);
     assert.equal(
       llmClient.requests.every((request) => request.temperature === 0),
@@ -148,11 +181,12 @@ describe("upstream pipeline", () => {
     const expectedDumps = [
       ["01-themes.json", "themes"],
       ["02-topic-assignment.json", "topic_assignment"],
-      ["03-structured-intelligence.json", "structured_intelligence"],
-      ["04-company-knowledge-candidate.json", "company_knowledge_candidate"],
-      ["05-governance-decision.json", "governance_decision"],
-      ["06-company-knowledge.json", "company_knowledge"],
-      ["07-business-signals.json", "business_signals"],
+      ["03-topic-evolution.json", "topic_evolution"],
+      ["04-structured-intelligence.json", "structured_intelligence"],
+      ["05-company-knowledge-candidate.json", "company_knowledge_candidate"],
+      ["06-governance-decision.json", "governance_decision"],
+      ["07-company-knowledge.json", "company_knowledge"],
+      ["08-business-signals.json", "business_signals"],
     ] as const;
 
     for (const [filename, artifactType] of expectedDumps) {
@@ -165,6 +199,59 @@ describe("upstream pipeline", () => {
     }
   });
 });
+
+function historicalTopicAssignmentArtifact(): Artifact<TopicAssignmentArtifactContent> {
+  const content: TopicAssignmentArtifactContent = {
+    artifact_type: "topic_assignment",
+    company: "MSFT",
+    filing_id: "msft-2026-q1-10q",
+    period: "2026-Q1",
+    assignments: [{
+      assignment_id: "historical-cloud-assignment",
+      theme_id: "historical-cloud-theme",
+      topic_id: "cloud",
+      theme_title: "Cloud platform demand",
+      theme_summary: "Management discussed Azure demand.",
+      assignment_method: "semantic_match",
+      similarity_score: 0.8,
+      confidence: 0.8,
+    }],
+    unassigned_themes: [],
+    confidence: {
+      overall: 1,
+      exact_match_rate: 0,
+      semantic_match_rate: 1,
+      unassigned_rate: 0,
+    },
+  };
+
+  return {
+    identity: {
+      artifact_id: "topic-assignment-msft-2026-q1",
+      artifact_type: "topic_assignment",
+      company_id: "MSFT",
+      period_id: "2026-Q1",
+      version: 1,
+    },
+    metadata: {
+      version: 1,
+      schema_version: "topic-assignment-artifact-v1",
+      pipeline_version: "topic-assignment-pipeline-v1",
+      generated_at: "2026-03-19T00:00:00.000Z",
+      artifact_hash: calculateArtifactHash(content),
+      input_hash: "historical-topic-assignment-input",
+      generation_duration_ms: 0,
+      status: ArtifactStatus.ACTIVE,
+    },
+    lineage: {
+      upstream_dependencies: [],
+      generation_context: {
+        builder_type: "topic-assignment-builder",
+      },
+    },
+    content,
+  };
+}
 
 function topicRegistryArtifact(): Artifact<TopicRegistryArtifactContent> {
   const content: TopicRegistryArtifactContent = {
@@ -248,16 +335,15 @@ class UpstreamLLMClient implements LLMClient {
           themes: [
             {
               title: "Cloud platform demand",
-              description: "Management discussed Azure demand and enterprise adoption.",
+              summary: "Management discussed Azure demand and enterprise adoption.",
               category: "technology",
-              importance: "high",
+              evidence_count: 1,
               evidence: [
                 {
                   section: "MD&A",
                   excerpt_hash: excerptHash,
                 },
               ],
-              frequency: 2,
             },
           ],
         }),

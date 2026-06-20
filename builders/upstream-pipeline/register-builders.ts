@@ -40,6 +40,13 @@ import {
   TOPIC_ASSIGNMENT_PIPELINE_VERSION,
   TOPIC_ASSIGNMENT_SCHEMA_VERSION,
 } from "../topic-assignment-builder/contract.js";
+import { TopicEvolutionBuilder } from "../topic-evolution-builder/builder.js";
+import {
+  TOPIC_EVOLUTION_BUILDER_TYPE,
+  TOPIC_EVOLUTION_BUILDER_VERSION,
+  TOPIC_EVOLUTION_PIPELINE_VERSION,
+  TOPIC_EVOLUTION_SCHEMA_VERSION,
+} from "../topic-evolution-builder/contract.js";
 import {
   InMemoryCompanyKnowledgeAuditRepository,
   type CompanyKnowledgeAuditRepository,
@@ -98,6 +105,14 @@ export function registerUpstreamBuilders(
     schema_version: TOPIC_ASSIGNMENT_SCHEMA_VERSION,
     pipeline_version: TOPIC_ASSIGNMENT_PIPELINE_VERSION,
   }, () => new TopicAssignmentBuilder(options.semanticEmbeddingProvider));
+
+  registry.registerBuilder({
+    builder_type: TOPIC_EVOLUTION_BUILDER_TYPE,
+    artifact_type: "topic_evolution",
+    version: TOPIC_EVOLUTION_BUILDER_VERSION,
+    schema_version: TOPIC_EVOLUTION_SCHEMA_VERSION,
+    pipeline_version: TOPIC_EVOLUTION_PIPELINE_VERSION,
+  }, () => new TopicEvolutionBuilder());
 
   registry.registerBuilder({
     builder_type: STRUCTURED_INTELLIGENCE_BUILDER_TYPE,

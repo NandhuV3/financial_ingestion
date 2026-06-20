@@ -3,7 +3,7 @@ import type { Theme, ThemesConfidence, ThemesEvaluationHooks } from "./contract.
 export function calculateThemesConfidence(themes: Theme[], duplicateCount: number): ThemesConfidence {
   const evidenceCoverage = themes.length === 0
     ? 0
-    : themes.filter((theme) => theme.source_evidence.length > 0).length / themes.length;
+    : themes.filter((theme) => theme.evidence.length > 0).length / themes.length;
   const extractionConsistency = themes.length === 0
     ? 0
     : Math.max(0, 1 - duplicateCount / themes.length);
@@ -24,7 +24,7 @@ export function buildThemesEvaluationHooks(
   promptVersion: string,
   modelVersion: string,
 ): ThemesEvaluationHooks {
-  const totalEvidence = themes.reduce((sum, theme) => sum + theme.source_evidence.length, 0);
+  const totalEvidence = themes.reduce((sum, theme) => sum + theme.evidence.length, 0);
   const averageConfidence = themes.length === 0
     ? 0
     : themes.reduce((sum, theme) => sum + theme.confidence, 0) / themes.length;
@@ -47,4 +47,3 @@ export function buildThemesEvaluationHooks(
 function round(value: number): number {
   return Math.round(value * 1000) / 1000;
 }
-

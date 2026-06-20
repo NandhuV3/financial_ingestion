@@ -78,10 +78,10 @@ export function requireThemesDependency(
     if (
       !Number.isInteger(theme.evidence_count)
       || theme.evidence_count < 0
-      || theme.evidence_count !== theme.source_evidence.length
+      || theme.evidence_count !== theme.evidence.length
     ) {
       throw new BuilderDependencyError(
-        `themes.themes[${index}].evidence_count must equal source_evidence length.`,
+        `themes.themes[${index}].evidence_count must equal evidence length.`,
       );
     }
 

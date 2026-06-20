@@ -213,7 +213,7 @@ type Theme = {
 
   category: ThemeCategory;
 
-  source_evidence: SourceEvidence[];
+  evidence: SourceEvidence[];
 
   evidence_count: number;
 
@@ -226,7 +226,7 @@ type Theme = {
 `directional_framing`, when present, must be copied from explicit filing
 language. Themes must not infer direction.
 
-`evidence_count` must equal the number of supporting evidence references.
+`evidence_count` must equal `evidence.length`.
 
 `summary` is the canonical Theme Summary.
 
