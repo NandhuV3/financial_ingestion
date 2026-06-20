@@ -57,20 +57,32 @@ describe("TopicAssignmentBuilder", () => {
 
     assert.deepEqual(first.content, second.content);
     assert.deepEqual(
-      first.content.assignments.map(({ theme_id, topic_id, assignment_method }) => ({
+      first.content.assignments.map(({
         theme_id,
         topic_id,
+        theme_title,
+        theme_summary,
+        assignment_method,
+      }) => ({
+        theme_id,
+        topic_id,
+        theme_title,
+        theme_summary,
         assignment_method,
       })),
       [
         {
           theme_id: "theme-a",
           topic_id: "artificial_intelligence",
+          theme_title: "Artificial Intelligence",
+          theme_summary: "AI infrastructure investment.",
           assignment_method: "exact_match",
         },
         {
           theme_id: "theme-b",
           topic_id: "cloud",
+          theme_title: "Cloud platform demand",
+          theme_summary: "Azure cloud adoption increased.",
           assignment_method: "semantic_match",
         },
       ],
@@ -130,8 +142,27 @@ describe("TopicAssignmentBuilder", () => {
 
     assert.equal(result.content.assignments.length, 0);
     assert.deepEqual(
-      result.content.unassigned_themes.map(({ theme_id }) => theme_id),
-      ["theme-a", "theme-b"],
+      result.content.unassigned_themes.map(({
+        theme_id,
+        theme_title,
+        theme_summary,
+      }) => ({
+        theme_id,
+        theme_title,
+        theme_summary,
+      })),
+      [
+        {
+          theme_id: "theme-a",
+          theme_title: "Cloud",
+          theme_summary: "Platform discussion.",
+        },
+        {
+          theme_id: "theme-b",
+          theme_title: "Operations",
+          theme_summary: "General execution discussion.",
+        },
+      ],
     );
     assert.equal(
       result.content.unassigned_themes[0]?.highest_similarity_score,
@@ -195,6 +226,47 @@ describe("TopicAssignmentBuilder", () => {
     );
   });
 
+  it("rejects legacy or inconsistent canonical Theme dependencies", async () => {
+    const builder = new TopicAssignmentBuilder(
+      embeddingProvider({ Cloud: [1, 0] }),
+    );
+    const validThemes = themesArtifact([theme("theme-a", "Cloud", "Cloud.")]);
+    const validRegistry = registryArtifact([topic("cloud", "Cloud", [1, 0])]);
+
+    await assert.rejects(
+      builder.execute(context({
+        themes: {
+          ...validThemes,
+          content: {
+            ...validThemes.content,
+            themes: [{
+              ...validThemes.content.themes[0]!,
+              summary: "",
+            }],
+          },
+        },
+        registry: validRegistry,
+      })),
+      BuilderValidationError,
+    );
+    await assert.rejects(
+      builder.execute(context({
+        themes: {
+          ...validThemes,
+          content: {
+            ...validThemes.content,
+            themes: [{
+              ...validThemes.content.themes[0]!,
+              evidence_count: 2,
+            }],
+          },
+        },
+        registry: validRegistry,
+      })),
+      BuilderDependencyError,
+    );
+  });
+
   it("rejects invalid stable IDs, inactive topic references, and confidence drift", () => {
     const themes = themesArtifact([theme("theme-a", "Cloud", "Cloud.")]);
     const registry = registryArtifact([
@@ -205,6 +277,8 @@ describe("TopicAssignmentBuilder", () => {
       assignment_id: createAssignmentId("theme-a", "cloud"),
       theme_id: "theme-a",
       topic_id: "cloud",
+      theme_title: "Cloud",
+      theme_summary: "Cloud.",
       assignment_method: "exact_match",
       similarity_score: 1,
       confidence: 1,
@@ -237,6 +311,86 @@ describe("TopicAssignmentBuilder", () => {
         confidence: { ...valid.confidence, overall: 0.5 },
       }, themes, registry),
       BuilderValidationError,
+    );
+  });
+
+  it("rejects propagated theme context that diverges from Themes", () => {
+    const themes = themesArtifact([theme("theme-a", "Cloud", "Cloud demand.")]);
+    const registry = registryArtifact([topic("cloud", "Cloud", [1, 0])]);
+    const valid = artifactContent({
+      assignment_id: createAssignmentId("theme-a", "cloud"),
+      theme_id: "theme-a",
+      topic_id: "cloud",
+      theme_title: "Cloud",
+      theme_summary: "Cloud demand.",
+      assignment_method: "exact_match",
+      similarity_score: 1,
+      confidence: 1,
+    });
+
+    assert.throws(
+      () => validateTopicAssignmentArtifactContent({
+        ...valid,
+        assignments: [{
+          ...valid.assignments[0]!,
+          theme_summary: "Rewritten summary.",
+        }],
+      }, themes, registry),
+      BuilderValidationError,
+    );
+
+    assert.throws(
+      () => validateTopicAssignmentArtifactContent({
+        ...valid,
+        assignments: [],
+        unassigned_themes: [{
+          theme_id: "theme-a",
+          theme_title: "Rewritten title",
+          theme_summary: "Cloud demand.",
+          highest_similarity_score: 0.5,
+          candidate_topics: [],
+        }],
+        confidence: {
+          overall: 0,
+          exact_match_rate: 0,
+          semantic_match_rate: 0,
+          unassigned_rate: 1,
+        },
+      }, themes, registry),
+      BuilderValidationError,
+    );
+  });
+
+  it("uses canonical Theme summaries and Topic Registry aliases", async () => {
+    const capturedTexts: string[][] = [];
+    const builder = new TopicAssignmentBuilder({
+      async embed({ texts }) {
+        capturedTexts.push(texts);
+        return [[0, 1]];
+      },
+    });
+    const result = await builder.execute(context({
+      themes: themesArtifact([
+        theme("theme-a", "AI infrastructure", "Capacity expanded for AI."),
+      ]),
+      registry: registryArtifact([
+        topic(
+          "artificial_intelligence",
+          "Artificial Intelligence",
+          [1, 0],
+          "active",
+          ["AI infrastructure"],
+        ),
+      ]),
+    }));
+
+    assert.deepEqual(capturedTexts, [[
+      "Theme: AI infrastructure\nCategory: technology\nSummary: Capacity expanded for AI.",
+    ]]);
+    assert.equal(result.content.assignments[0]?.assignment_method, "exact_match");
+    assert.equal(
+      result.content.assignments[0]?.theme_summary,
+      "Capacity expanded for AI.",
     );
   });
 });
@@ -351,19 +505,18 @@ function artifact<T>(params: {
 function theme(
   themeId: string,
   title: string,
-  description: string,
+  summary: string,
 ): Theme {
   return {
     theme_id: themeId,
     title,
-    description,
+    summary,
     category: "technology",
-    importance: "high",
     source_evidence: [{
       section: "MD&A",
       excerpt_hash: "evidence-hash",
     }],
-    frequency: 1,
+    evidence_count: 1,
     confidence: 1,
   };
 }
@@ -373,10 +526,13 @@ function topic(
   topicName: string,
   embedding: number[],
   status: TopicRegistryEntry["status"] = "active",
+  aliases: string[] = [],
 ): TopicRegistryEntry {
   return {
     topic_id: topicId,
     topic_name: topicName,
+    definition: `${topicName} definition.`,
+    aliases,
     status,
     embedding,
   };

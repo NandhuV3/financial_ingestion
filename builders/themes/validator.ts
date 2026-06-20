@@ -126,14 +126,48 @@ export function createThemeId(filingId: string, title: string, description: stri
 
 function validateTheme(theme: Theme, index: number): void {
   requireText(theme.theme_id, `themes[${index}].theme_id`);
-  validateThemeCandidate({
-    title: theme.title,
-    description: theme.description,
-    category: theme.category,
-    importance: theme.importance,
-    evidence: theme.source_evidence,
-    frequency: theme.frequency,
-  }, index);
+  requireText(theme.title, `themes[${index}].title`);
+  requireText(theme.summary, `themes[${index}].summary`);
+
+  if (!THEME_CATEGORIES.includes(theme.category)) {
+    throw new BuilderValidationError(`themes[${index}].category is invalid.`);
+  }
+
+  if (
+    !Array.isArray(theme.source_evidence)
+    || theme.source_evidence.length === 0
+  ) {
+    throw new BuilderValidationError(
+      `themes[${index}].source_evidence must contain at least one item.`,
+    );
+  }
+
+  for (const [evidenceIndex, evidence] of theme.source_evidence.entries()) {
+    requireText(
+      evidence.section,
+      `themes[${index}].source_evidence[${evidenceIndex}].section`,
+    );
+    requireText(
+      evidence.excerpt_hash,
+      `themes[${index}].source_evidence[${evidenceIndex}].excerpt_hash`,
+    );
+  }
+
+  if (theme.evidence_count !== theme.source_evidence.length) {
+    throw new BuilderValidationError(
+      `themes[${index}].evidence_count must equal source_evidence length.`,
+    );
+  }
+
+  if (theme.directional_framing !== undefined) {
+    requireText(
+      theme.directional_framing,
+      `themes[${index}].directional_framing`,
+    );
+  }
+
+  rejectForbiddenLanguage(theme.title, `themes[${index}].title`);
+  rejectForbiddenLanguage(theme.summary, `themes[${index}].summary`);
   validateConfidence(theme.confidence, `themes[${index}].confidence`);
 }
 

@@ -68,6 +68,32 @@ export function requireThemesDependency(
     );
   }
 
+  const themeIds = new Set<string>();
+
+  for (const [index, theme] of themes.content.themes.entries()) {
+    requireText(theme.theme_id, `themes.themes[${index}].theme_id`);
+    requireText(theme.title, `themes.themes[${index}].title`);
+    requireText(theme.summary, `themes.themes[${index}].summary`);
+
+    if (
+      !Number.isInteger(theme.evidence_count)
+      || theme.evidence_count < 0
+      || theme.evidence_count !== theme.source_evidence.length
+    ) {
+      throw new BuilderDependencyError(
+        `themes.themes[${index}].evidence_count must equal source_evidence length.`,
+      );
+    }
+
+    if (themeIds.has(theme.theme_id)) {
+      throw new BuilderDependencyError(
+        `Themes contains duplicate theme_id: ${theme.theme_id}.`,
+      );
+    }
+
+    themeIds.add(theme.theme_id);
+  }
+
   return themes;
 }
 
@@ -132,6 +158,17 @@ export function requireTopicRegistryDependency(
   for (const [index, topic] of registry.content.topics.entries()) {
     requireText(topic.topic_id, `topic_registry.topics[${index}].topic_id`);
     requireText(topic.topic_name, `topic_registry.topics[${index}].topic_name`);
+    requireText(topic.definition, `topic_registry.topics[${index}].definition`);
+
+    if (
+      !Array.isArray(topic.aliases)
+      || topic.aliases.some((alias) =>
+        typeof alias !== "string" || alias.trim() === "")
+    ) {
+      throw new BuilderDependencyError(
+        `topic_registry.topics[${index}].aliases must contain only non-empty strings.`,
+      );
+    }
 
     if (!TOPIC_REGISTRY_ENTRY_STATUSES.includes(topic.status)) {
       throw new BuilderDependencyError(
@@ -180,9 +217,10 @@ export function validateTopicAssignmentArtifactContent(
     );
   }
 
-  const themeIds = new Set(
-    themesArtifact.content.themes.map(({ theme_id }) => theme_id),
+  const themesById = new Map(
+    themesArtifact.content.themes.map((theme) => [theme.theme_id, theme]),
   );
+  const themeIds = new Set(themesById.keys());
   const activeTopicIds = new Set(
     registryArtifact.content.topics
       .filter(({ status }) => status === "active")
@@ -195,10 +233,23 @@ export function validateTopicAssignmentArtifactContent(
     requireText(assignment.assignment_id, `assignments[${index}].assignment_id`);
     requireText(assignment.theme_id, `assignments[${index}].theme_id`);
     requireText(assignment.topic_id, `assignments[${index}].topic_id`);
+    requireText(assignment.theme_title, `assignments[${index}].theme_title`);
+    requireText(assignment.theme_summary, `assignments[${index}].theme_summary`);
 
-    if (!themeIds.has(assignment.theme_id)) {
+    const sourceTheme = themesById.get(assignment.theme_id);
+
+    if (sourceTheme === undefined) {
       throw new BuilderValidationError(
         `assignments[${index}].theme_id does not reference Themes.`,
+      );
+    }
+
+    if (
+      assignment.theme_title !== sourceTheme.title
+      || assignment.theme_summary !== sourceTheme.summary
+    ) {
+      throw new BuilderValidationError(
+        `assignments[${index}] theme context must match the source Theme.`,
       );
     }
 
@@ -264,19 +315,37 @@ export function validateTopicAssignmentArtifactContent(
 
   for (const [index, unassigned] of content.unassigned_themes.entries()) {
     requireText(unassigned.theme_id, `unassigned_themes[${index}].theme_id`);
-    requireText(unassigned.theme_text, `unassigned_themes[${index}].theme_text`);
+    requireText(
+      unassigned.theme_title,
+      `unassigned_themes[${index}].theme_title`,
+    );
+    requireText(
+      unassigned.theme_summary,
+      `unassigned_themes[${index}].theme_summary`,
+    );
     validateConfidence(
       unassigned.highest_similarity_score,
       `unassigned_themes[${index}].highest_similarity_score`,
     );
 
+    const sourceTheme = themesById.get(unassigned.theme_id);
+
     if (
-      !themeIds.has(unassigned.theme_id)
+      sourceTheme === undefined
       || assignmentsByTheme.has(unassigned.theme_id)
       || unassignedThemeIds.has(unassigned.theme_id)
     ) {
       throw new BuilderValidationError(
         `unassigned_themes[${index}] must reference one unique unassigned theme.`,
+      );
+    }
+
+    if (
+      unassigned.theme_title !== sourceTheme.title
+      || unassigned.theme_summary !== sourceTheme.summary
+    ) {
+      throw new BuilderValidationError(
+        `unassigned_themes[${index}] theme context must match the source Theme.`,
       );
     }
 

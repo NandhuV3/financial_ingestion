@@ -31,11 +31,11 @@ export type SourceEvidence = {
 export type Theme = {
   theme_id: string;
   title: string;
-  description: string;
+  summary: string;
   category: ThemeCategory;
-  importance: "low" | "medium" | "high";
   source_evidence: SourceEvidence[];
-  frequency: number;
+  evidence_count: number;
+  directional_framing?: string;
   confidence: number;
 };
 
@@ -69,4 +69,3 @@ export type ThemesArtifactContent = {
   confidence: ThemesConfidence;
   evaluation_hooks: ThemesEvaluationHooks;
 };
-

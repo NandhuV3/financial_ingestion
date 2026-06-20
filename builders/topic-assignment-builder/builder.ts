@@ -114,12 +114,12 @@ function buildThemeEmbeddingInput(
   theme: {
     title: string;
     category: string;
-    description: string;
+    summary: string;
   },
 ): string {
   return [
     `Theme: ${theme.title}`,
     `Category: ${theme.category}`,
-    `Summary: ${theme.description}`,
+    `Summary: ${theme.summary}`,
   ].join("\n");
 }

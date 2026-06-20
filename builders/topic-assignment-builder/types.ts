@@ -14,10 +14,8 @@ export type TopicAssignmentBuilderInput = {
 export type TopicRegistryEntry = {
   topic_id: string;
   topic_name: string;
-  description?: string;
-  supported_categories?: string[];
-  categories?: string[];
-  theme_variants?: string[];
+  definition: string;
+  aliases: string[];
   status: TopicRegistryEntryStatus;
   merged_into_topic_id?: string;
   embedding: number[];
@@ -41,6 +39,8 @@ export type TopicAssignment = {
   assignment_id: string;
   theme_id: string;
   topic_id: string;
+  theme_title: string;
+  theme_summary: string;
   assignment_method: AssignmentMethod;
   similarity_score: number;
   confidence: number;
@@ -53,7 +53,8 @@ export type CandidateTopic = {
 
 export type UnassignedTheme = {
   theme_id: string;
-  theme_text: string;
+  theme_title: string;
+  theme_summary: string;
   highest_similarity_score: number;
   candidate_topics: CandidateTopic[];
 };

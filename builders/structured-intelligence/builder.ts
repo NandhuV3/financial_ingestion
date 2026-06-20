@@ -135,7 +135,7 @@ export class StructuredIntelligenceBuilder implements Builder<
       throw new BuilderExecutionError(`Structured Intelligence LLM invocation failed: ${builderErrorMessage(error)}`, error);
     }
 
-    const themeTexts = themes.themes.flatMap((theme) => [theme.title, theme.description]);
+    const themeTexts = themes.themes.flatMap((theme) => [theme.title, theme.summary]);
     validateStructuredUnderstanding(output.understanding);
     validateStructuredEvidenceReferences(output.understanding, themes.themes);
 

@@ -52,7 +52,8 @@ export function buildTopicAssignments(
     if (automatic.length === 0) {
       unassignedThemes.push({
         theme_id: theme.theme_id,
-        theme_text: theme.title,
+        theme_title: theme.title,
+        theme_summary: theme.summary,
         highest_similarity_score: candidates[0]?.similarity_score ?? 0,
         candidate_topics: candidates
           .filter(({ similarity_score }) =>
@@ -67,6 +68,8 @@ export function buildTopicAssignments(
       assignment_id: createAssignmentId(theme.theme_id, candidate.topic_id),
       theme_id: theme.theme_id,
       topic_id: candidate.topic_id,
+      theme_title: theme.title,
+      theme_summary: theme.summary,
       assignment_method: candidate.assignment_method,
       similarity_score: candidate.similarity_score,
       confidence: candidate.similarity_score,
@@ -103,7 +106,7 @@ function matchThemeToTopic(
   const normalizedTitle = normalizeTopicText(theme.title);
   const exactValues = [
     topic.topic_name,
-    ...(topic.theme_variants ?? []),
+    ...topic.aliases,
   ].map(normalizeTopicText);
 
   if (exactValues.includes(normalizedTitle)) {

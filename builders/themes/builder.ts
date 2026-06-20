@@ -135,9 +135,8 @@ function buildThemes(
     themes.push({
       theme_id: createThemeId(input.filing_id, candidate.title, candidate.description),
       title: candidate.title.trim(),
-      description: candidate.description.trim(),
+      summary: candidate.description.trim(),
       category: candidate.category,
-      importance: candidate.importance,
       source_evidence: candidate.evidence.map((evidence) => {
         const canonical = canonicalEvidenceForHash(
           evidenceCatalog,
@@ -152,7 +151,7 @@ function buildThemes(
 
         return canonical;
       }),
-      frequency: candidate.frequency ?? candidate.evidence.length,
+      evidence_count: candidate.evidence.length,
       confidence: confidenceFromCandidate(candidate),
     });
   }

@@ -118,6 +118,14 @@ describe("upstream pipeline", () => {
       topicAssignment?.lineage.model_reference?.model_version,
       "text-embedding-3-small",
     );
+    assert.equal(
+      topicAssignment?.content.assignments[0]?.theme_title,
+      "Cloud platform demand",
+    );
+    assert.equal(
+      topicAssignment?.content.assignments[0]?.theme_summary,
+      "Management discussed Azure demand and enterprise adoption.",
+    );
     assert.deepEqual(
       topicAssignment?.lineage.upstream_dependencies
         .map(({ artifact_type }) => artifact_type)
@@ -167,8 +175,9 @@ function topicRegistryArtifact(): Artifact<TopicRegistryArtifactContent> {
       {
         topic_id: "cloud",
         topic_name: "Cloud",
+        definition: "Cloud infrastructure, platforms, and services.",
+        aliases: ["Cloud Growth"],
         status: "active",
-        theme_variants: ["Cloud Growth"],
         embedding: [1, 0],
       },
     ],

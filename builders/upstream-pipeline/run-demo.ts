@@ -9,7 +9,6 @@ import { PromptResolver } from "../../src/prompt-registry/prompt-resolver.js";
 import type { FilingArtifactContent } from "../structured-intelligence/types.js";
 import type {
   TopicRegistryArtifactContent,
-  TopicRegistryEntry,
 } from "../topic-assignment-builder/types.js";
 import { createArtifactDumpObserver } from "./artifact-dump.js";
 import { MemoryArtifactRepository } from "./memory-artifact-repository.js";
@@ -20,6 +19,14 @@ import { runUpstreamPipeline } from "./run-upstream-pipeline.js";
 type DemoArguments = {
   inputPath: string;
   outputDirectory: string;
+};
+
+type StoredTopicRegistryEntry = {
+  topic_id: string;
+  topic_name: string;
+  description?: string;
+  theme_variants?: string[];
+  embedding: number[];
 };
 
 loadEnv();
@@ -75,7 +82,7 @@ async function loadTopicRegistryArtifact(): Promise<
   const parsed = JSON.parse(await readFile(registryPath, "utf8")) as {
     embedding_model?: string;
     input_hash?: string;
-    topics?: Array<Omit<TopicRegistryEntry, "status">>;
+    topics?: StoredTopicRegistryEntry[];
   };
 
   if (
@@ -93,8 +100,12 @@ async function loadTopicRegistryArtifact(): Promise<
     registry_status: "active",
     similarity_model_version: parsed.embedding_model,
     topics: parsed.topics.map((topic) => ({
-      ...topic,
+      topic_id: topic.topic_id,
+      topic_name: topic.topic_name,
+      definition: topic.description ?? topic.topic_name,
+      aliases: topic.theme_variants ?? [],
       status: ArtifactStatus.ACTIVE,
+      embedding: topic.embedding,
     })),
   };
 
