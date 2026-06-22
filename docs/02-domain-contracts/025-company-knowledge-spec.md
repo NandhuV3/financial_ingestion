@@ -1,6 +1,6 @@
-# 025-company-knowledge-spec.md
+# Company Knowledge Specification
 
-Version: 1.0
+Version: 2.0
 Status: LOCKED
 Owner: Company Knowledge Layer
 
@@ -11,11 +11,12 @@ Owner: Company Knowledge Layer
 Company Knowledge answers:
 
 ```text
-What do we currently believe to be durably true
-about this company?
+What do we currently believe to be durably true about this company?
 ```
 
-It is the canonical memory layer of the platform.
+It is company-scoped, governed durable knowledge. It is not a copy of the
+latest filing and is not written directly by Structured Intelligence or the
+Company Knowledge Candidate Builder.
 
 ---
 
@@ -24,970 +25,321 @@ It is the canonical memory layer of the platform.
 ```text
 Structured Intelligence
         ↓
-Company Knowledge Builder
+Company Knowledge Candidate
         ↓
 Company Knowledge Governance
         ↓
 Company Knowledge
         ↓
 Business Signals
-        ↓
-Quarter Understanding
-        ↓
-Investor Intelligence
 ```
 
----
-
-# Core Responsibility
-
-Store:
-
-```text
-Durable Business Understanding
-```
-
-accumulated across many filings.
-
-Company Knowledge represents:
-
-```text
-Current Best Understanding
-```
-
-of the company.
+Governance is the only writer.
 
 ---
 
-# Design Principles
+# Ownership
+
+Company Knowledge owns:
+
+* approved durable business model knowledge
+* approved durable products and customer segments
+* approved durable revenue structure and revenue drivers
+* approved durable competitive positioning
+* approved durable strategic priorities
+* approved durable management focus
+* approved durable operating dependencies
+* supporting periods and source promotion references for each knowledge value
+
+Company Knowledge does not own:
+
+* filing-specific risk observations
+* quarter-specific events
+* Topic Assignment or Topic Evolution
+* Business Signals
+* trust assessment
+* investor conclusions
+* artifact identity, framework metadata, framework lineage, versioning,
+  persistence, current pointers, archive/history, or framework hashes
+
+Artifact Framework owns artifact lifecycle mechanics. Governance owns approved
+content creation and governance confidence.
 
 ---
 
-## Principle 1
-
-Company Knowledge is durable.
-
-Not filing-specific.
-
----
-
-## Principle 2
-
-Company Knowledge changes slowly.
-
-Most filings should not significantly change it.
-
----
-
-## Principle 3
-
-Company Knowledge is governed.
-
-Nothing enters Company Knowledge directly.
-
----
-
-## Principle 4
-
-Company Knowledge is canonical.
-
-Downstream layers treat it as truth.
-
----
-
-## Principle 5
-
-Company Knowledge is auditable.
-
-Every change must be explainable.
-
----
-
-# What Company Knowledge Owns
-
-Owns:
-
-- business model
-- products
-- customers
-- revenue structure
-- revenue drivers
-- competitive positioning
-- strategic priorities
-- management focus
-- dependencies
-
----
-
-# What Company Knowledge Does NOT Own
-
-Does NOT own:
-
-- quarter-specific events
-- trust assessments
-- business signals
-- investor conclusions
-- recommendations
-- market data
-
-Those belong elsewhere.
-
----
-
-# Artifact Schema
+# Artifact Content
 
 ```typescript
-type CompanyKnowledgeArtifact = {
+type CompanyKnowledgeArtifactContent = {
   artifact_type: "company_knowledge";
-
-  company: string;
-
-  company_knowledge_version: number;
-
+  company_id: string;
   knowledge: CompanyKnowledge;
-
   confidence: CompanyKnowledgeConfidence;
-
-  metadata: ArtifactMetadata;
-
-  lineage: ArtifactLineage;
+  governance_summary: CompanyKnowledgeGovernanceSummary;
 };
-```
 
----
-
-# Knowledge Structure
-
-```typescript
 type CompanyKnowledge = {
-  business_model: BusinessModelKnowledge;
-
+  business_model: BusinessModelKnowledge | null;
   products: ProductKnowledge[];
-
   customers: CustomerKnowledge[];
-
-  revenue_structure: RevenueStructureKnowledge;
-
+  revenue_structure: RevenueStructureKnowledge | null;
   revenue_drivers: RevenueDriverKnowledge[];
-
   competitive_positioning: CompetitivePositionKnowledge[];
-
   strategic_priorities: StrategicPriorityKnowledge[];
-
   management_focus: ManagementFocusKnowledge[];
-
   dependencies: DependencyKnowledge[];
 };
 ```
 
----
-
-# Business Model
-
-Most important field.
+Artifact Framework supplies artifact identity and artifact version. Content
+must not own `artifact_id`, `artifact_version`, framework metadata, or
+framework lineage.
 
 ---
+
+# Governed Knowledge Value
+
+Every Company Knowledge value includes:
 
 ```typescript
-type BusinessModelKnowledge = {
-  summary: string;
+type GovernedKnowledgeValue = {
+  stability_class: StabilityClass;
+  extraction_confidence: number;
+  durability_confidence: number;
+  governance_confidence: number;
+  supporting_periods: string[];
+  last_updated_period: string;
+  source_promotions: string[];
+};
 
+type StabilityClass =
+  | "stable"
+  | "semi_stable"
+  | "dynamic";
+```
+
+Domain-specific values extend `GovernedKnowledgeValue`:
+
+```typescript
+type BusinessModelKnowledge = GovernedKnowledgeValue & {
+  summary: string;
   value_creation: string;
-
-  revenue_structure: string;
-
-  confidence: number;
-
-  supporting_periods: string[];
-
-  last_updated_period: string;
 };
-```
 
----
-
-# Example
-
-```text
-Microsoft creates value through:
-
-Enterprise Software
-Cloud Infrastructure
-AI Services
-```
-
----
-
-# Products
-
-```typescript
-type ProductKnowledge = {
+type ProductKnowledge = GovernedKnowledgeValue & {
   product_name: string;
-
   description: string;
-
   importance: "high" | "medium" | "low";
-
-  confidence: number;
-
-  supporting_periods: string[];
-
-  last_updated_period: string;
 };
-```
 
----
-
-# Customers
-
-```typescript
-type CustomerKnowledge = {
+type CustomerKnowledge = GovernedKnowledgeValue & {
   customer_segment: string;
-
   description: string;
-
-  confidence: number;
-
-  supporting_periods: string[];
-
-  last_updated_period: string;
 };
-```
 
----
-
-# Revenue Structure
-
-```typescript
-type RevenueStructureKnowledge = {
+type RevenueStructureKnowledge = GovernedKnowledgeValue & {
   summary: string;
-
   recurring_components: string[];
-
   transactional_components: string[];
-
-  confidence: number;
-
-  supporting_periods: string[];
-
-  last_updated_period: string;
 };
-```
 
----
-
-# Revenue Drivers
-
-```typescript
-type RevenueDriverKnowledge = {
+type RevenueDriverKnowledge = GovernedKnowledgeValue & {
   driver: string;
-
   description: string;
-
-  confidence: number;
-
-  supporting_periods: string[];
-
-  last_updated_period: string;
 };
-```
 
----
-
-# Competitive Positioning
-
-```typescript
-type CompetitivePositionKnowledge = {
+type CompetitivePositionKnowledge = GovernedKnowledgeValue & {
   positioning: string;
-
   rationale: string;
-
-  confidence: number;
-
-  supporting_periods: string[];
-
-  last_updated_period: string;
 };
-```
 
----
-
-# Strategic Priorities
-
-```typescript
-type StrategicPriorityKnowledge = {
+type StrategicPriorityKnowledge = GovernedKnowledgeValue & {
   priority: string;
-
   description: string;
-
-  confidence: number;
-
-  supporting_periods: string[];
-
-  last_updated_period: string;
 };
-```
 
----
-
-# Management Focus
-
-```typescript
-type ManagementFocusKnowledge = {
+type ManagementFocusKnowledge = GovernedKnowledgeValue & {
   focus_area: string;
-
   description: string;
-
-  confidence: number;
-
-  supporting_periods: string[];
-
-  last_updated_period: string;
 };
-```
 
----
-
-# Dependencies
-
-```typescript
-type DependencyKnowledge = {
+type DependencyKnowledge = GovernedKnowledgeValue & {
   dependency: string;
-
   description: string;
-
-  confidence: number;
-
-  supporting_periods: string[];
-
-  last_updated_period: string;
 };
 ```
 
----
-
-# Stability Classification
-
-Critical.
-
-Each field belongs to a stability class.
+`supporting_periods` and `source_promotions` are sorted and deduplicated.
 
 ---
 
-# Stable
+# Confidence Ownership
 
-```typescript
-business_model
+The Company Knowledge Candidate Builder supplies:
 
-revenue_structure
+* `stability_class`
+* `extraction_confidence`
+* `durability_confidence`
+* `supporting_periods`
 
-products
-```
+Company Knowledge Governance supplies:
 
----
-
-# Characteristics
-
-Changes rarely.
-
-Require governance review.
-
----
-
-# Semi-Stable
-
-```typescript
-revenue_drivers
-
-customers
-
-competitive_positioning
-```
-
----
-
-# Characteristics
-
-Occasionally change.
-
-Moderate promotion threshold.
-
----
-
-# Dynamic
-
-```typescript
-strategic_priorities
-
-management_focus
-
-dependencies
-```
-
----
-
-# Characteristics
-
-Expected to evolve.
-
-Lower promotion threshold.
-
----
-
-# Confidence Model
+* `governance_confidence`
+* the promotion decision
+* `source_promotions`
+* `last_updated_period`
 
 ```typescript
 type CompanyKnowledgeConfidence = {
   overall: number;
-
-  evidence_depth: number;
-
-  history_length: number;
-
-  consistency_score: number;
-
+  extraction_confidence: number;
+  durability_confidence: number;
   governance_confidence: number;
+  evidence_depth: number;
 };
 ```
 
----
-
-# Evidence Depth
-
-Measures:
-
-```text
-How much evidence supports this knowledge?
-```
+Artifact-level confidence is computed from approved values only. It must not
+be used as a substitute for per-value durability or governance approval.
 
 ---
 
-# History Length
+# Admission Matrix
 
-Measures:
+`Always promotable` means immediately eligible to become a governance
+candidate. It does not mean automatically approved.
 
-```text
-How many periods contributed?
-```
+`Conditionally promotable` means eligible for governance promotion only after
+the required supporting-period count is met.
 
----
+`Never promotable` means the candidate builder must exclude the field.
 
-# Consistency Score
+| Structured Intelligence field | Company Knowledge target | Admission | Stability | Required supporting periods | Reason |
+|---|---|---|---|---:|---|
+| `business_model` | `business_model` | Always promotable | stable | 1 | Core operating model can bootstrap durable knowledge, subject to governance |
+| `products` | `products` | Always promotable | stable | 1 | Core products are durable identity fields, subject to governance |
+| `revenue_model` | `revenue_structure` | Always promotable | stable | 1 | Revenue structure is a durable business-model field |
+| `customers` | `customers` | Conditionally promotable | semi_stable | 2 | Customer segmentation can reflect filing emphasis and needs confirmation |
+| `revenue_drivers` | `revenue_drivers` | Conditionally promotable | semi_stable | 2 | Drivers may change with period conditions |
+| `competitive_positioning` | `competitive_positioning` | Conditionally promotable | semi_stable | 2 | Positioning claims require longitudinal support |
+| `strategic_priorities` | `strategic_priorities` | Conditionally promotable | dynamic | 3 | Filing priorities are dynamic and require repeated support |
+| `management_focus` | `management_focus` | Conditionally promotable | dynamic | 3 | Management emphasis is period-sensitive |
+| `dependencies` | `dependencies` | Conditionally promotable | dynamic | 3 | Operating dependencies may be temporary or filing-specific |
+| `risks` | none | Never promotable | none | n/a | Risk characterization is filing-scoped and belongs in Quarter Change, not durable memory |
 
-Measures:
-
-```text
-How stable has this knowledge been?
-```
-
----
-
-# Governance Confidence
-
-Measures:
-
-```text
-Confidence after governance review.
-```
+No other Structured Intelligence field is admissible without a contract
+change.
 
 ---
 
-# Supporting Periods
+# First-Population Matrix
 
-Mandatory.
+First population is permitted, but governance remains mandatory.
 
-Every field stores:
+| Admission class | Supporting-period requirement met in first period? | Candidate recommendation | Governance action |
+|---|---:|---|---|
+| Always promotable / stable | Yes | `candidate_promote` | Explicit approve, reject, or review |
+| Conditionally promotable / semi_stable | No | `candidate_retain` | Cannot promote until two periods support the exact value |
+| Conditionally promotable / dynamic | No | `candidate_retain` | Cannot promote until three periods support the exact value |
+| Never promotable | Not applicable | No candidate emitted | No governance action |
+
+Partial first population is valid. Governance creates Company Knowledge from
+the approved subset only. Missing optional knowledge fields remain `null` or
+empty; they are not represented by placeholder values.
+
+An empty approved subset must not create a Company Knowledge artifact.
+
+---
+
+# Supporting Periods and Durability
+
+Required supporting periods:
 
 ```typescript
-supporting_periods: string[]
+const REQUIRED_SUPPORTING_PERIODS = {
+  stable: 1,
+  semi_stable: 2,
+  dynamic: 3,
+} as const;
 ```
 
----
-
-# Example
+Durability confidence:
 
 ```text
-2023Q4
-2024Q1
-2024Q2
-2024Q3
+min(
+  distinct_supporting_periods / required_supporting_periods,
+  1
+)
 ```
 
-This allows:
+rounded to four decimals.
 
-- auditability
-- evidence tracing
-- confidence calculation
+Supporting periods apply to an exact canonical value. A materially changed
+value starts a new supporting-period sequence.
 
 ---
 
-# Last Updated Period
-
-Mandatory.
-
-Tracks:
-
-```text
-Most Recent Promotion
-```
-
-for each field.
-
----
-
-# Knowledge Version
+# Governance Summary
 
 ```typescript
-company_knowledge_version
-```
-
-increments whenever:
-
-```text
-ANY FIELD CHANGES
-```
-
----
-
-# Version Rules
-
-Promotion:
-
-```text
-version++
-```
-
-Merge:
-
-```text
-version++
-```
-
-Manual Override:
-
-```text
-version++
-```
-
-Rollback:
-
-```text
-version++
-```
-
-Always.
-
----
-
-# Governance Dependency
-
-Company Knowledge cannot update itself.
-
-Updates only occur through:
-
-```text
-Company Knowledge Governance
-```
-
----
-
-# Promotion Sources
-
-Allowed:
-
-```text
-Governance Approved Candidate
-```
-
-Only.
-
----
-
-# Forbidden Sources
-
-Forbidden:
-
-```text
-Structured Intelligence
-
-Builder
-
-Quarter Understanding
-
-Investor Intelligence
-```
-
-Direct writes prohibited.
-
----
-
-# Archive Strategy
-
-Required.
-
-```text
-current.json
-
-archive/
-```
-
----
-
-# Archive Contents
-
-Every version preserved.
-
-Never deleted.
-
----
-
-# Rollback Support
-
-First-class feature.
-
----
-
-# Rollback Rules
-
-Rollback:
-
-```text
-Restores Historical State
-```
-
-but:
-
-```text
-Creates New Version
-```
-
----
-
-# Example
-
-Current:
-
-```text
-Version 12
-```
-
-Rollback to:
-
-```text
-Version 8
-```
-
-Result:
-
-```text
-Version 13
-```
-
-with content of Version 8.
-
----
-
-# Auditability
-
-Every field change must answer:
-
-```text
-What changed?
-
-Why?
-
-Who approved it?
-
-What evidence supported it?
-```
-
----
-
-# Audit Linkage
-
-Each field references:
-
-```typescript
-source_promotions: string[];
-```
-
----
-
-# Example
-
-```text
-PROMOTION-112
-PROMOTION-119
-PROMOTION-143
-```
-
----
-
-# Relationship to Structured Intelligence
-
-Structured Intelligence provides:
-
-```text
-Candidate Understanding
-```
-
----
-
-# Company Knowledge provides:
-
-```text
-Durable Understanding
-```
-
----
-
-# Relationship to Business Signals
-
-Business Signals consume:
-
-```text
-Company Knowledge
-```
-
-as truth.
-
----
-
-# Example
-
-If Company Knowledge says:
-
-```text
-Cloud Platform
-```
-
-is a major revenue driver,
-
-Business Signals may detect:
-
-```text
-Cloud Growth Acceleration
-```
-
-using that context.
-
----
-
-# Relationship to Quarter Understanding
-
-Quarter Understanding uses:
-
-```text
-Company Knowledge
-```
-
-to interpret signals.
-
----
-
-# Example
-
-Signal:
-
-```text
-Revenue Acceleration
-```
-
-Knowledge:
-
-```text
-Cloud is key driver
-```
-
-Understanding:
-
-```text
-Cloud business strengthening.
-```
-
----
-
-# Relationship to Investor Intelligence
-
-Investor Intelligence consumes:
-
-```text
-Company Knowledge
-```
-
-for:
-
-Q1
-
-Q2
-
-Q3 Context
-
-Q5 Thesis
-
----
-
-# Invalidation Rules
-
-Company Knowledge becomes stale when:
-
-```text
-Governance Approved Change
-```
-
-occurs.
-
----
-
-# Downstream Invalidation
-
-When Company Knowledge changes:
-
-Mark stale:
-
-```text
-Business Signals
-
-Quarter Understanding
-
-Investor Intelligence
-
-Partner Domain
-```
-
----
-
-# Evaluation Metrics
-
----
-
-## Knowledge Stability
-
-Measures:
-
-```text
-How stable is knowledge?
-```
-
----
-
-## Promotion Accuracy
-
-Measures:
-
-```text
-Good Promotions
-/
-Promotions
-```
-
----
-
-## Evidence Depth
-
-Measures:
-
-```text
-Supporting Evidence
-```
-
-per field.
-
----
-
-## Longitudinal Consistency
-
-Measures:
-
-```text
-Knowledge Stability Across Time
-```
-
----
-
-## Rollback Frequency
-
-Measures:
-
-```text
-Governance Quality
-```
-
----
-
-# Metadata
-
-```typescript
-type ArtifactMetadata = {
-  schema_version: string;
-
-  generated_at: string;
-
-  artifact_version: number;
+type CompanyKnowledgeGovernanceSummary = {
+  governance_decision_refs: string[];
+  approved_candidate_refs: string[];
+  rejected_candidate_refs: string[];
+  review_candidate_refs: string[];
 };
 ```
 
----
-
-# Lineage
-
-```typescript
-type ArtifactLineage = {
-  promotion_event_id: string;
-
-  governance_version: string;
-
-  source_candidate_version: number;
-
-  input_hash: string;
-};
-```
+These are content-level governance references, not Artifact Framework lineage.
 
 ---
 
-# Scaling Requirements
+# Update Semantics
 
-Target:
+Governance may:
 
-```text
-10,000+ companies
-```
+* promote a new value
+* merge a compatible collection value
+* retain current knowledge
+* reject a candidate
+* require review
+* roll back through a new governed artifact version
+
+Governance must never:
+
+* promote a never-promotable field
+* promote a conditional value below its supporting-period requirement
+* infer missing candidate evidence
+* treat extraction confidence as durability
+* bypass an explicit review requirement
 
 ---
 
-# Operational Requirements
+# Downstream Contract
 
-Support:
+Downstream layers consume only approved Company Knowledge.
 
-```text
-Versioning
+Candidate artifacts and governance review state are not substitutes for
+Company Knowledge.
 
-Audit Logs
-
-Review Queues
-
-Rollback
-
-Dependency Tracking
-```
-
-at scale.
+Business Signals must tolerate partially populated Company Knowledge and may
+not reconstruct excluded filing-specific risks from it.
 
 ---
 
 # Architectural Invariants
 
-LOCKED.
-
-1. Company Knowledge is canonical truth.
-2. Company Knowledge is durable memory.
-3. Company Knowledge is company-scoped, not filing-scoped.
-4. Governance is the only writer.
-5. Every change is audited.
-6. Every version is archived.
-7. Rollback creates a new version.
-8. Stable fields change rarely.
-9. Supporting periods are mandatory.
-10. Downstream layers treat Company Knowledge as truth.
+1. Company Knowledge is governed durable truth.
+2. Governance is the only writer.
+3. Structured Intelligence never writes Company Knowledge.
+4. Admission eligibility never bypasses governance.
+5. Risks are never promoted.
+6. Stability, extraction confidence, durability confidence, and governance
+   confidence remain distinct.
+7. Supporting periods apply to exact canonical values.
+8. Partial first population is allowed.
+9. Empty approval does not create Company Knowledge.
+10. Artifact Framework owns lifecycle, identity, versioning, persistence, and
+    framework lineage.
 
 End of Specification.

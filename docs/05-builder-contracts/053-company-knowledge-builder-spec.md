@@ -1,1026 +1,303 @@
-# 053-company-knowledge-builder-spec.md
+# Company Knowledge Candidate Builder Specification
 
-Version: 1.0
+Version: 2.0
 Status: LOCKED
 Owner: Builder Layer
 
 Depends On:
 
-- 003-company-knowledge.md
-- 009-company-knowledge-governance.md
-- 012-artifact-framework-spec.md
-- 014-dependency-index-spec.md
-- 015-invalidation-engine-spec.md
-- 023-company-knowledge-builder-spec.md
-- 024-company-knowledge-governance-engine-spec.md
-- 025-company-knowledge-spec.md
+* `012-artifact-framework-spec.md`
+* `014-dependency-index-spec.md`
+* `015-invalidation-engine-spec.md`
+* `022-structured-intelligence-spec.md`
+* `023-company-knowledge-builder-spec.md`
+* `024-company-knowledge-governance-engine-spec.md`
+* `025-company-knowledge-spec.md`
 
 Consumes:
 
-- Structured Intelligence Artifact
-- Existing Company Knowledge Artifact
-- Company Knowledge Archive
+* Structured Intelligence Artifact
+* current approved Company Knowledge Artifact, when present
 
 Produces:
 
-- Company Knowledge Candidate
+* `BuilderResult<CompanyKnowledgeCandidateArtifactContent>`
 
 ---
 
 # Purpose
 
-This specification defines how the Company Knowledge Builder constructs:
-
-```text
-Candidate Knowledge Changes
-```
-
-from:
+The Company Knowledge Candidate Builder deterministically converts eligible
+Structured Intelligence values into governance candidates.
 
 ```text
 Structured Intelligence
-
-+
-
-Historical Company Knowledge
-```
-
-for governance evaluation.
-
-This builder creates candidate intelligence for the Company Knowledge governance process.
-
-It does not create:
-
-```text
-Company Knowledge
-```
-
-directly.
-
-Company Knowledge creation belongs to:
-
-```text
+        +
+Current approved Company Knowledge, when present
+        ↓
+Company Knowledge Candidate Builder
+        ↓
+BuilderResult<CompanyKnowledgeCandidateArtifactContent>
+        ↓
+Artifact Framework
+        ↓
 Company Knowledge Governance
 ```
 
 ---
 
-# Architectural Position
+# Ownership
 
-```text
-Structured Intelligence
-          ↓
+The builder owns:
 
-Company Knowledge Builder
-          ↓
+* dependency resolution and identity validation
+* admission-matrix application
+* deterministic field comparison
+* stability classification
+* extraction confidence propagation
+* supporting-period reconciliation
+* durability confidence computation
+* recommendation and review-flag derivation
+* evidence packaging
+* candidate summary and confidence assembly
+* replayability metadata
+* content validation and assembly
 
-Governance Engine
-          ↓
+The builder does not own:
 
-Company Knowledge
-          ↓
+* promotion, merge, retain, reject, or review decisions
+* governance confidence
+* Company Knowledge creation or mutation
+* artifact identity, framework metadata, framework lineage, versioning,
+  persistence, current pointers, archive/history, or framework hashes
+* dependency registration or dependency graph state
 
-Business Signals
-
-Quarter Understanding
-
-Investor Intelligence
-```
-
----
-
-# Core Responsibility
-
-Prepare candidate changes from:
-
-```text
-Period Understanding
-```
-
-for:
-
-```text
-Company Knowledge Governance
-```
-
-evaluation.
-
-Governance creates:
-
-```text
-Company Knowledge
-```
-
----
-
-# Architectural Principle
-
-Company Knowledge Builder:
-
-```text
-Suggests
-```
-
-Knowledge changes.
-
-Governance Engine:
-
-```text
-Approves
-```
-
-Knowledge changes.
-
----
-
-# Critical Rule
-
-Builder does NOT modify:
-
-```text
-Company Knowledge
-```
-
-directly.
-
----
-
-# Builder Ownership
-
-Company Knowledge Builder owns:
-
-- structured intelligence ingestion
-- historical knowledge retrieval
-- candidate generation
-- field classification
-- evidence packaging
-- promotion proposal generation
-- lineage input reference emission
-
-Builder does NOT own:
-
-- promotion decisions
-- governance decisions
-- merge decisions
-- human review decisions
-- rollback decisions
-- Company Knowledge creation
-- artifact identity
-- artifact version
-- artifact metadata
-- artifact persistence
-- current pointer management
+Company Knowledge Governance owns decisions and approved knowledge creation.
+Artifact Framework owns artifact lifecycle. Dependency Index owns dependency
+registration and state.
 
 ---
 
 # Input Contract
 
 ```typescript
-type CompanyKnowledgeBuilderInput = {
+type CompanyKnowledgeCandidateBuilderInput = {
   company_id: string;
-
   period_id: string;
-
   filing_id: string;
+};
+
+type CompanyKnowledgeCandidateDependencies = {
+  structured_intelligence: StructuredIntelligenceArtifact;
+  current_company_knowledge?: CompanyKnowledgeArtifact;
 };
 ```
 
----
+The builder resolves dependencies through the Dependency Index.
 
-# Required Upstream Resolution
+Validation must enforce:
 
-Builder resolves:
+* source artifact types
+* Structured Intelligence company, period, and filing identity against the
+  build target
+* current Company Knowledge company identity, when present
+* current approved status of Company Knowledge
+* current-pointer resolution through the Artifact Framework/Dependency Index
+* exact source value-reference reconciliation
 
-```text
-Structured Intelligence
-```
-
-through:
-
-```text
-Dependency Index
-```
-
----
-
-# Required Historical Resolution
-
-Builder resolves:
-
-```text
-Current Company Knowledge
-
-Company Knowledge Archive
-```
+Historical archives are not direct builder inputs. Supporting periods stored
+on current approved Company Knowledge are sufficient for candidate assembly.
 
 ---
 
-# Resolution Sources
-
-```text
-Dependency Index
-
-Knowledge Store
-
-Knowledge Archive
-```
-
----
-
-# Builder Flow
+# Execution Flow
 
 ```text
 1. Resolve Structured Intelligence
-
-2. Resolve Current Knowledge
-
-3. Resolve Knowledge History
-
-4. Build Candidate Knowledge
-
-5. Classify Changes
-
-6. Generate Promotion Proposals
-
-7. Create Candidate Artifact
+2. Resolve current approved Company Knowledge, if it exists
+3. Validate dependency identities and source value references
+4. Apply the Company Knowledge admission matrix
+5. Map eligible Structured Intelligence paths to knowledge paths
+6. Compare canonical source and current value hashes
+7. Reconcile supporting periods
+8. Compute durability confidence
+9. Derive candidate recommendation and review requirement
+10. Assemble candidate_changes
+11. Compute candidate summary and confidence
+12. Assemble replayability metadata
+13. Validate full candidate content
+14. Return BuilderResult<CompanyKnowledgeCandidateArtifactContent>
+15. Artifact Framework performs lifecycle operations
 ```
 
 ---
 
-# Step 1
+# Canonical Output
 
-Resolve Structured Intelligence
-
----
-
-# Source
-
-```text
-Dependency Index
-```
-
----
-
-# Required Artifact
-
-```text
-Structured Intelligence
-```
-
----
-
-# Validation
-
-```text
-Exists
-
-Current
-
-Not Stale
-```
-
----
-
-# Failure
-
-```text
-Build Failure
-```
-
----
-
-# Step 2
-
-Resolve Current Knowledge
-
----
-
-# Purpose
-
-Load:
-
-```text
-Latest Approved Knowledge
-```
-
----
-
-# Query
+The builder output must exactly match
+`CompanyKnowledgeCandidateArtifactContent` from `023`:
 
 ```typescript
-getCurrentKnowledge(
-  company_id
-);
-```
-
----
-
-# Output
-
-```typescript
-type CurrentKnowledge = {
-  version: number;
-
-  artifact:
-    CompanyKnowledgeArtifact;
-};
-```
-
----
-
-# Rule
-
-Only:
-
-```text
-Approved Knowledge
-```
-
-may be loaded.
-
----
-
-# Step 3
-
-Resolve Knowledge History
-
----
-
-# Purpose
-
-Load:
-
-```text
-Historical Knowledge Versions
-```
-
----
-
-# Usage
-
-Required for:
-
-```text
-Change Detection
-
-Promotion Decisions
-
-Merge Decisions
-```
-
----
-
-# Output
-
-```typescript
-type KnowledgeHistory = {
-  versions:
-    CompanyKnowledgeArtifact[];
-};
-```
-
----
-
-# Step 4
-
-Build Candidate Knowledge
-
----
-
-# Purpose
-
-Combine:
-
-```text
-Structured Intelligence
-
-+
-
-Current Knowledge
-```
-
-into:
-
-```text
-Candidate Knowledge
-```
-
----
-
-# Important Rule
-
-Builder never overwrites.
-
----
-
-# Builder Produces
-
-```text
-Candidate Changes
-```
-
-only.
-
----
-
-# Output
-
-```typescript
-type CandidateKnowledge = {
-  candidate_fields:
-    CandidateField[];
-};
-```
-
----
-
-# Step 5
-
-Classify Changes
-
----
-
-# Purpose
-
-Determine:
-
-```text
-Field Stability Class
-```
-
----
-
-# Allowed Classes
-
-```typescript
-type StabilityClass =
-  | "stable"
-  | "semi_stable"
-  | "dynamic";
-```
-
----
-
-# Stable Examples
-
-```text
-Business Model
-
-Primary Customer
-
-Core Products
-```
-
----
-
-# Semi-Stable Examples
-
-```text
-Growth Priorities
-
-Strategic Focus
-```
-
----
-
-# Dynamic Examples
-
-```text
-Current Initiatives
-
-Management Commentary
-```
-
----
-
-# Rule
-
-Classification comes from:
-
-```text
-Company Knowledge Schema
-```
-
----
-
-# Builder Cannot Change
-
-```text
-Stability Classes
-```
-
----
-
-# Step 6
-
-Generate Promotion Proposals
-
----
-
-# Purpose
-
-Create:
-
-```text
-Governance Requests
-```
-
----
-
-# Output
-
-```typescript
-type PromotionProposal = {
-  field_name: string;
-
-  previous_value: unknown;
-
-  proposed_value: unknown;
-
-  stability_class:
-    StabilityClass;
-
-  confidence: number;
-
-  evidence_refs: string[];
-
-  recommendation:
-    PromotionRecommendation;
-};
-```
-
----
-
-# Recommendation Types
-
-```typescript
-type PromotionRecommendation =
-  | "promote"
-  | "retain"
-  | "merge"
-  | "review";
-```
-
----
-
-# Rule
-
-Builder only recommends.
-
----
-
-# Governance Engine decides.
-
----
-
-# Step 7
-
-Create Candidate Artifact
-
----
-
-# Output
-
-```typescript
-type CompanyKnowledgeCandidateContent = {
+type CompanyKnowledgeCandidateArtifactContent = {
+  artifact_type: "company_knowledge_candidate";
   company_id: string;
-
   period_id: string;
-
-  proposals:
-    PromotionProposal[];
+  filing_id: string;
+  population_mode: "first_population" | "update";
+  candidate_changes: CandidateChange[];
+  candidate_summary: CandidateSummary;
+  confidence: CompanyKnowledgeCandidateConfidence;
+  replayability_metadata: CompanyKnowledgeCandidateReplayabilityMetadata;
 };
 ```
 
----
-
-# Purpose
-
-Company Knowledge Candidate.
+The builder must not emit `proposals`, `candidate_fields`, or
+`promotion_proposals`.
 
 ---
 
-# Candidate Artifact Rules
+# Admission
 
-CompanyKnowledgeCandidateArtifact is:
+The builder uses the exact admission matrix in
+`025-company-knowledge-spec.md`.
 
-```text
-Persisted
+* always-promotable fields are eligible immediately
+* conditionally-promotable fields are emitted but cannot receive a promote or
+  merge recommendation until durability requirements are met
+* never-promotable fields are excluded and counted in the summary
 
-Replayable
-
-Auditable
-```
-
-but:
-
-```text
-Not downstream visible
-
-Not dependency-index registered
-
-Not Company Knowledge
-```
-
-LOCKED.
+Admission eligibility never authorizes a governance decision.
 
 ---
 
-# Artifact Framework Alignment
+# First Population
 
-Builder returns:
+When current Company Knowledge is absent:
+
+* set `population_mode = "first_population"`
+* do not fail dependency resolution
+* treat eligible values as `new_information`
+* use the current period as the initial supporting period
+* apply the same durability formula and recommendation rules
+* require governance approval before Company Knowledge creation
+
+When current Company Knowledge exists:
+
+* set `population_mode = "update"`
+* compare against only the current approved artifact
+
+---
+
+# Determinism
+
+The builder must use:
+
+* canonical JSON hashing
+* stable field-path mappings
+* sorted unique supporting periods
+* sorted unique evidence references
+* candidate ordering by `field_path`, then `candidate_id`
+* contract-owned stability and supporting-period constants
+
+No LLM or semantic classification call is allowed.
+
+---
+
+# Confidence
+
+The builder computes:
+
+* per-candidate extraction confidence
+* per-candidate durability confidence
+* artifact-level candidate confidence
+
+All formulas are defined in `023`. Validation must independently recompute and
+reconcile every value.
+
+The builder must not produce `governance_confidence`.
+
+---
+
+# Replayability
+
+The builder records:
 
 ```typescript
-BuilderResult<CompanyKnowledgeCandidateContent>
-```
-
-Builder Framework creates:
-
-```typescript
-Artifact<CompanyKnowledgeCandidateContent>
-```
-
-Artifact Framework owns:
-
-```text
-artifact identity
-
-artifact version
-
-metadata
-
-persistence
-
-current pointer
-```
-
-Builder owns none of these.
-
-LOCKED.
-
----
-
-# Governance Boundary
-
-Builder proposes.
-
-Governance decides.
-
-Always.
-
-Governance owns:
-
-```text
-promote
-
-merge
-
-retain
-
-review
-
-rollback
-
-Company Knowledge creation
-```
-
-LOCKED.
-
----
-
-# Governance Flow
-
-After candidate artifact creation:
-
-```text
-1. Governance loads Candidate Artifact
-
-2. Governance evaluates Promotion Proposals
-
-3. Governance produces Promotion Decisions
-
-4. Governance creates Company Knowledge when approved
-
-5. Artifact Framework persists Company Knowledge
-
-6. Governance writes Audit Entry
-
-7. Invalidation Engine marks downstream artifacts stale
-```
-
-This flow is not owned by the Builder.
-
-LOCKED.
-
----
-
-# Dependency Registration
-
----
-
-# Dependency Node
-
-```typescript
-type DependencyNode = {
-  artifact_type:
-    "company_knowledge";
-
-  upstream: [
-    "structured_intelligence"
-  ];
-
-  downstream: [
-    "business_signals",
-    "quarter_understanding"
-  ];
-};
-```
-
----
-
-# Candidate Artifact Rule
-
-Candidate artifacts:
-
-```text
-Not Registered
-```
-
-in dependency graph.
-
----
-
-# Only Approved Knowledge
-
-is registered.
-
----
-
-# Knowledge Versioning
-
----
-
-# Version Strategy
-
-```text
-Append Only
-```
-
----
-
-# Rule
-
-Knowledge history is:
-
-```text
-Permanent
-```
-
----
-
-# No Deletes
-
-Allowed.
-
----
-
-# Governance Integration
-
-Critical.
-
----
-
-# Builder Owns
-
-```text
-Proposal Creation
-```
-
----
-
-# Governance Owns
-
-```text
-Promotion Decision
-```
-
----
-
-# Separation Rule
-
-Must never be violated.
-
----
-
-# Invalidation Integration
-
----
-
-# Trigger Events
-
-```text
-Structured Intelligence Changed
-
-Governance Decision Changed
-
-Knowledge Version Created
-```
-
----
-
-# Candidate Staleness
-
-Uses:
-
-```text
-Version Hash
-```
-
----
-
-# Propagation
-
-Uses:
-
-```text
-Content Hash
-```
-
----
-
-# Special Rule
-
-Knowledge versions are:
-
-```text
-Governed Artifacts
-```
-
----
-
-# Therefore
-
-Invalidation cannot bypass governance.
-
----
-
-# Replayability Requirements
-
-Must record:
-
-```text
-Input Hash
-
-Knowledge Version
-
-Candidate Version
-```
-
----
-
-# Lineage Schema
-
-```typescript
-type CandidateLineage = {
-  structured_intelligence_ref:
-    string;
-
-  prior_knowledge_version:
-    number;
-
+type CompanyKnowledgeCandidateReplayabilityMetadata = {
+  structured_intelligence_ref: string;
+  current_company_knowledge_ref: string | null;
+  admission_rules_version: string;
   input_hash: string;
-
-  candidate_hash: string;
+  output_hash: string;
 };
 ```
 
----
-
-# Evaluation Integration
-
----
-
-# Evaluation Categories
-
-```text
-Promotion Accuracy
-
-Knowledge Consistency
-
-Longitudinal Stability
-
-Information Preservation
-```
+Stable hashing must cover all dependency content used by candidate generation.
+This replayability metadata is not Artifact Framework lineage.
 
 ---
 
-# Evaluation Timing
+# Governance Handoff
 
-After:
+Governance consumes the persisted candidate artifact and produces governance
+decisions.
 
-```text
-Knowledge Approval
-```
+The builder must not:
 
----
-
-# Builder Metrics
-
-Track:
-
-```text
-Knowledge Resolution
-
-Archive Resolution
-
-Proposal Generation
-```
+* auto-create approved Company Knowledge
+* apply a promotion or merge
+* mutate current Company Knowledge
+* write governance confidence
+* bypass review requirements
 
 ---
 
-# Monitoring Schema
+# Dependency and Invalidation Boundary
 
-```typescript
-type BuilderMetrics = {
-  archive_load_ms: number;
+The builder emits dependency references in `BuilderResult`. Dependency Index
+owns registration, graph management, and stale state.
 
-  proposal_generation_ms: number;
-};
-```
+Candidate invalidation inputs are:
+
+* Structured Intelligence content/version change
+* current approved Company Knowledge content/version change
+* admission rules version change
+* stability or durability contract change
+* deterministic comparison or confidence rule change
+
+Candidate artifacts are governance inputs, not canonical downstream Company
+Knowledge dependencies.
 
 ---
 
 # Error Categories
 
 ```typescript
-type BuilderError =
+type CompanyKnowledgeCandidateBuilderError =
   | "STRUCTURED_INTELLIGENCE_MISSING"
-  | "KNOWLEDGE_LOAD_FAILURE"
-  | "ARCHIVE_LOAD_FAILURE"
+  | "DEPENDENCY_IDENTITY_MISMATCH"
+  | "CURRENT_KNOWLEDGE_INVALID"
+  | "SOURCE_REFERENCE_RECONCILIATION_FAILURE"
+  | "ADMISSION_MAPPING_FAILURE"
+  | "DURABILITY_RECONCILIATION_FAILURE"
   | "CANDIDATE_VALIDATION_FAILURE";
 ```
 
----
-
-# Recovery Strategy
-
-Missing Artifact:
-
-```text
-Wait
-```
-
-Governance Failure:
-
-```text
-Handled by Governance
-```
-
-Timeout:
-
-```text
-Handled by Governance
-```
-
-Persistence Failure:
-
-```text
-Handled by Artifact Framework
-```
-
----
-
-# Scaling Requirements
-
-Target:
-
-```text
-10,000+ companies
-```
-
-Must support:
-
-- durable memory
-- governance workflows
-- auditability
-- version history
-- replayability
+Persistence and framework recovery errors remain owned by Artifact Framework.
 
 ---
 
 # Architectural Invariants
 
-LOCKED.
-
-1. Company Knowledge is persistent intelligence.
-2. Builder proposes; governance decides.
-3. Builder never directly modifies knowledge.
-4. Knowledge is append-only.
-5. Historical versions are permanent.
-6. Dependency Index resolves upstream artifacts.
-7. Governance cannot be bypassed.
-8. Candidate artifacts are not downstream-visible.
-9. Every approved change creates a new version.
-10. Company Knowledge is the canonical memory layer of the platform.
+1. `candidate_changes` is the only candidate collection.
+2. The builder is deterministic and uses no LLM.
+3. Structured Intelligence is the source of candidate values.
+4. Current approved Company Knowledge is optional only for first population.
+5. The builder proposes; governance decides.
+6. Durability and extraction confidence remain separate.
+7. Never-promotable fields never reach governance as candidates.
+8. The builder returns `BuilderResult`.
+9. Artifact Framework owns lifecycle mechanics.
+10. Dependency Index owns registration and dependency state.
 
 End of Specification.

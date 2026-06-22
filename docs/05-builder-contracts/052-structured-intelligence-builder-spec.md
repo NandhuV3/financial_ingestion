@@ -1,142 +1,88 @@
-# 052-structured-intelligence-builder-spec.md
+# Structured Intelligence Builder Specification
 
-Version: 1.0
+Version: 2.0
 Status: LOCKED
 Owner: Builder Layer
 
 Depends On:
 
-- 012-artifact-framework-spec.md
-- 013-prompt-registry-spec.md
-- 014-dependency-index-spec.md
-- 015-invalidation-engine-spec.md
-- 022-structured-intelligence-spec.md
-- 042-structured-intelligence-prompt-contract.md
+* `012-artifact-framework-spec.md`
+* `013-prompt-registry-spec.md`
+* `014-dependency-index-spec.md`
+* `015-invalidation-engine-spec.md`
+* `022-structured-intelligence-spec.md`
+* `042-structured-intelligence-prompt-contract.md`
 
 Consumes:
 
-- Filing
-- Themes Artifact
-- Topic Assignment Artifact
+* Filing
+* Themes Artifact
 
 Produces:
 
-- Structured Intelligence Artifact
+* `BuilderResult<StructuredIntelligenceArtifactContent>`
 
 ---
 
 # Purpose
 
-This specification defines how the Structured Intelligence Builder constructs:
+The Structured Intelligence Builder orchestrates governed prompt execution for
+one Filing and its canonical Themes artifact.
 
 ```text
-Structured Intelligence Artifact
+Filing + Themes
+      ↓
+Structured Intelligence Builder
+      ↓
+BuilderResult<StructuredIntelligenceArtifactContent>
+      ↓
+Artifact Framework
 ```
 
-from:
+Topic Assignment and Topic Evolution are not dependencies and must not be
+available to the prompt context.
 
-```text
-Filing
+---
 
-Themes
-
-Topic Assignments
-```
+# Ownership
 
 The builder owns:
 
-```text
-Artifact Resolution
+* dependency resolution and validation
+* deterministic context assembly
+* Prompt Registry resolution
+* governed LLM execution
+* response parsing
+* output validation
+* confidence computation
+* deterministic value-reference generation
+* replayability metadata generation
+* evaluation hook assembly
+* artifact content assembly
 
-Prompt Execution
+The governed prompt owns:
 
-Validation
+* filing interpretation
+* generation of `StructuredUnderstanding`
 
-Confidence Calculation
+Artifact Framework owns:
 
-Persistence
+* artifact identity and type registration
+* framework metadata and framework lineage
+* artifact versioning
+* framework hashes
+* persistence
+* current pointer
+* archive/history
 
-Lineage
+Dependency Index owns:
 
-Dependency Registration
-```
+* dependency registration
+* dependency graph state
+* invalidation dependency state
 
-The builder does NOT own:
-
-```text
-Business Intelligence Logic
-```
-
-That belongs to:
-
-```text
-Structured Intelligence Prompt
-```
-
----
-
-# Architectural Position
-
-```text
-Raw Filing
-       ↓
-
-Themes
-       ↓
-
-Topic Assignment
-       ↓
-
-Structured Intelligence Builder
-       ↓
-
-Structured Intelligence
-       ↓
-
-Company Knowledge Builder
-```
-
----
-
-# Core Responsibility
-
-Transform:
-
-```text
-Filing Context
-```
-
-into:
-
-```text
-Structured Business Understanding
-```
-
-for a single company-period.
-
----
-
-# Builder Ownership
-
-Structured Intelligence Builder owns:
-
-- upstream artifact resolution
-- filing resolution
-- prompt resolution
-- prompt execution
-- output validation
-- confidence computation
-- artifact persistence
-- lineage generation
-- dependency registration
-- evaluation execution
-
-Structured Intelligence Builder does NOT own:
-
-- filing interpretation
-- company memory
-- trust analysis
-- investor conclusions
+The builder must not persist, version, register dependencies, or create
+framework lineage.
 
 ---
 
@@ -145,994 +91,285 @@ Structured Intelligence Builder does NOT own:
 ```typescript
 type StructuredIntelligenceBuilderInput = {
   company_id: string;
-
   period_id: string;
-
   filing_id: string;
 };
-```
 
----
-
-# Artifact Resolution Rule
-
-Builder must resolve dependencies through:
-
-```text
-Dependency Index
-```
-
----
-
-# Reason
-
-Dependency Index is:
-
-```text
-System Source Of Truth
-```
-
----
-
-# Required Inputs
-
-Builder must resolve:
-
-```text
-Filing
-
-Themes Artifact
-
-Topic Assignment Artifact
-```
-
----
-
-# Upstream Resolution
-
-```typescript
-type UpstreamArtifacts = {
-  filing:
-    FilingArtifact;
-
-  themes:
-    ThemesArtifact;
-
-  topic_assignments:
-    TopicAssignmentArtifact;
+type StructuredIntelligenceDependencies = {
+  filing: FilingArtifact;
+  themes: ThemesArtifact;
 };
 ```
 
+The builder must validate:
+
+* Filing artifact type
+* Themes artifact type
+* company identity against `company_id`
+* period identity against `period_id`
+* filing identity against `filing_id`
+* Filing and Themes identity consistency
+* dependency freshness through the Dependency Index
+
+Missing or mismatched required dependencies are build failures.
+
 ---
 
-# Failure Action
+# Forbidden Inputs
 
-Missing dependency:
+The builder and prompt context must not consume:
+
+* Topic Assignment
+* Topic Evolution
+* prior Structured Intelligence
+* Company Knowledge
+* Quarter Change
+* Business Signals
+* Trust artifacts
+* Quarter Understanding
+* Investor Intelligence
+* market data or external knowledge
+
+---
+
+# Execution Flow
 
 ```text
-Build Failure
+1. Resolve Filing and Themes through Dependency Index
+2. Validate artifact types and business identities
+3. Resolve the Structured Intelligence prompt through Prompt Registry
+4. Assemble deterministic Filing + Themes context
+5. Execute the pinned model at temperature 0
+6. Parse exact-schema StructuredUnderstanding output
+7. Validate evidence grounding and ownership boundaries
+8. Generate deterministic StructuredValueReference entries
+9. Compute StructuredIntelligenceConfidence
+10. Assemble replayability metadata and evaluation hooks
+11. Validate full StructuredIntelligenceArtifactContent
+12. Return BuilderResult<StructuredIntelligenceArtifactContent>
+13. Artifact Framework performs lifecycle operations
 ```
 
----
-
-# Builder Flow
-
-```text
-1. Resolve Dependencies
-
-2. Resolve Filing
-
-3. Resolve Prompt
-
-4. Build Prompt Context
-
-5. Execute Prompt
-
-6. Validate Output
-
-7. Compute Confidence
-
-8. Create Artifact
-
-9. Persist Artifact
-
-10. Register Dependencies
-
-11. Execute Evaluation
-
-12. Publish Artifact
-```
+No builder step may perform persistence or dependency registration.
 
 ---
 
-# Step 1
+# Prompt Resolution and Execution
 
-Resolve Dependencies
-
----
-
-# Required
-
-```text
-Themes
-
-Topic Assignments
-```
-
----
-
-# Validation
-
-Verify:
-
-```text
-Exists
-
-Current
-
-Not Stale
-```
-
----
-
-# Failure
-
-```text
-Build Failure
-```
-
----
-
-# Step 2
-
-Resolve Filing
-
----
-
-# Purpose
-
-Load:
-
-```text
-Original Filing
-```
-
----
-
-# Source
-
-```text
-Filing Store
-```
-
----
-
-# Required Data
-
-```typescript
-type FilingArtifact = {
-  filing_id: string;
-
-  filing_type: string;
-
-  filing_content: string;
-
-  filing_hash: string;
-};
-```
-
----
-
-# Rule
-
-Structured Intelligence is:
-
-```text
-Filing-Centric
-```
-
----
-
-# Therefore
-
-Current filing is mandatory.
-
----
-
-# Step 3
-
-Prompt Resolution
-
----
-
-# Source
-
-```text
-Prompt Registry
-```
-
----
-
-# Query
-
-```typescript
-resolvePrompt(
-  artifactType =
-    "structured_intelligence"
-);
-```
-
----
-
-# Output
-
-```typescript
-type PromptResolution = {
-  prompt_id: string;
-
-  prompt_version: string;
-
-  template: string;
-};
-```
-
----
-
-# Failure
-
-```text
-Build Failure
-```
-
----
-
-# Step 4
-
-Prompt Context Construction
-
----
-
-# Context
+The prompt must be resolved from Prompt Registry. Prompt content must not be
+embedded in builder code.
 
 ```typescript
 type StructuredPromptContext = {
-  filing_content: string;
-
-  filing_type: string;
-
-  themes:
-    Theme[];
-
-  topic_assignments:
-    TopicAssignment[];
-};
-```
-
----
-
-# Allowed Context
-
-```text
-Current Filing
-
-Themes
-
-Topic Assignments
-```
-
----
-
-# Forbidden Context
-
-```text
-Company Knowledge
-
-Business Signals
-
-Quarter Understanding
-
-Investor Intelligence
-
-Trust Artifacts
-```
-
----
-
-# Reason
-
-Enforce:
-
-```text
-LLM Boundary
-```
-
----
-
-# Step 5
-
-Prompt Execution
-
----
-
-# Purpose
-
-Generate:
-
-```text
-Structured Business Understanding
-```
-
----
-
-# Execution Requirements
-
-```text
-Temperature = 0
-
-Model Version Pinned
-
-Prompt Version Pinned
-```
-
----
-
-# Required For
-
-```text
-Replayability
-
-Content Hash Stability
-```
-
----
-
-# Output Contract
-
-Must conform to:
-
-```text
-042-structured-intelligence-prompt-contract.md
-```
-
----
-
-# Step 6
-
-Output Validation
-
----
-
-# Purpose
-
-Verify:
-
-```text
-Business Understanding Integrity
-```
-
----
-
-# Validation Rules
-
-Check:
-
-```text
-Schema Compliance
-
-Required Sections
-
-Evidence Presence
-
-No Empty Sections
-```
-
----
-
-# Required Sections
-
-```text
-Business Model
-
-Products & Services
-
-Customers & Markets
-
-Competitive Positioning
-
-Growth Initiatives
-
-Operating Priorities
-
-Capital Allocation
-
-Management Commentary
-
-Risk Observations
-```
-
----
-
-# Evidence Validation
-
-Every major section requires:
-
-```text
-Evidence References
-```
-
----
-
-# Hallucination Checks
-
-Validate:
-
-```text
-Named Products
-
-Customers
-
-Competitors
-
-Markets
-```
-
-against filing.
-
----
-
-# Critical Hallucination
-
-Detected:
-
-```text
-Build Failure
-```
-
----
-
-# Step 7
-
-Confidence Calculation
-
----
-
-# Ownership
-
-Builder owns confidence.
-
----
-
-# Schema
-
-```typescript
-type StructuredConfidence = {
-  coverage_score: number;
-
-  specificity_score: number;
-
-  grounding_score: number;
-
-  evidence_density: number;
-
-  overall: number;
-};
-```
-
----
-
-# Coverage Score
-
-Measures:
-
-```text
-Filing Coverage
-```
-
----
-
-# Specificity Score
-
-Measures:
-
-```text
-Generic vs Specific Content
-```
-
----
-
-# Grounding Score
-
-Measures:
-
-```text
-Evidence Support
-```
-
----
-
-# Evidence Density
-
-Measures:
-
-```text
-Evidence References Per Insight
-```
-
----
-
-# Step 8
-
-Artifact Creation
-
----
-
-# Output
-
-```typescript
-type StructuredIntelligenceArtifact = {
-  artifact_id: string;
-
-  artifact_type:
-    "structured_intelligence";
-
-  business_key: {
-    company_id: string;
-
-    period_id: string;
-
+  filing: {
     filing_id: string;
+    company_id: string;
+    period_id: string;
+    filing_type: string;
+    filing_content: string;
+    evidence_catalog: EvidenceReference[];
   };
-
-  intelligence:
-    StructuredBusinessUnderstanding;
-
-  confidence:
-    StructuredConfidence;
-
-  lineage:
-    StructuredLineage;
-
-  metadata:
-    ArtifactMetadata;
+  themes: CanonicalTheme[];
 };
 ```
 
----
+Context arrays and evidence catalogs must use stable ordering before hashing
+and prompt execution.
 
-# Artifact Type
-
-```text
-structured_intelligence
-```
-
----
-
-# Business Key
-
-Uniqueness:
+Execution requirements:
 
 ```text
-Company
-
-Period
-
-Filing
+temperature = 0
+pinned prompt version
+pinned model version
+structured JSON output
 ```
 
----
-
-# Step 9
-
-Persistence
+The prompt may emit only `StructuredUnderstanding`. It must not emit status,
+confidence, value references, replayability metadata, evaluation hooks,
+framework metadata, or framework lineage.
 
 ---
 
-# Storage
+# Response Parsing
 
-```text
-Artifact Store
-```
+The response parser must:
 
----
+* parse JSON only
+* reject malformed JSON
+* enforce the exact `StructuredUnderstanding` schema from `022`
+* reject unknown fields
+* reject builder-owned or framework-owned fields
+* require at least one valid evidence reference for every emitted value
+* reject evidence references absent from the supplied Filing/Theme evidence
+  catalog
 
-# Persistence Strategy
-
-```text
-Atomic
-```
-
----
-
-# Persisted Objects
-
-```text
-Artifact
-
-Lineage
-
-Metadata
-```
+Cast-based parsing is prohibited.
 
 ---
 
-# Failure
+# Content Assembly
 
-```text
-Rollback
-```
-
----
-
-# Step 10
-
-Dependency Registration
-
----
-
-# Dependency Node
+The builder must produce exactly:
 
 ```typescript
-type DependencyNode = {
-  artifact_id: string;
-
-  artifact_type:
-    "structured_intelligence";
-
-  upstream: [
-    "themes",
-    "topic_assignment"
-  ];
-
-  downstream: [
-    "company_knowledge_builder"
-  ];
+type StructuredIntelligenceArtifactContent = {
+  artifact_type: "structured_intelligence";
+  company_id: string;
+  period_id: string;
+  filing_id: string;
+  status: StructuredIntelligenceStatus;
+  understanding: StructuredUnderstanding;
+  value_references: StructuredValueReference[];
+  confidence: StructuredIntelligenceConfidence;
+  replayability_metadata: StructuredIntelligenceReplayabilityMetadata;
+  evaluation_hooks: StructuredIntelligenceEvaluationHooks;
 };
 ```
 
----
-
-# Registration Required
-
-Always.
+All nested types and field semantics are defined only by
+`022-structured-intelligence-spec.md`.
 
 ---
 
-# Step 11
+# Status Assembly
 
-Evaluation Execution
+The builder owns deterministic status assembly:
 
----
+* `complete`: all required singleton fields are present and all ten top-level
+  understanding fields are populated.
+* `partial`: at least one grounded value exists, but one or more top-level
+  fields are absent.
+* `insufficient_filing`: no grounded business value can be emitted.
 
-# Purpose
-
-Run:
-
-```text
-Structured Intelligence Evaluation
-```
-
----
-
-# Evaluation Categories
-
-```text
-Coverage
-
-Grounding
-
-Specificity
-
-Hallucination Risk
-
-Investor Relevance
-```
+An `insufficient_filing` artifact must contain empty collections, null
+singletons, no value references, zero confidence components except
+`hallucination_risk = 0`, and replayability metadata.
 
 ---
 
-# Evaluation Contract
+# Value References
 
-```text
-017-evaluation-architecture-spec.md
-```
+The builder generates and validates `StructuredValueReference` entries exactly
+as defined in `022`.
 
----
+Requirements:
 
-# Failure Handling
-
-Evaluation failures:
-
-```text
-Flagged
-
-Not Deleted
-```
+* one reference per emitted comparable value
+* no reference for absent values
+* stable field paths
+* stable canonical hashing
+* sorted and deduplicated evidence references
+* deterministic ordering
+* no duplicate or orphaned references
 
 ---
 
-# Reason
+# Confidence
 
-Evaluation is:
-
-```text
-Monitoring Layer
-```
-
----
-
-# Step 12
-
-Publish Artifact
-
----
-
-# Consumers
-
-```text
-Company Knowledge Builder
-```
-
----
-
-# Publication Event
+The builder computes the sole canonical
+`StructuredIntelligenceConfidence` model from `022`:
 
 ```typescript
-type ArtifactPublishedEvent = {
-  artifact_id: string;
-
-  artifact_type:
-    "structured_intelligence";
-
-  timestamp: string;
+type StructuredIntelligenceConfidence = {
+  overall: number;
+  evidence_coverage: number;
+  field_completeness: number;
+  theme_utilization: number;
+  hallucination_risk: number;
 };
 ```
 
----
-
-# Dependency Resolution Principle
-
-Critical.
-
-Builders must resolve:
-
-```text
-Artifacts
-```
-
-through:
-
-```text
-Dependency Index
-```
-
-NOT:
-
-```text
-Direct Database Queries
-```
+Validation must independently recompute all components and reject mismatches.
+Prompt-supplied confidence is forbidden.
 
 ---
 
-# Reason
+# Replayability
 
-Supports:
-
-```text
-Governance
-
-Invalidation
-
-Replayability
-```
-
----
-
-# Invalidation Integration
-
-Uses:
-
-```text
-Hybrid Invalidation
-```
-
----
-
-# Trigger Events
-
-```text
-Filing Changed
-
-Themes Changed
-
-Topic Assignment Changed
-
-Prompt Changed
-```
-
----
-
-# Candidate Staleness
-
-Created via:
-
-```text
-Version Hash
-```
-
----
-
-# Propagation Decision
-
-Uses:
-
-```text
-Content Hash
-```
-
----
-
-# Content Hash Storage
-
-Required:
+The builder records:
 
 ```typescript
-output_content_hash
-```
-
----
-
-# Replayability Requirements
-
-Artifact must record:
-
-```text
-Prompt Version
-
-Model Version
-
-Input Hash
-
-Output Hash
-
-Evaluation Version
-```
-
----
-
-# Lineage Schema
-
-```typescript
-type StructuredLineage = {
+type StructuredIntelligenceReplayabilityMetadata = {
   prompt_id: string;
-
   prompt_version: string;
-
   model_version: string;
-
-  filing_hash: string;
-
-  input_hash: string;
-
+  temperature: 0;
+  filing_input_hash: string;
+  themes_input_hash: string;
+  context_hash: string;
   output_hash: string;
-
   evaluation_version: string;
 };
 ```
 
----
+The hashes must use stable canonical serialization. `output_hash` covers the
+builder-owned content excluding `replayability_metadata.output_hash` itself.
 
-# Builder Metrics
-
-Track:
-
-```text
-Dependency Resolution
-
-Prompt Execution
-
-Validation
-
-Persistence
-
-Evaluation
-```
+This metadata is content-level replayability information, not Artifact
+Framework lineage.
 
 ---
 
-# Monitoring Schema
+# Evaluation
 
-```typescript
-type BuilderMetrics = {
-  dependency_resolution_ms: number;
+The builder assembles the evaluation hooks defined in `022`. Evaluation
+failures are observable validation/evaluation failures; they do not authorize
+the builder to persist, delete, or mutate an artifact.
 
-  prompt_execution_ms: number;
+---
 
-  validation_ms: number;
+# Invalidation and Dependencies
 
-  persistence_ms: number;
+The builder emits dependency references for Filing and Themes in its
+`BuilderResult`. The Dependency Index registers and manages those references.
 
-  evaluation_ms: number;
+Structured Intelligence invalidation inputs are:
 
-  token_usage: number;
-};
-```
+* Filing version/content change
+* Themes version/content change
+* prompt version change
+* model version change
+* deterministic context, validation, confidence, or value-reference rule
+  version change
+
+Topic Assignment and Topic Evolution must not appear in dependency references
+or invalidation triggers.
 
 ---
 
 # Error Categories
 
 ```typescript
-type BuilderError =
+type StructuredIntelligenceBuilderError =
   | "DEPENDENCY_MISSING"
-  | "FILING_NOT_FOUND"
+  | "DEPENDENCY_IDENTITY_MISMATCH"
   | "PROMPT_RESOLUTION_FAILURE"
   | "PROMPT_EXECUTION_FAILURE"
+  | "RESPONSE_PARSE_FAILURE"
   | "OUTPUT_VALIDATION_FAILURE"
-  | "HALLUCINATION_DETECTED"
-  | "PERSISTENCE_FAILURE"
-  | "DEPENDENCY_REGISTRATION_FAILURE";
+  | "EVIDENCE_RECONCILIATION_FAILURE"
+  | "VALUE_REFERENCE_RECONCILIATION_FAILURE"
+  | "CONFIDENCE_RECONCILIATION_FAILURE";
 ```
 
----
-
-# Recovery Strategy
-
-Dependency Missing:
-
-```text
-Wait
-```
-
-Prompt Failure:
-
-```text
-Retry Policy
-```
-
-Validation Failure:
-
-```text
-Reject Artifact
-```
-
-Persistence Failure:
-
-```text
-Rollback
-```
-
----
-
-# Scaling Requirements
-
-Target:
-
-```text
-10,000+ companies
-```
-
-Must support:
-
-- deterministic generation
-- filing-scale processing
-- auditability
-- replayability
-- content-hash invalidation
+Retries, persistence recovery, and dependency state transitions remain owned
+by their platform frameworks.
 
 ---
 
 # Architectural Invariants
 
-LOCKED.
-
-1. Structured Intelligence is filing-centric.
-2. Current filing is mandatory.
-3. Builders never interpret filings.
-4. Prompt owns intelligence generation.
-5. Builder owns confidence.
-6. Dependency Index is the source of artifact resolution.
-7. Temperature must be zero.
-8. Critical hallucinations block persistence.
-9. Every artifact requires lineage.
-10. Structured Intelligence is the primary intelligence source for Company Knowledge.
+1. Filing and Themes are the only dependencies.
+2. Topic Assignment and Topic Evolution are independent.
+3. Prompt Registry owns prompt content.
+4. The governed prompt owns interpretation.
+5. The builder owns orchestration and deterministic content assembly.
+6. The builder returns `BuilderResult<StructuredIntelligenceArtifactContent>`.
+7. Artifact Framework owns lifecycle, persistence, versioning, framework
+   lineage, and framework hashes.
+8. Dependency Index owns registration and graph state.
+9. Every emitted value and value reference must reconcile.
+10. Builder confidence and replayability metadata must be deterministic.
 
 End of Specification.

@@ -289,17 +289,23 @@ What is this business and how does it operate based on this filing?
 
 Per-filing business understanding:
 
-* Business description
-* Revenue drivers
+* Business model and value creation
+* Products and customer segments
+* Revenue model and revenue drivers
 * Competitive positioning
 * Risks
-* Opportunities
 * Strategic priorities
+* Management focus
+* Operating dependencies
+* Deterministic value references for business-level comparison
 
 ## Does Not Own
 
 * Durable business truth
 * Longitudinal understanding
+* Topic normalization
+* Topic evolution
+* Cross-period comparison
 * Investor conclusions
 
 ## Inputs
@@ -307,9 +313,12 @@ Per-filing business understanding:
 * Filing text
 * Themes
 
+Topic Assignment and Topic Evolution are not Structured Intelligence inputs.
+
 ## Outputs
 
 * Structured Intelligence artifact
+* Filing-scoped value references consumed by Quarter Change
 
 Structured Intelligence is filing-scoped.
 
@@ -333,10 +342,14 @@ Canonical business understanding:
 * Customers
 * Competitive position
 * Strategic identity
+* Governed durable strategic priorities
+* Governed durable management focus
+* Governed durable operating dependencies
 
 ## Does Not Own
 
 * Quarter-specific observations
+* Filing-specific risk observations
 * Signal generation
 * Investor interpretation
 
@@ -344,6 +357,9 @@ Canonical business understanding:
 
 * Structured Intelligence
 * Prior Company Knowledge
+
+Only fields admitted by the Company Knowledge contract may be proposed for
+promotion. Governance remains the only promotion authority.
 
 ## Outputs
 

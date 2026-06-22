@@ -1,40 +1,22 @@
-# 023-company-knowledge-builder-spec.md
+# Company Knowledge Candidate Specification
 
-Version: 1.0
+Version: 2.0
 Status: LOCKED
-Owner: Company Knowledge Layer
+Owner: Company Knowledge Candidate Layer
 
 ---
 
 # Purpose
 
-Company Knowledge Builder answers:
+The Company Knowledge Candidate layer answers:
 
 ```text
-Should this filing change what we believe about the company?
+Which filing-scoped Structured Intelligence values are eligible to be
+considered for durable Company Knowledge?
 ```
 
-It is the deterministic layer between:
-
-```text
-Structured Intelligence
-        ↓
-Company Knowledge Builder
-        ↓
-Promotion Governance
-        ↓
-Company Knowledge
-```
-
-Its responsibility is NOT to update Company Knowledge.
-
-Its responsibility is to prepare:
-
-```text
-Promotion Candidates
-```
-
-for Governance.
+It is deterministic and prepares candidate changes for governance. It never
+updates Company Knowledge and never makes a governance decision.
 
 ---
 
@@ -42,112 +24,89 @@ for Governance.
 
 ```text
 Structured Intelligence
+        +
+Current Company Knowledge, when present
         ↓
-Company Knowledge Builder
+Company Knowledge Candidate
         ↓
-Promotion Governance
+Company Knowledge Governance
         ↓
 Company Knowledge
 ```
 
 ---
 
-# Core Responsibility
+# Ownership
 
-Compare:
+The candidate layer owns:
 
-```text
-Current Company Knowledge
-```
+* admission-matrix application
+* deterministic field comparison
+* stability classification
+* extraction confidence propagation
+* supporting-period reconciliation
+* durability confidence computation
+* candidate recommendation
+* review requirement derivation
+* evidence packaging
+* replayability metadata
 
-against
+Company Knowledge Governance owns:
 
-```text
-New Structured Intelligence
-```
+* promotion, merge, retain, reject, and review decisions
+* governance confidence
+* Company Knowledge creation or mutation
 
-and produce:
-
-```text
-Knowledge Change Candidates
-```
-
-for governance evaluation.
-
----
-
-# What This Layer Owns
-
-Owns:
-
-- field comparison
-- semantic change detection
-- confidence comparison
-- evidence accumulation detection
-- promotion candidate generation
-- promotion recommendation generation
-
----
-
-# What This Layer Does NOT Own
-
-Does NOT own:
-
-- promotion decisions
-- company knowledge updates
-- human review
-- rollback
-- governance rules
-
-Those belong to:
-
-```text
-Company Knowledge Governance
-```
-
----
-
-# Design Principle
-
-Builder proposes.
-
-Governance decides.
-
-Always.
+Artifact Framework owns identity, framework metadata, framework lineage,
+versioning, persistence, current pointers, archive/history, and framework
+hashes.
 
 ---
 
 # Inputs
 
 ```typescript
-type CompanyKnowledgeBuilderInputs = {
-  company_knowledge: CompanyKnowledgeArtifact;
-
+type CompanyKnowledgeCandidateInputs = {
   structured_intelligence: StructuredIntelligenceArtifact;
+  current_company_knowledge?: CompanyKnowledgeArtifact;
 };
 ```
+
+`structured_intelligence` is required.
+
+`current_company_knowledge` is absent only for first population. When present,
+it must belong to the same company and must be the current approved Company
+Knowledge artifact.
+
+Company Knowledge history is not a separate content input. Supporting periods
+already recorded on current approved knowledge are authoritative.
 
 ---
 
-# Output
+# Artifact Content
+
+The builder returns:
 
 ```typescript
-type CompanyKnowledgeCandidateArtifact = {
+BuilderResult<CompanyKnowledgeCandidateArtifactContent>
+```
+
+```typescript
+type CompanyKnowledgeCandidateArtifactContent = {
   artifact_type: "company_knowledge_candidate";
-
-  company: string;
-
-  filing_period: string;
-
+  company_id: string;
+  period_id: string;
+  filing_id: string;
+  population_mode: "first_population" | "update";
   candidate_changes: CandidateChange[];
-
   candidate_summary: CandidateSummary;
-
-  metadata: ArtifactMetadata;
-
-  lineage: ArtifactLineage;
+  confidence: CompanyKnowledgeCandidateConfidence;
+  replayability_metadata: CompanyKnowledgeCandidateReplayabilityMetadata;
 };
 ```
+
+`candidate_changes` is the sole canonical candidate collection. The terms
+`proposals`, `candidate_fields`, and `promotion_proposals` are obsolete.
 
 ---
 
@@ -155,51 +114,39 @@ type CompanyKnowledgeCandidateArtifact = {
 
 ```typescript
 type CandidateChange = {
+  candidate_id: string;
   field_path: string;
-
-  current_value: unknown;
-
+  admission_class: AdmissionClass;
+  stability_class: StabilityClass;
+  change_type: CandidateChangeType;
+  current_value: unknown | null;
   candidate_value: unknown;
-
-  change_type: ChangeType;
-
-  semantic_similarity: number;
-
-  confidence_delta: number;
-
-  evidence_delta: number;
-
+  current_value_hash: string | null;
+  candidate_value_hash: string;
+  extraction_confidence: number;
+  durability_confidence: number;
+  supporting_periods: string[];
+  required_supporting_periods: number;
+  evidence_refs: string[];
   builder_recommendation: BuilderRecommendation;
-
   review_required: boolean;
-
-  supporting_evidence: EvidenceReference[];
 };
-```
 
----
+type AdmissionClass =
+  | "always_promotable"
+  | "conditionally_promotable";
 
-# Change Types
+type StabilityClass =
+  | "stable"
+  | "semi_stable"
+  | "dynamic";
 
-```typescript
-type ChangeType =
+type CandidateChangeType =
   | "new_information"
-  | "minor_update"
-  | "major_update"
-  | "contradiction"
+  | "changed"
   | "evidence_accumulation"
   | "no_change";
-```
 
----
-
-# Builder Recommendation
-
-Important:
-
-Builder recommendation is not a decision.
-
-```typescript
 type BuilderRecommendation =
   | "candidate_promote"
   | "candidate_merge"
@@ -207,7 +154,154 @@ type BuilderRecommendation =
   | "candidate_retain";
 ```
 
-Governance may disagree.
+Never-promotable Structured Intelligence fields do not produce candidate
+changes.
+
+---
+
+# Stable Identity
+
+`field_path` is copied from the source Structured Intelligence
+`StructuredValueReference.field_path`, with these canonical mappings:
+
+```text
+understanding.revenue_model
+→ knowledge.revenue_structure
+
+all other eligible understanding paths
+→ the corresponding knowledge path
+```
+
+`candidate_id` is:
+
+```text
+company-knowledge-candidate:<stableHash({
+  company_id,
+  period_id,
+  filing_id,
+  field_path,
+  candidate_value_hash
+})>
+```
+
+Candidate changes are ordered by `field_path`, then `candidate_id`.
+
+---
+
+# Confidence Ownership
+
+The candidate builder owns:
+
+* `extraction_confidence`
+* `durability_confidence`
+* `supporting_periods`
+* `stability_class`
+
+Governance owns:
+
+* `governance_confidence`
+* the final promotion decision
+
+`extraction_confidence` is copied from the matching Structured Intelligence
+value and must reconcile exactly.
+
+---
+
+# Supporting Period Requirements
+
+```typescript
+const REQUIRED_SUPPORTING_PERIODS = {
+  stable: 1,
+  semi_stable: 2,
+  dynamic: 3,
+} as const;
+```
+
+`supporting_periods` contains sorted unique periods that support the exact
+candidate value hash.
+
+For first population, it contains the current Structured Intelligence period.
+
+For updates, prior supporting periods are retained only when the current
+approved Company Knowledge value represents the same canonical value hash.
+The current period is then added.
+
+A changed value starts a new supporting-period set containing only the current
+period.
+
+---
+
+# Durability Confidence
+
+```text
+durability_confidence =
+min(
+  distinct_supporting_periods / required_supporting_periods,
+  1
+)
+```
+
+The value is rounded to four decimals.
+
+No extraction-confidence weighting, boost, penalty, or temporary calibration
+may be added.
+
+---
+
+# Deterministic Comparison
+
+Comparison uses canonical value hashes:
+
+* no current value: `new_information`
+* equal value hash and no new supporting period: `no_change`
+* equal value hash and a newly added supporting period:
+  `evidence_accumulation`
+* different value hash: `changed`
+
+Semantic similarity is not part of the canonical candidate artifact.
+
+---
+
+# Recommendation Rules
+
+The builder recommendation is deterministic:
+
+* `no_change` → `candidate_retain`
+* `evidence_accumulation` below required durability →
+  `candidate_retain`
+* eligible value meeting durability with no conflicting current value →
+  `candidate_promote`
+* eligible value meeting durability that extends an existing compatible
+  collection → `candidate_merge`
+* any changed stable field → `candidate_review`
+* any changed semi-stable or dynamic field → `candidate_review`
+* any candidate below required durability → `candidate_retain`
+
+The builder recommendation is not a governance decision.
+
+`review_required` is `true` for every `candidate_review` recommendation and
+`false` otherwise.
+
+---
+
+# First Population
+
+First population is allowed when no approved Company Knowledge exists.
+
+The candidate builder must:
+
+* set `population_mode = "first_population"`
+* treat every eligible source value as `new_information`
+* start `supporting_periods` with the current period
+* compute durability using the canonical stability requirement
+* recommend promotion only for values whose durability is `1`
+* emit no candidate for never-promotable fields
+
+This permits stable fields to become governance candidates on first
+population. Semi-stable and dynamic values remain retained candidates until
+their supporting-period requirements are met.
+
+Governance approval remains mandatory for all first-population values.
 
 ---
 
@@ -216,656 +310,89 @@ Governance may disagree.
 ```typescript
 type CandidateSummary = {
   total_fields_evaluated: number;
-
-  unchanged_fields: number;
-
-  changed_fields: number;
-
-  major_changes: number;
-
-  contradictions: number;
-
+  candidates_emitted: number;
+  promotable_candidates: number;
+  merge_candidates: number;
   review_candidates: number;
+  retained_candidates: number;
+  never_promotable_values_excluded: number;
 };
 ```
 
+Summary values must reconcile exactly with `candidate_changes`.
+
 ---
 
-# Comparison Engine
-
-Core function:
+# Candidate Confidence
 
 ```typescript
-compare(
-    companyKnowledge,
-    structuredIntelligence
-)
-```
-
----
-
-# Comparison Strategy
-
-Field-by-field.
-
-Never artifact-level.
-
----
-
-# Example
-
-Current:
-
-```text
-Primary Revenue Driver:
-Cloud Infrastructure
-```
-
-Candidate:
-
-```text
-Primary Revenue Driver:
-Cloud Infrastructure + AI Services
-```
-
-Result:
-
-```text
-minor_update
-```
-
----
-
-# Example
-
-Current:
-
-```text
-Business Model:
-Subscription
-```
-
-Candidate:
-
-```text
-Business Model:
-Transaction Driven
-```
-
-Result:
-
-```text
-major_update
-```
-
-and
-
-```text
-review_required = true
-```
-
----
-
-# Semantic Similarity
-
-Required.
-
-Builder computes:
-
-```typescript
-semantic_similarity: number;
-```
-
-Range:
-
-```text
-0.0 → 1.0
-```
-
----
-
-# Interpretation
-
-```text
-> 0.90
-No Change
-
-0.75 - 0.90
-Minor Update
-
-0.50 - 0.75
-Moderate Update
-
-< 0.50
-Major Update
-```
-
----
-
-# Stable Field Rules
-
-Stable fields:
-
-```typescript
-business_model
-
-revenue_structure
-
-products
-```
-
-Any change:
-
-```text
-review_required = true
-```
-
-Always.
-
----
-
-# Semi-Stable Fields
-
-```typescript
-revenue_drivers
-
-customers
-
-competitive_positioning
-```
-
-Moderate threshold.
-
----
-
-# Dynamic Fields
-
-```typescript
-strategic_priorities
-
-management_focus
-
-dependencies
-```
-
-Changes expected.
-
----
-
-# Confidence Delta
-
-Builder computes:
-
-```typescript
-confidence_delta =
-candidate_confidence
--
-current_confidence
-```
-
----
-
-# Example
-
-Current:
-
-```text
-0.70
-```
-
-Candidate:
-
-```text
-0.85
-```
-
-Result:
-
-```text
-+0.15
-```
-
----
-
-# Evidence Delta
-
-Measures:
-
-```text
-How much new evidence exists?
-```
-
-Example:
-
-Current:
-
-```text
-2 filings support field
-```
-
-Candidate:
-
-```text
-5 filings support field
-```
-
-Result:
-
-```text
-evidence_accumulation
-```
-
----
-
-# Contradiction Detection
-
-Critical.
-
----
-
-# Example
-
-Current:
-
-```text
-Primary Customer:
-Enterprise
-```
-
-Candidate:
-
-```text
-Primary Customer:
-Consumer
-```
-
-Result:
-
-```text
-contradiction
-```
-
----
-
-# Contradiction Handling
-
-Builder never resolves contradictions.
-
-Builder flags:
-
-```typescript
-review_required = true;
-change_type = "contradiction";
-```
-
-Governance decides.
-
----
-
-# First Population
-
-If Company Knowledge empty:
-
-```typescript
-change_type = "new_information";
-```
-
-No comparison possible.
-
----
-
-# Builder Recommendation Logic
-
----
-
-## Candidate Promote
-
-Conditions:
-
-```text
-High Confidence
-
-+
-Minor Change
-
-+
-Evidence Increase
-```
-
----
-
-## Candidate Merge
-
-Conditions:
-
-```text
-Adds Information
-
-Without Replacing Prior Knowledge
-```
-
----
-
-## Candidate Review
-
-Conditions:
-
-```text
-Contradiction
-
-or
-
-Major Change
-
-or
-
-Stable Field Change
-```
-
----
-
-## Candidate Retain
-
-Conditions:
-
-```text
-No Material Change
-```
-
----
-
-# Multi-Field Change Detection
-
-If:
-
-```text
-3+ fields change simultaneously
-```
-
-Builder emits:
-
-```typescript
-review_required = true;
-```
-
-for summary.
-
----
-
-# Change Event Classification
-
-```typescript
-type ChangeEventClassification =
-  | "routine"
-  | "significant"
-  | "critical";
-```
-
----
-
-# Routine
-
-Minor updates only.
-
----
-
-# Significant
-
-Stable fields affected.
-
----
-
-# Critical
-
-Contradictions detected.
-
-Business model changed.
-
-Revenue structure changed.
-
----
-
-# Evidence Requirements
-
-Every candidate change requires:
-
-```typescript
-supporting_evidence[]
-```
-
-No evidence:
-
-```text
-No candidate.
-```
-
----
-
-# Builder Confidence
-
-```typescript
-type BuilderConfidence = {
-  comparison_confidence: number;
-
-  evidence_strength: number;
-
-  contradiction_confidence: number;
+type CompanyKnowledgeCandidateConfidence = {
+  overall: number;
+  extraction_confidence: number;
+  durability_confidence: number;
+  evidence_coverage: number;
 };
 ```
 
----
+Each component is the arithmetic mean across emitted candidate changes.
+`evidence_coverage` is candidates with non-empty evidence divided by emitted
+candidates. All components are `0` when no candidates are emitted.
 
-# Relationship to Governance
-
-Builder cannot:
-
-```text
-Promote
-
-Merge
-
-Retain
-
-Rollback
-```
-
-Builder only recommends.
-
-Governance owns decisions.
+`overall` is the arithmetic mean of the other three components. Values are
+rounded to four decimals and must be recomputed by validation.
 
 ---
 
-# Promotion Governance Contract
+# Evidence
 
-Builder outputs:
+Every candidate must copy the sorted, deduplicated evidence references from
+its source Structured Intelligence value reference.
+
+No evidence means no candidate.
+
+Candidate evidence must not be synthesized or replaced with artifact paths.
+
+---
+
+# Replayability Metadata
 
 ```typescript
-CandidateChange[]
-```
-
-Governance consumes:
-
-```typescript
-CandidateChange[]
-```
-
-and produces:
-
-```typescript
-PromotionDecision[]
-```
-
----
-
-# Invalidation Rules
-
-Candidate artifact becomes stale when:
-
-- Structured Intelligence changes
-- Company Knowledge changes
-- Promotion Rules version changes
-
----
-
-# Regeneration Rules
-
-Regenerate if:
-
-```text
-Input Hash Changed
-```
-
----
-
-# Evaluation Metrics
-
----
-
-## Comparison Accuracy
-
-Measures:
-
-```text
-Correctly Detected Changes
-```
-
----
-
-## False Positive Change Rate
-
-Measures:
-
-```text
-Detected Change
-
-when
-
-No Change Exists
-```
-
----
-
-## False Negative Change Rate
-
-Measures:
-
-```text
-Missed Changes
-```
-
----
-
-## Contradiction Detection Accuracy
-
-Measures:
-
-```text
-Detected Contradictions
-/
-Actual Contradictions
-```
-
----
-
-## Evidence Coverage
-
-Measures:
-
-```text
-Changes With Evidence
-/
-Total Changes
-```
-
----
-
-# Metadata
-
-```typescript
-type ArtifactMetadata = {
-  schema_version: string;
-
-  builder_version: string;
-
-  generated_at: string;
-
-  artifact_version: number;
-};
-```
-
----
-
-# Lineage
-
-```typescript
-type ArtifactLineage = {
-  company_knowledge_version: number;
-
-  structured_intelligence_version: number;
-
-  promotion_rules_version: string;
-
+type CompanyKnowledgeCandidateReplayabilityMetadata = {
+  structured_intelligence_ref: string;
+  current_company_knowledge_ref: string | null;
+  admission_rules_version: string;
   input_hash: string;
+  output_hash: string;
 };
 ```
 
----
-
-# Archive Strategy
-
-```text
-current.json
-
-archive/
-```
-
-Store all candidate generations.
-
-Needed for:
-
-- governance audits
-- rollback investigations
-- promotion evaluation
+This is content-owned replayability metadata, not Artifact Framework lineage.
 
 ---
 
-# Scaling Requirements
+# Invalidation
 
-Target:
+The candidate becomes stale when:
 
-```text
-10,000+ companies
-```
-
----
-
-# Performance Requirement
-
-```text
-< 5 seconds
-```
-
-per company.
-
-Deterministic.
-
-No LLM calls.
+* source Structured Intelligence changes
+* current approved Company Knowledge changes
+* the admission matrix changes
+* stability requirements change
+* deterministic comparison or confidence rules change
 
 ---
 
 # Architectural Invariants
 
-LOCKED.
-
-1. Builder never updates Company Knowledge.
-2. Builder never makes promotion decisions.
-3. Builder is deterministic.
-4. Every candidate requires evidence.
-5. Contradictions always require review.
-6. Stable field changes always require review.
-7. Builder outputs recommendations, not decisions.
-8. Governance is the only promotion authority.
-9. Candidate artifacts are auditable.
-10. Promotion logic remains outside Builder.
+1. `candidate_changes` is the canonical schema.
+2. The candidate builder never creates or mutates Company Knowledge.
+3. Governance is the only decision authority.
+4. Never-promotable fields are excluded.
+5. Stability and durability are independent of extraction confidence.
+6. Supporting periods support an exact canonical value.
+7. First population never bypasses governance.
+8. Every candidate has source evidence.
+9. Candidate generation is deterministic and replayable.
+10. Artifact Framework owns artifact lifecycle mechanics.
 
 End of Specification.
