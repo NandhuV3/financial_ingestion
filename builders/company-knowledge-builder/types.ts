@@ -103,10 +103,11 @@ export type DependencyKnowledge = KnowledgeValueBase & {
 };
 
 export type StructuredIntelligenceArtifactContent = {
+  artifact_type?: "structured_intelligence";
   company_id: string;
   period_id: string;
   filing_id: string;
-  filing_period: string;
+  filing_period?: string;
   understanding: StructuredUnderstanding;
   confidence: {
     overall: number;

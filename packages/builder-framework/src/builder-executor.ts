@@ -4,7 +4,14 @@ import type { ArtifactGovernance } from "../../../contracts/artifacts/artifact-g
 import type { ArtifactLineage, ModelReference, PromptReference } from "../../../contracts/artifacts/artifact-lineage.js";
 import type { ArtifactService } from "../../artifact-framework/src/artifact-service.js";
 import type { BuilderDependencies, BuilderContext } from "./builder-context.js";
-import { BuilderDependencyError, BuilderExecutionError, BuilderValidationError, builderErrorMessage } from "./builder-errors.js";
+import {
+  BuilderDependencyError,
+  BuilderError,
+  BuilderExecutionError,
+  BuilderValidationError,
+  builderErrorMessage,
+} from "./builder-errors.js";
+import type { BuilderDefinition } from "./builder-definition.js";
 import type { BuilderObserver } from "./builder-observability.js";
 import { NoopBuilderObserver } from "./builder-observability.js";
 import type { BuilderRegistry } from "./builder-registry.js";
@@ -38,6 +45,7 @@ export class BuilderExecutor {
     const dependencies = params.dependencies ?? {};
     let promptReference: PromptReference | undefined;
     let modelReference: ModelReference | undefined;
+    let definition: BuilderDefinition | undefined;
 
     this.observer.onExecutionStart({
       builderType: params.builderType,
@@ -48,7 +56,7 @@ export class BuilderExecutor {
     });
 
     try {
-      const definition = this.registry.getBuilderDefinition(params.builderType);
+      definition = this.registry.getBuilderDefinition(params.builderType);
       const builder = this.registry.getBuilder<TInput, TOutput>(params.builderType);
       const context: BuilderContext<TInput> = {
         companyId: params.companyId,
@@ -119,7 +127,13 @@ export class BuilderExecutor {
 
       return artifact;
     } catch (error) {
-      const typedError = normalizeBuilderError(error, params.builderType);
+      const typedError = normalizeBuilderError(error, {
+        builderType: params.builderType,
+        artifactType: definition?.artifact_type,
+        executionId: params.executionId,
+        companyId: params.companyId,
+        periodId: params.periodId,
+      });
 
       this.observer.onExecutionFailure({
         builderType: params.builderType,
@@ -171,15 +185,60 @@ function buildLineage(
   return lineage;
 }
 
-function normalizeBuilderError(error: unknown, builderType: string): BuilderDependencyError | BuilderExecutionError | BuilderValidationError {
-  if (error instanceof BuilderDependencyError
-    || error instanceof BuilderExecutionError
-    || error instanceof BuilderValidationError) {
-    return error;
+type BuilderFailureContext = {
+  builderType: string;
+  artifactType?: string;
+  executionId: string;
+  companyId: string;
+  periodId: string;
+};
+
+function normalizeBuilderError(
+  error: unknown,
+  context: BuilderFailureContext,
+): BuilderError {
+  const errorContext = {
+    builder_type: context.builderType,
+    artifact_type: context.artifactType,
+    execution_id: context.executionId,
+    company_id: context.companyId,
+    period_id: context.periodId,
+  };
+
+  if (error instanceof BuilderValidationError) {
+    return new BuilderValidationError(error.message, {
+      cause: error,
+      context: errorContext,
+      suggestedAction: error.suggestedAction
+        ?? "Correct the builder input or generated artifact content and retry.",
+    });
+  }
+
+  if (error instanceof BuilderDependencyError) {
+    return new BuilderDependencyError(error.message, {
+      cause: error,
+      context: errorContext,
+      suggestedAction: error.suggestedAction
+        ?? "Generate or repair the required upstream dependency, then retry.",
+    });
+  }
+
+  if (error instanceof BuilderExecutionError) {
+    return new BuilderExecutionError(error.message, {
+      cause: error,
+      context: errorContext,
+      suggestedAction: error.suggestedAction
+        ?? "Inspect the builder execution failure and retry after the underlying service recovers.",
+    });
   }
 
   return new BuilderExecutionError(
-    `Builder execution failed for ${builderType}: ${builderErrorMessage(error)}`,
-    error,
+    `Builder execution failed for ${context.builderType}: ${builderErrorMessage(error)}`,
+    {
+      cause: error,
+      context: errorContext,
+      suggestedAction:
+        "Inspect the underlying cause in debug mode and retry after correcting it.",
+    },
   );
 }

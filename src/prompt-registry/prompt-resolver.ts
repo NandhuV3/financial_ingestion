@@ -19,11 +19,20 @@ export class PromptResolver {
     this.providers = Array.isArray(provider) ? provider : [provider];
   }
 
-  resolve(promptId: string): ResolvedPrompt {
+  resolve(promptId: string, version?: string): ResolvedPrompt {
     const activation = this.activationStore.getActivation(promptId);
 
     if (activation) {
-      const prompt = this.resolveFromProviders(promptId, activation.active_version);
+      if (version !== undefined && activation.active_version !== version) {
+        throw new Error(
+          `Prompt activation ${activation.activation_id} selects ${promptId} version ${activation.active_version}, but version ${version} was requested.`,
+        );
+      }
+
+      const prompt = this.resolveFromProviders(
+        promptId,
+        version ?? activation.active_version,
+      );
 
       if (!prompt) {
         throw new Error(
@@ -37,10 +46,14 @@ export class PromptResolver {
       };
     }
 
-    const prompt = this.resolveFromProviders(promptId);
+    const prompt = this.resolveFromProviders(promptId, version);
 
     if (!prompt) {
-      throw new Error(`Prompt not found: ${promptId}`);
+      throw new Error(
+        version === undefined
+          ? `Prompt not found: ${promptId}`
+          : `Prompt not found: ${promptId} version ${version}`,
+      );
     }
 
     return prompt;

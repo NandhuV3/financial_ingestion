@@ -6,8 +6,11 @@ import {
 } from "../structured-intelligence/build-structured-intelligence.prompt.js";
 import {
   STRUCTURED_INTELLIGENCE_PROMPT_ID as STRUCTURED_INTELLIGENCE_BUILDER_PROMPT_ID,
-  STRUCTURED_INTELLIGENCE_SYSTEM_PROMPT as STRUCTURED_INTELLIGENCE_BUILDER_SYSTEM_PROMPT,
-} from "../../builders/structured-intelligence/prompt.js";
+  STRUCTURED_INTELLIGENCE_PROMPT_VERSION as STRUCTURED_INTELLIGENCE_BUILDER_PROMPT_VERSION,
+} from "../../builders/structured-intelligence/contract.js";
+import {
+  STRUCTURED_INTELLIGENCE_BUILDER_SYSTEM_PROMPT,
+} from "./structured-intelligence-prompt.js";
 import {
   INVESTOR_Q1_PROMPT_ID,
   INVESTOR_Q2_PROMPT_ID,
@@ -45,7 +48,7 @@ const prompts: Record<string, Omit<ResolvedPrompt, "promptId" | "source" | "hash
     content: STRUCTURED_INTELLIGENCE_SYSTEM_PROMPT,
   },
   [STRUCTURED_INTELLIGENCE_BUILDER_PROMPT_ID]: {
-    version: "structured-intelligence-builder-v1",
+    version: STRUCTURED_INTELLIGENCE_BUILDER_PROMPT_VERSION,
     content: STRUCTURED_INTELLIGENCE_BUILDER_SYSTEM_PROMPT,
   },
   [QUARTER_UNDERSTANDING_PROMPT_ID]: {

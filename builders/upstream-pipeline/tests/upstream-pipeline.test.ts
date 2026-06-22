@@ -24,7 +24,7 @@ import type { TopicEvolutionArtifactContent } from "../../topic-evolution-builde
 import { buildFilingEvidenceCatalog } from "../../themes/evidence.js";
 import {
   STRUCTURED_INTELLIGENCE_PROMPT_ID,
-} from "../../structured-intelligence/prompt.js";
+} from "../../structured-intelligence/contract.js";
 import { THEMES_PROMPT_ID } from "../../themes/prompt.js";
 import { createArtifactDumpObserver } from "../artifact-dump.js";
 import { registerUpstreamBuilders } from "../register-builders.js";
@@ -353,7 +353,6 @@ class UpstreamLLMClient implements LLMClient {
     if (systemPrompt === STRUCTURED_INTELLIGENCE_PROMPT_ID) {
       return {
         output_text: JSON.stringify({
-          status: "complete",
           understanding: structuredUnderstanding(),
         }),
       };
@@ -386,7 +385,7 @@ function structuredUnderstanding() {
     business_model: {
       summary: "Microsoft provides cloud infrastructure and productivity software.",
       value_creation: "Enterprise customers use integrated software and Azure services.",
-      revenue_structure: "Recurring subscriptions and cloud consumption.",
+      confidence: 0.9,
       evidence_refs: evidence,
     },
     products: [
@@ -394,6 +393,7 @@ function structuredUnderstanding() {
         product_name: "Azure",
         description: "Cloud infrastructure and platform services.",
         importance: "high",
+        confidence: 0.9,
         evidence_refs: evidence,
       },
     ],
@@ -401,6 +401,7 @@ function structuredUnderstanding() {
       {
         customer_segment: "Enterprise customers",
         description: "Organizations using Microsoft cloud and productivity products.",
+        confidence: 0.9,
         evidence_refs: evidence,
       },
     ],
@@ -408,12 +409,14 @@ function structuredUnderstanding() {
       summary: "Subscriptions, licenses, and cloud usage generate revenue.",
       recurring_components: ["subscriptions"],
       transactional_components: ["licenses"],
+      confidence: 0.9,
       evidence_refs: evidence,
     },
     revenue_drivers: [
       {
         driver: "Azure consumption",
         explanation: "Enterprise cloud workload growth supports usage revenue.",
+        confidence: 0.9,
         evidence_refs: evidence,
       },
     ],
@@ -421,6 +424,7 @@ function structuredUnderstanding() {
       {
         position: "Integrated enterprise platform",
         supporting_reasoning: "Cloud and productivity products share a broad enterprise footprint.",
+        confidence: 0.9,
         evidence_refs: evidence,
       },
     ],
@@ -428,6 +432,7 @@ function structuredUnderstanding() {
       {
         priority: "Cloud capacity",
         rationale: "Infrastructure investment supports Azure demand.",
+        confidence: 0.9,
         evidence_refs: evidence,
       },
     ],
@@ -435,6 +440,7 @@ function structuredUnderstanding() {
       {
         focus_area: "Enterprise cloud adoption",
         explanation: "Management is expanding cloud usage across customer workloads.",
+        confidence: 0.9,
         evidence_refs: evidence,
       },
     ],
@@ -442,6 +448,7 @@ function structuredUnderstanding() {
       {
         risk: "Infrastructure capacity",
         explanation: "Cloud growth depends on available data center capacity.",
+        confidence: 0.9,
         evidence_refs: evidence,
       },
     ],
@@ -449,6 +456,7 @@ function structuredUnderstanding() {
       {
         dependency: "Data center capacity",
         explanation: "Azure services require continued infrastructure availability.",
+        confidence: 0.9,
         evidence_refs: evidence,
       },
     ],

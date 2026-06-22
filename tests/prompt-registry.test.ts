@@ -63,6 +63,18 @@ describe("prompt registry", () => {
     );
   });
 
+  it("resolves an explicitly pinned prompt version", () => {
+    const prompt = new PromptResolver(
+      new FilesystemPromptProvider(),
+    ).resolve(
+      "structured-intelligence-builder-system",
+      "structured-intelligence-builder-v2",
+    );
+
+    assert.equal(prompt.version, "structured-intelligence-builder-v2");
+    assert.match(prompt.content, /"product_name": "string"/);
+  });
+
   it("calculates deterministic SHA-256 prompt hashes", () => {
     const content = "prompt content";
     const expected = createHash("sha256").update(content, "utf8").digest("hex");

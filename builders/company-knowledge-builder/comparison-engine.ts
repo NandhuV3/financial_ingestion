@@ -13,6 +13,7 @@ import type {
   KnowledgeFieldPath,
   StructuredIntelligenceArtifactContent,
 } from "./types.js";
+import { BuilderValidationError } from "../../packages/builder-framework/src/builder-errors.js";
 
 const COMPARISON_ENGINE_VERSION = "company-knowledge-comparison-v1";
 const PROMOTION_RULES_VERSION = "company-knowledge-promotion-rules-v1";
@@ -40,12 +41,20 @@ export function buildCandidateKnowledgeFromStructuredIntelligence(
   const period = structuredIntelligence.period_id;
   const confidence = clampConfidence(structuredIntelligence.confidence.overall);
   const understanding = structuredIntelligence.understanding;
+  const businessModel = requiredUnderstanding(
+    understanding.business_model,
+    "business_model",
+  );
+  const revenueModel = requiredUnderstanding(
+    understanding.revenue_model,
+    "revenue_model",
+  );
 
   return {
     business_model: {
-      summary: understanding.business_model.summary,
-      value_creation: understanding.business_model.value_creation,
-      revenue_structure: understanding.business_model.revenue_structure,
+      summary: businessModel.summary,
+      value_creation: businessModel.value_creation,
+      revenue_structure: revenueModel.summary,
       confidence,
       supporting_periods: [period],
       last_updated_period: period,
@@ -66,9 +75,9 @@ export function buildCandidateKnowledgeFromStructuredIntelligence(
       last_updated_period: period,
     })),
     revenue_structure: {
-      summary: understanding.revenue_model.summary,
-      recurring_components: [...understanding.revenue_model.recurring_components],
-      transactional_components: [...understanding.revenue_model.transactional_components],
+      summary: revenueModel.summary,
+      recurring_components: [...revenueModel.recurring_components],
+      transactional_components: [...revenueModel.transactional_components],
       confidence,
       supporting_periods: [period],
       last_updated_period: period,
@@ -302,13 +311,13 @@ function evidenceForField(
 
   switch (fieldPath) {
     case "business_model":
-      return understanding.business_model.evidence_refs;
+      return understanding.business_model?.evidence_refs ?? [];
     case "products":
       return understanding.products.flatMap((product) => product.evidence_refs);
     case "customers":
       return understanding.customers.flatMap((customer) => customer.evidence_refs);
     case "revenue_structure":
-      return understanding.revenue_model.evidence_refs;
+      return understanding.revenue_model?.evidence_refs ?? [];
     case "revenue_drivers":
       return understanding.revenue_drivers.flatMap((driver) => driver.evidence_refs);
     case "competitive_positioning":
@@ -320,6 +329,19 @@ function evidenceForField(
     case "dependencies":
       return understanding.dependencies.flatMap((dependency) => dependency.evidence_refs);
   }
+}
+
+function requiredUnderstanding<T>(
+  value: T | null,
+  field: string,
+): T {
+  if (value === null) {
+    throw new BuilderValidationError(
+      `Company Knowledge candidate requires Structured Intelligence ${field}.`,
+    );
+  }
+
+  return value;
 }
 
 function extractConfidence(value: unknown): number {

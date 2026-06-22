@@ -4,8 +4,19 @@ import type { Artifact } from "../../contracts/artifacts/artifact.js";
 import { ArtifactStatus } from "../../contracts/artifacts/artifact-status.js";
 import { validateArtifact } from "../../packages/artifact-framework/src/artifact-validation.js";
 import { calculateArtifactHash } from "../../packages/artifact-framework/src/artifact-service.js";
-import { loadEnv } from "../../src/shared/config/load.env.js";
+import {
+  ArtifactValidationError,
+  ConfigurationError,
+  PipelineExecutionError,
+  PlatformError,
+  platformErrorMessage,
+} from "../../packages/builder-framework/src/platform-error.js";
+import {
+  normalizePlatformError,
+  renderPlatformError,
+} from "../../packages/builder-framework/src/platform-error-renderer.js";
 import { PromptResolver } from "../../src/prompt-registry/prompt-resolver.js";
+import { loadEnv } from "../../src/shared/config/load.env.js";
 import type { FilingArtifactContent } from "../structured-intelligence/types.js";
 import type {
   TopicRegistryArtifactContent,
@@ -16,9 +27,10 @@ import { OpenAIResponsesLLMClient } from "./openai-llm-client.js";
 import { registerUpstreamBuilders } from "./register-builders.js";
 import { runUpstreamPipeline } from "./run-upstream-pipeline.js";
 
-type DemoArguments = {
+export type DemoArguments = {
   inputPath: string;
   outputDirectory: string;
+  debug: boolean;
 };
 
 type StoredTopicRegistryEntry = {
@@ -29,22 +41,19 @@ type StoredTopicRegistryEntry = {
   embedding: number[];
 };
 
-loadEnv();
-
-runDemo(process.argv.slice(2)).catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
-
-async function runDemo(rawArguments: string[]): Promise<void> {
+export async function runDemo(rawArguments: string[]): Promise<void> {
   const args = parseArguments(rawArguments);
   const filingArtifact = await loadFilingArtifact(args.inputPath);
   const topicRegistryArtifact = await loadTopicRegistryArtifact();
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
-    throw new Error(
+    throw new ConfigurationError(
       "OPENAI_API_KEY is required. Set it in .env or the process environment.",
+      {
+        suggestedAction:
+          "Set OPENAI_API_KEY in .env or the process environment and rerun the demo.",
+      },
     );
   }
 
@@ -62,36 +71,74 @@ async function runDemo(rawArguments: string[]): Promise<void> {
 
   await repository.create(filingArtifact);
   await repository.create(topicRegistryArtifact);
-  const result = await runUpstreamPipeline({
-    runtime,
-    filingArtifact,
-    topicRegistryArtifact,
-    companyId: requireIdentity(filingArtifact.identity.company_id, "company_id"),
-    periodId: requireIdentity(filingArtifact.identity.period_id, "period_id"),
-    onArtifact: artifactDumps.observer,
-  });
 
-  console.log(`Upstream pipeline completed for ${result.content.company_id} ${result.content.period_id}.`);
-  console.log(`Artifacts saved to ${artifactDumps.outputDirectory}`);
+  try {
+    const result = await runUpstreamPipeline({
+      runtime,
+      filingArtifact,
+      topicRegistryArtifact,
+      companyId: requireIdentity(
+        filingArtifact.identity.company_id,
+        "company_id",
+      ),
+      periodId: requireIdentity(
+        filingArtifact.identity.period_id,
+        "period_id",
+      ),
+      onArtifact: artifactDumps.observer,
+    });
+
+    console.log(
+      `Upstream pipeline completed for ${result.content.company_id} ${result.content.period_id}.`,
+    );
+    console.log(`Artifacts saved to ${artifactDumps.outputDirectory}`);
+  } catch (error) {
+    if (error instanceof PlatformError) {
+      throw error;
+    }
+
+    throw new PipelineExecutionError(platformErrorMessage(error), {
+      cause: error,
+      suggestedAction:
+        "Run again with --debug and inspect the failing pipeline stage.",
+    });
+  }
 }
 
 async function loadTopicRegistryArtifact(): Promise<
   Artifact<TopicRegistryArtifactContent>
 > {
   const registryPath = resolve("data/registry/topic-embeddings.json");
-  const parsed = JSON.parse(await readFile(registryPath, "utf8")) as {
+  let parsed: {
     embedding_model?: string;
     input_hash?: string;
     topics?: StoredTopicRegistryEntry[];
   };
+
+  try {
+    parsed = JSON.parse(await readFile(registryPath, "utf8")) as typeof parsed;
+  } catch (error) {
+    throw new ArtifactValidationError(
+      `Topic Registry artifact could not be loaded: ${platformErrorMessage(error)}`,
+      {
+        cause: error,
+        suggestedAction:
+          "Generate data/registry/topic-embeddings.json and retry.",
+      },
+    );
+  }
 
   if (
     typeof parsed.embedding_model !== "string"
     || typeof parsed.input_hash !== "string"
     || !Array.isArray(parsed.topics)
   ) {
-    throw new Error(
+    throw new ArtifactValidationError(
       "data/registry/topic-embeddings.json must contain model, hash, and topics.",
+      {
+        suggestedAction:
+          "Regenerate the Topic Registry artifact with valid model, hash, and topic entries.",
+      },
     );
   }
 
@@ -137,9 +184,10 @@ async function loadTopicRegistryArtifact(): Promise<
   };
 }
 
-function parseArguments(args: string[]): DemoArguments {
+export function parseArguments(args: string[]): DemoArguments {
   let inputPath: string | undefined;
   let outputDirectory = "output/demo";
+  let debug = false;
 
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
@@ -157,33 +205,71 @@ function parseArguments(args: string[]): DemoArguments {
       continue;
     }
 
-    throw new Error(`Unknown or incomplete argument: ${argument ?? ""}`);
+    if (argument === "--debug") {
+      debug = true;
+      continue;
+    }
+
+    throw new ConfigurationError(
+      `Unknown or incomplete argument: ${argument ?? ""}`,
+      {
+        suggestedAction:
+          "Use --input <filing-artifact.json>, optional --output <directory>, and optional --debug.",
+      },
+    );
   }
 
   if (!inputPath) {
-    throw new Error(
-      "Usage: npm run demo:upstream -- --input <filing-artifact.json> [--output output/demo]",
+    throw new ConfigurationError(
+      "Usage: npm run demo:upstream -- --input <filing-artifact.json> [--output output/demo] [--debug]",
+      {
+        suggestedAction: "Provide the required --input filing artifact path.",
+      },
     );
   }
 
   return {
     inputPath: resolve(inputPath),
     outputDirectory,
+    debug,
   };
 }
 
 async function loadFilingArtifact(
   inputPath: string,
 ): Promise<Artifact<FilingArtifactContent>> {
-  const parsed = JSON.parse(await readFile(inputPath, "utf8")) as Artifact<unknown>;
-  validateArtifact(parsed);
+  let parsed: Artifact<unknown>;
+
+  try {
+    parsed = JSON.parse(await readFile(inputPath, "utf8")) as Artifact<unknown>;
+    validateArtifact(parsed);
+  } catch (error) {
+    throw new ArtifactValidationError(
+      `Demo filing artifact could not be loaded or validated: ${platformErrorMessage(error)}`,
+      {
+        cause: error,
+        suggestedAction: "Provide a valid filing artifact JSON file and retry.",
+      },
+    );
+  }
 
   if (parsed.identity.artifact_type !== "filing") {
-    throw new Error("Demo input must be an Artifact<FilingArtifactContent> with artifact_type filing.");
+    throw new ArtifactValidationError(
+      "Demo input must be an Artifact<FilingArtifactContent> with artifact_type filing.",
+      {
+        suggestedAction: "Use a filing artifact as the --input value.",
+      },
+    );
   }
 
   if (calculateArtifactHash(parsed.content) !== parsed.metadata.artifact_hash) {
-    throw new Error("Demo filing artifact_hash does not match its content.");
+    throw new ArtifactValidationError(
+      "Demo filing artifact_hash does not match its content.",
+      {
+        suggestedAction:
+          "Regenerate the filing artifact hash from the unchanged content.",
+      },
+    );
   }
 
   return parsed as Artifact<FilingArtifactContent>;
@@ -194,8 +280,34 @@ function requireIdentity(
   field: string,
 ): string {
   if (!value) {
-    throw new Error(`Demo filing identity.${field} must be populated.`);
+    throw new ArtifactValidationError(
+      `Demo filing identity.${field} must be populated.`,
+      {
+        suggestedAction: `Populate filing identity.${field} and retry.`,
+      },
+    );
   }
 
   return value;
+}
+
+export async function runDemoCli(rawArguments: string[]): Promise<number> {
+  loadEnv();
+  const debug = rawArguments.includes("--debug");
+
+  try {
+    await runDemo(rawArguments);
+    return 0;
+  } catch (error) {
+    console.error(
+      renderPlatformError(normalizePlatformError(error), { debug }),
+    );
+    return 1;
+  }
+}
+
+if (require.main === module) {
+  runDemoCli(process.argv.slice(2)).then((exitCode) => {
+    process.exitCode = exitCode;
+  });
 }

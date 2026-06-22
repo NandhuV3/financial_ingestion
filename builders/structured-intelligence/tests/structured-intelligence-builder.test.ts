@@ -5,460 +5,354 @@ import { ArtifactStatus } from "../../../contracts/artifacts/artifact-status.js"
 import type { ArtifactRepository } from "../../../packages/artifact-framework/src/artifact-repository.js";
 import { ArtifactService } from "../../../packages/artifact-framework/src/artifact-service.js";
 import type { ArtifactLookup } from "../../../packages/artifact-framework/src/artifact-types.js";
-import { BuilderDependencyError, BuilderValidationError } from "../../../packages/builder-framework/src/builder-errors.js";
+import {
+  BuilderValidationError,
+} from "../../../packages/builder-framework/src/builder-errors.js";
 import { BuilderExecutor } from "../../../packages/builder-framework/src/builder-executor.js";
 import { BuilderRegistry } from "../../../packages/builder-framework/src/builder-registry.js";
-import type { LLMClient, LLMRequest, LLMResponse } from "../../../packages/llm-framework/src/llm-client.js";
+import type {
+  LLMClient,
+  LLMRequest,
+  LLMResponse,
+} from "../../../packages/llm-framework/src/llm-client.js";
 import type { ResolvedPrompt } from "../../../src/prompt-registry/prompt.types.js";
+import { FilesystemPromptProvider } from "../../../src/prompt-registry/filesystem-prompt-provider.js";
 import type { ThemesArtifactContent } from "../../themes/contract.js";
+import { StructuredIntelligenceBuilder } from "../builder.js";
 import {
   STRUCTURED_INTELLIGENCE_BUILDER_TYPE,
   STRUCTURED_INTELLIGENCE_BUILDER_VERSION,
   STRUCTURED_INTELLIGENCE_PIPELINE_VERSION,
+  STRUCTURED_INTELLIGENCE_PROMPT_ID,
+  STRUCTURED_INTELLIGENCE_PROMPT_VERSION,
   STRUCTURED_INTELLIGENCE_SCHEMA_VERSION,
   type StructuredIntelligenceArtifactContent,
+  type StructuredUnderstanding,
 } from "../contract.js";
-import { StructuredIntelligenceBuilder } from "../builder.js";
-import {
-  buildStructuredIntelligenceUserPrompt,
-  STRUCTURED_INTELLIGENCE_PROMPT_ID,
-} from "../prompt.js";
-import type { FilingArtifactContent, StructuredIntelligenceBuilderInput } from "../types.js";
+import { buildStructuredPromptContext } from "../context-builder.js";
+import type {
+  FilingArtifactContent,
+  StructuredIntelligenceBuilderInput,
+} from "../types.js";
 import {
   validateStructuredIntelligenceReconciliation,
 } from "../validator.js";
+import { buildStructuredValueReferences } from "../value-references.js";
 
-describe("structured intelligence builder", () => {
-  it("generates and persists Structured Intelligence from Filing and Themes artifacts", async () => {
-    const repository = new TestArtifactRepository();
-    const registry = registerStructuredBuilder(new StaticLLMClient(validOutput()));
-    const executor = new BuilderExecutor(registry, new ArtifactService(repository));
-    const filing = filingArtifact();
-    const themes = themesArtifact();
+describe("structured intelligence builder V1", () => {
+  it("resolves prompt content from the filesystem Prompt Registry", () => {
+    const prompt = new FilesystemPromptProvider().resolve(
+      STRUCTURED_INTELLIGENCE_PROMPT_ID,
+    );
 
-    const artifact = await executor.executeBuilder<StructuredIntelligenceBuilderInput, StructuredIntelligenceArtifactContent>({
-      builderType: STRUCTURED_INTELLIGENCE_BUILDER_TYPE,
-      companyId: "MSFT",
-      periodId: "2026-Q2",
-      executionId: "execution-1",
-      input: input(),
-      inputHash: "structured-input-hash",
-      dependencies: {
-        filing,
-        themes,
-      },
-      generatedAt: "2026-06-15T00:00:00.000Z",
-    });
+    assert.notEqual(prompt, null);
+    assert.equal(prompt?.promptId, STRUCTURED_INTELLIGENCE_PROMPT_ID);
+    assert.equal(prompt?.version, STRUCTURED_INTELLIGENCE_PROMPT_VERSION);
+    assert.match(prompt?.content ?? "", /Return JSON only/);
+    assert.match(prompt?.content ?? "", /"product_name": "string"/);
+    assert.match(prompt?.content ?? "", /"customer_segment": "string"/);
+    assert.match(prompt?.content ?? "", /"driver": "string"/);
+    assert.match(prompt?.content ?? "", /"position": "string"/);
+    assert.match(prompt?.content ?? "", /"priority": "string"/);
+    assert.match(prompt?.content ?? "", /"focus_area": "string"/);
+    assert.match(prompt?.content ?? "", /"risk": "string"/);
+    assert.match(prompt?.content ?? "", /"dependency": "string"/);
+    assert.match(prompt?.content ?? "", /generic aliases such as name/);
+  });
 
-    assert.equal(artifact.identity.artifact_type, "structured_intelligence");
-    assert.equal(artifact.content.company_id, "MSFT");
+  it("builds complete content through governed prompt execution", async () => {
+    const llm = new StaticLLMClient(promptOutput(completeUnderstanding()));
+    const artifact = await execute(llm);
+
+    assert.equal(artifact.content.artifact_type, "structured_intelligence");
     assert.equal(artifact.content.status, "complete");
-    assert.equal(artifact.content.understanding.business_model.summary, "Microsoft discusses cloud and AI services.");
-    assert.equal(artifact.content.confidence.overall > 0, true);
-    assert.equal(artifact.content.evaluation_hooks.prompt_version, "structured-intelligence-builder-v1");
-    assert.equal(artifact.lineage.prompt_reference?.prompt_id, STRUCTURED_INTELLIGENCE_PROMPT_ID);
-    assert.equal(artifact.lineage.model_reference?.temperature, 0);
-    assert.deepEqual(artifact.lineage.upstream_dependencies.map((dependency) => dependency.artifact_type), [
-      "filing",
-      "themes",
-    ]);
-    assert.deepEqual(await repository.getCurrent({
-      artifact_type: "structured_intelligence",
-      company_id: "MSFT",
-      period_id: "2026-Q2",
-    }), artifact);
-  });
-
-  it("fails when the Filing artifact dependency is missing", async () => {
-    const executor = new BuilderExecutor(
-      registerStructuredBuilder(new StaticLLMClient(validOutput())),
-      new ArtifactService(new TestArtifactRepository()),
-    );
-
-    await assert.rejects(
-      () => executor.executeBuilder<StructuredIntelligenceBuilderInput, StructuredIntelligenceArtifactContent>({
-        builderType: STRUCTURED_INTELLIGENCE_BUILDER_TYPE,
-        companyId: "MSFT",
-        periodId: "2026-Q2",
-        executionId: "execution-1",
-        input: input(),
-        inputHash: "structured-input-hash",
-        dependencies: {
-          themes: themesArtifact(),
-        },
-      }),
-      BuilderDependencyError,
-    );
-  });
-
-  it("fails when the Themes artifact dependency is missing", async () => {
-    const executor = new BuilderExecutor(
-      registerStructuredBuilder(new StaticLLMClient(validOutput())),
-      new ArtifactService(new TestArtifactRepository()),
-    );
-
-    await assert.rejects(
-      () => executor.executeBuilder<StructuredIntelligenceBuilderInput, StructuredIntelligenceArtifactContent>({
-        builderType: STRUCTURED_INTELLIGENCE_BUILDER_TYPE,
-        companyId: "MSFT",
-        periodId: "2026-Q2",
-        executionId: "execution-1",
-        input: input(),
-        inputHash: "structured-input-hash",
-        dependencies: {
-          filing: filingArtifact(),
-        },
-      }),
-      BuilderDependencyError,
-    );
-  });
-
-  it("rejects dependency company and period identity mismatches", async () => {
-    const filing = filingArtifact();
-    filing.identity.company_id = "AAPL";
-    const themes = themesArtifact();
-    themes.identity.period_id = "2026-Q1";
-    const executor = new BuilderExecutor(
-      registerStructuredBuilder(new StaticLLMClient(validOutput())),
-      new ArtifactService(new TestArtifactRepository()),
-    );
-
-    await assert.rejects(
-      () => executor.executeBuilder<StructuredIntelligenceBuilderInput, StructuredIntelligenceArtifactContent>({
-        builderType: STRUCTURED_INTELLIGENCE_BUILDER_TYPE,
-        companyId: "MSFT",
-        periodId: "2026-Q2",
-        executionId: "identity-mismatch",
-        input: input(),
-        inputHash: "structured-input-hash",
-        dependencies: {
-          filing,
-          themes,
-        },
-      }),
-      (error: unknown) =>
-        error instanceof BuilderValidationError
-        && error.message.includes("dependency identity does not match"),
-    );
-  });
-
-  it("fails validation when required sections are missing", async () => {
-    const executor = new BuilderExecutor(
-      registerStructuredBuilder(new StaticLLMClient(JSON.stringify({
-        status: "complete",
-        understanding: {
-          ...understanding(),
-          business_model: undefined,
-        },
-      }))),
-      new ArtifactService(new TestArtifactRepository()),
-    );
-
-    await assert.rejects(
-      () => executor.executeBuilder<StructuredIntelligenceBuilderInput, StructuredIntelligenceArtifactContent>({
-        builderType: STRUCTURED_INTELLIGENCE_BUILDER_TYPE,
-        companyId: "MSFT",
-        periodId: "2026-Q2",
-        executionId: "execution-1",
-        input: input(),
-        inputHash: "structured-input-hash",
-        dependencies: {
-          filing: filingArtifact(),
-          themes: themesArtifact(),
-        },
-      }),
-      BuilderValidationError,
-    );
-  });
-
-  it("rejects an empty business model evidence_refs array", async () => {
-    const output = {
-      status: "complete",
-      understanding: {
-        ...understanding(),
-        business_model: {
-          ...understanding().business_model,
-          evidence_refs: [],
-        },
-      },
-    };
-    const executor = new BuilderExecutor(
-      registerStructuredBuilder(new StaticLLMClient(JSON.stringify(output))),
-      new ArtifactService(new TestArtifactRepository()),
-    );
-
-    await assert.rejects(
-      () => executor.executeBuilder<StructuredIntelligenceBuilderInput, StructuredIntelligenceArtifactContent>({
-        builderType: STRUCTURED_INTELLIGENCE_BUILDER_TYPE,
-        companyId: "MSFT",
-        periodId: "2026-Q2",
-        executionId: "execution-1",
-        input: input(),
-        inputHash: "structured-input-hash",
-        dependencies: {
-          filing: filingArtifact(),
-          themes: themesArtifact(),
-        },
-      }),
-      (error: unknown) =>
-        error instanceof BuilderValidationError
-        && error.message === "business_model.evidence_refs must contain at least one evidence reference.",
-    );
-  });
-
-  it("rejects an empty repeated claim evidence_refs array", async () => {
-    const output = {
-      status: "complete",
-      understanding: {
-        ...understanding(),
-        products: [
-          {
-            product_name: "Azure",
-            description: "Cloud services.",
-            importance: "high",
-            evidence_refs: [],
-          },
-        ],
-      },
-    };
-    const executor = new BuilderExecutor(
-      registerStructuredBuilder(new StaticLLMClient(JSON.stringify(output))),
-      new ArtifactService(new TestArtifactRepository()),
-    );
-
-    await assert.rejects(
-      () => executor.executeBuilder<StructuredIntelligenceBuilderInput, StructuredIntelligenceArtifactContent>({
-        builderType: STRUCTURED_INTELLIGENCE_BUILDER_TYPE,
-        companyId: "MSFT",
-        periodId: "2026-Q2",
-        executionId: "execution-1",
-        input: input(),
-        inputHash: "structured-input-hash",
-        dependencies: {
-          filing: filingArtifact(),
-          themes: themesArtifact(),
-        },
-      }),
-      BuilderValidationError,
-    );
-  });
-
-  it("accepts valid evidence_refs on every emitted claim", async () => {
-    const executor = new BuilderExecutor(
-      registerStructuredBuilder(new StaticLLMClient(validOutput())),
-      new ArtifactService(new TestArtifactRepository()),
-    );
-
-    const artifact = await executor.executeBuilder<
-      StructuredIntelligenceBuilderInput,
-      StructuredIntelligenceArtifactContent
-    >({
-      builderType: STRUCTURED_INTELLIGENCE_BUILDER_TYPE,
-      companyId: "MSFT",
-      periodId: "2026-Q2",
-      executionId: "valid-evidence-execution",
-      input: input(),
-      inputHash: "structured-input-hash",
-      dependencies: {
-        filing: filingArtifact(),
-        themes: themesArtifact(),
-      },
+    assert.deepEqual(artifact.content.confidence, {
+      overall: 1,
+      evidence_coverage: 1,
+      field_completeness: 1,
+      theme_utilization: 1,
+      hallucination_risk: "not_assessed",
     });
-
-    assert.deepEqual(
-      artifact.content.understanding.business_model.evidence_refs,
-      ["theme-1"],
-    );
+    assert.deepEqual(artifact.content.evaluation_hooks, {
+      schema_compliance: 1,
+      field_coverage: 1,
+      evidence_coverage: 1,
+      theme_utilization: 1,
+      unsupported_claim_count: "not_assessed",
+    });
+    assert.equal(artifact.content.value_references.length, 10);
     assert.equal(
-      allEvidenceRefs(artifact.content)
-        .every((references) => references.length > 0),
+      artifact.content.value_references.every((reference) =>
+        reference.value_ref.startsWith("structured-value:")),
       true,
     );
+    assert.equal(
+      artifact.lineage.prompt_reference?.prompt_id,
+      STRUCTURED_INTELLIGENCE_PROMPT_ID,
+    );
+    assert.equal(artifact.lineage.model_reference?.temperature, 0);
+    assert.deepEqual(
+      artifact.lineage.upstream_dependencies.map(
+        ({ artifact_type }) => artifact_type,
+      ),
+      ["filing", "themes"],
+    );
+    assert.equal(llm.requests[0]?.temperature, 0);
   });
 
-  it("rejects evidence references absent from the supplied Themes artifact", async () => {
-    const output = {
-      status: "complete",
-      understanding: {
-        ...understanding(),
-        business_model: {
-          ...understanding().business_model,
-          evidence_refs: ["unknown-evidence-reference"],
-        },
-      },
+  it("rejects malformed JSON and unknown prompt fields", async () => {
+    await assert.rejects(
+      () => execute(new StaticLLMClient("{")),
+      BuilderValidationError,
+    );
+    await assert.rejects(
+      () => execute(new StaticLLMClient(JSON.stringify({
+        understanding: completeUnderstanding(),
+        confidence: 1,
+      }))),
+      (error: unknown) =>
+        error instanceof BuilderValidationError
+        && error.message.includes("unknown field: confidence"),
+    );
+  });
+
+  it("rejects legacy product name fields and accepts product_name", async () => {
+    const legacy = completeUnderstanding() as unknown as {
+      products: Array<Record<string, unknown>>;
     };
-    const executor = new BuilderExecutor(
-      registerStructuredBuilder(new StaticLLMClient(JSON.stringify(output))),
-      new ArtifactService(new TestArtifactRepository()),
+    legacy.products[0] = {
+      name: "Azure",
+      description: "Cloud infrastructure services.",
+      importance: "high",
+      confidence: 0.9,
+      evidence_refs: ["evidence-1"],
+    };
+
+    await assert.rejects(
+      () => execute(new StaticLLMClient(promptOutput(
+        legacy as unknown as StructuredUnderstanding,
+      ))),
+      (error: unknown) =>
+        error instanceof BuilderValidationError
+        && error.message
+          === "understanding.products[0] contains unknown field: name.",
+    );
+
+    const artifact = await execute(
+      new StaticLLMClient(promptOutput(completeUnderstanding())),
+    );
+    assert.equal(
+      artifact.content.understanding.products[0]?.product_name,
+      "Azure",
+    );
+  });
+
+  it("rejects prompt-owned status and builder-owned metadata", async () => {
+    await assert.rejects(
+      () => execute(new StaticLLMClient(JSON.stringify({
+        status: "complete",
+        understanding: completeUnderstanding(),
+      }))),
+      BuilderValidationError,
     );
 
     await assert.rejects(
-      () => executor.executeBuilder<StructuredIntelligenceBuilderInput, StructuredIntelligenceArtifactContent>({
-        builderType: STRUCTURED_INTELLIGENCE_BUILDER_TYPE,
-        companyId: "MSFT",
-        periodId: "2026-Q2",
-        executionId: "unknown-evidence",
-        input: input(),
-        inputHash: "structured-input-hash",
-        dependencies: {
-          filing: filingArtifact(),
-          themes: themesArtifact(),
+      () => execute(new StaticLLMClient(JSON.stringify({
+        understanding: {
+          ...completeUnderstanding(),
+          replayability_metadata: {},
         },
-      }),
-      (error: unknown) =>
-        error instanceof BuilderValidationError
-        && error.message.includes("not present in the supplied Themes artifact"),
+      }))),
+      BuilderValidationError,
     );
   });
 
-  it("calculates theme utilization from referenced themes rather than raw reference count", async () => {
-    const output = {
-      status: "complete",
-      understanding: withAllEvidenceReferences(understanding(), "theme-1"),
-    };
-    const executor = new BuilderExecutor(
-      registerStructuredBuilder(new StaticLLMClient(JSON.stringify(output))),
-      new ArtifactService(new TestArtifactRepository()),
-    );
+  it("requires per-claim extraction confidence", async () => {
+    const understanding = completeUnderstanding();
+    const businessModel = understanding.business_model as Record<string, unknown>;
+    delete businessModel.confidence;
 
-    const artifact = await executor.executeBuilder<
-      StructuredIntelligenceBuilderInput,
-      StructuredIntelligenceArtifactContent
-    >({
-      builderType: STRUCTURED_INTELLIGENCE_BUILDER_TYPE,
-      companyId: "MSFT",
-      periodId: "2026-Q2",
-      executionId: "theme-utilization",
-      input: input(),
-      inputHash: "structured-input-hash",
-      dependencies: {
-        filing: filingArtifact(),
-        themes: themesArtifact(),
-      },
+    await assert.rejects(
+      () => execute(new StaticLLMClient(promptOutput(understanding))),
+      BuilderValidationError,
+    );
+  });
+
+  it("rejects missing, theme-id, and unknown evidence references", async () => {
+    for (const evidenceRefs of [[], ["theme-1"], ["missing-hash"]]) {
+      const understanding = completeUnderstanding();
+      understanding.business_model = {
+        ...understanding.business_model!,
+        evidence_refs: evidenceRefs,
+      };
+
+      await assert.rejects(
+        () => execute(
+          new StaticLLMClient(promptOutput(understanding)),
+        ),
+        BuilderValidationError,
+      );
+    }
+  });
+
+  it("rejects duplicate normalized collection labels", async () => {
+    const understanding = completeUnderstanding();
+    understanding.products.push({
+      ...understanding.products[0]!,
+      product_name: "  \uFF21\uFF5A\uFF55\uFF52\uFF45  ",
     });
+
+    await assert.rejects(
+      () => execute(new StaticLLMClient(promptOutput(understanding))),
+      (error: unknown) =>
+        error instanceof BuilderValidationError
+        && error.message.includes("duplicate normalized label"),
+    );
+  });
+
+  it("computes theme utilization from evidence-hash intersection only", async () => {
+    const understanding = completeUnderstanding();
+    setAllEvidence(understanding, ["evidence-1"]);
+    const artifact = await execute(
+      new StaticLLMClient(promptOutput(understanding)),
+    );
 
     assert.equal(artifact.content.confidence.theme_utilization, 0.5);
-    assert.equal(artifact.content.evaluation_hooks.theme_utilization, 0.5);
   });
 
-  it("rejects confidence that does not reconcile with builder calculation", async () => {
-    const repository = new TestArtifactRepository();
-    const executor = new BuilderExecutor(
-      registerStructuredBuilder(new StaticLLMClient(validOutput())),
-      new ArtifactService(repository),
+  it("computes partial and insufficient_filing status deterministically", async () => {
+    const partial = emptyUnderstanding();
+    partial.business_model = groundedBusinessModel(["evidence-1"]);
+    const partialArtifact = await execute(
+      new StaticLLMClient(promptOutput(partial)),
     );
-    const themes = themesArtifact();
-    const artifact = await executor.executeBuilder<
-      StructuredIntelligenceBuilderInput,
-      StructuredIntelligenceArtifactContent
-    >({
-      builderType: STRUCTURED_INTELLIGENCE_BUILDER_TYPE,
+    const insufficientArtifact = await execute(
+      new StaticLLMClient(promptOutput(emptyUnderstanding())),
+    );
+
+    assert.equal(partialArtifact.content.status, "partial");
+    assert.equal(partialArtifact.content.confidence.field_completeness, 0.1);
+    assert.equal(insufficientArtifact.content.status, "insufficient_filing");
+    assert.deepEqual(insufficientArtifact.content.value_references, []);
+    assert.equal(insufficientArtifact.content.confidence.overall, 0);
+    assert.equal(
+      insufficientArtifact.content.confidence.hallucination_risk,
+      "not_assessed",
+    );
+  });
+
+  it("creates canonical deterministic value references", () => {
+    const left = completeUnderstanding();
+    const right = completeUnderstanding();
+    left.revenue_model!.recurring_components = ["Cloud", "Software", "Cloud"];
+    right.revenue_model!.recurring_components = ["Software", "Cloud"];
+    left.revenue_model!.evidence_refs = ["evidence-2", "evidence-1"];
+    right.revenue_model!.evidence_refs = ["evidence-1", "evidence-2"];
+
+    const leftReferences = references(left);
+    const rightReferences = references(right);
+    const leftRevenue = leftReferences.find(
+      ({ field_path }) => field_path === "understanding.revenue_model",
+    );
+    const rightRevenue = rightReferences.find(
+      ({ field_path }) => field_path === "understanding.revenue_model",
+    );
+
+    assert.equal(leftRevenue?.value_hash, rightRevenue?.value_hash);
+    assert.deepEqual(leftRevenue?.evidence_refs, ["evidence-1", "evidence-2"]);
+    assert.deepEqual(
+      leftReferences,
+      [...leftReferences].sort((leftReference, rightReference) =>
+        leftReference.field_path.localeCompare(rightReference.field_path)
+        || leftReference.value_ref.localeCompare(rightReference.value_ref)),
+    );
+  });
+
+  it("records deterministic replayability metadata", async () => {
+    const first = await execute(
+      new StaticLLMClient(promptOutput(completeUnderstanding())),
+    );
+    const second = await execute(
+      new StaticLLMClient(promptOutput(completeUnderstanding())),
+    );
+
+    assert.deepEqual(
+      first.content.replayability_metadata,
+      second.content.replayability_metadata,
+    );
+    assert.equal(
+      first.content.replayability_metadata.prompt_id,
+      STRUCTURED_INTELLIGENCE_PROMPT_ID,
+    );
+    assert.equal(first.content.replayability_metadata.temperature, 0);
+  });
+
+  it("rejects confidence and replayability tampering", async () => {
+    const artifact = await execute(
+      new StaticLLMClient(promptOutput(completeUnderstanding())),
+    );
+    const content = structuredClone(artifact.content);
+    const themes = themesArtifact().content;
+    const filing = filingArtifact().content;
+    const prompt = new StaticPromptResolver().resolve(
+      STRUCTURED_INTELLIGENCE_PROMPT_ID,
+    );
+    const context = buildStructuredPromptContext({
       companyId: "MSFT",
       periodId: "2026-Q2",
-      executionId: "confidence-reconciliation",
-      input: input(),
-      inputHash: "structured-input-hash",
-      dependencies: {
-        filing: filingArtifact(),
-        themes,
-      },
+      filing,
+      themes,
     });
-    const tampered = structuredClone(artifact.content);
-    tampered.confidence.overall = 0;
 
+    content.confidence.overall = 0;
     assert.throws(
       () => validateStructuredIntelligenceReconciliation({
-        content: tampered,
-        themes: themes.content.themes,
-        genericLanguageCount: 0,
-        unsupportedEntityWarnings: [],
-        promptVersion: "structured-intelligence-builder-v1",
+        content,
+        filing,
+        themes,
+        context,
+        prompt,
         modelVersion: "structured-model-v1",
       }),
-      (error: unknown) =>
-        error instanceof BuilderValidationError
-        && error.message.includes("confidence does not reconcile"),
+      BuilderValidationError,
+    );
+
+    content.confidence = artifact.content.confidence;
+    content.replayability_metadata.output_hash = "tampered";
+    assert.throws(
+      () => validateStructuredIntelligenceReconciliation({
+        content,
+        filing,
+        themes,
+        context,
+        prompt,
+        modelVersion: "structured-model-v1",
+      }),
+      BuilderValidationError,
     );
   });
 
-  it("instructs the model to use non-empty supplied theme evidence references", () => {
-    const prompt = buildStructuredIntelligenceUserPrompt({
-      company_id: "MSFT",
-      period_id: "2026-Q2",
-      filing_id: "msft-2026-q2-10q",
-      filing_type: "10-Q",
-      filing_content: "Microsoft discusses Azure.",
-      themes: themesArtifact().content.themes,
-    });
+  it("rejects dependency identity mismatches", async () => {
+    const filing = filingArtifact();
+    filing.identity.company_id = "AAPL";
 
-    assert.equal(prompt.includes('"evidence_refs": []'), false);
-    assert.match(prompt, /at least one evidence_refs entry/);
-    assert.match(prompt, /theme_id values or evidence\.excerpt_hash values/);
-    assert.match(prompt, /Never emit an empty evidence_refs array/);
-  });
-
-  it("records unsupported entity findings as evaluation warnings instead of failing", async () => {
-    const output = {
-      status: "partial",
-      understanding: {
-        ...understanding(),
-        products: [
-          {
-            product_name: "Unsupported Product",
-            description: "Unsupported product description.",
-            importance: "medium",
-            evidence_refs: ["theme-1"],
-          },
-        ],
-      },
-    };
-    const executor = new BuilderExecutor(
-      registerStructuredBuilder(new StaticLLMClient(JSON.stringify(output))),
-      new ArtifactService(new TestArtifactRepository()),
+    await assert.rejects(
+      () => execute(
+        new StaticLLMClient(promptOutput(completeUnderstanding())),
+        { filing },
+      ),
+      BuilderValidationError,
     );
-
-    const artifact = await executor.executeBuilder<StructuredIntelligenceBuilderInput, StructuredIntelligenceArtifactContent>({
-      builderType: STRUCTURED_INTELLIGENCE_BUILDER_TYPE,
-      companyId: "MSFT",
-      periodId: "2026-Q2",
-      executionId: "execution-1",
-      input: input(),
-      inputHash: "structured-input-hash",
-      dependencies: {
-        filing: filingArtifact(),
-        themes: themesArtifact(),
-      },
-    });
-
-    assert.equal(artifact.content.status, "partial");
-    assert.equal(artifact.content.evaluation_hooks.unsupported_entity_warnings.length > 0, true);
-  });
-
-  it("uses temperature zero for LLM calls", async () => {
-    const llm = new StaticLLMClient(validOutput());
-    const executor = new BuilderExecutor(
-      registerStructuredBuilder(llm),
-      new ArtifactService(new TestArtifactRepository()),
-    );
-
-    await executor.executeBuilder<StructuredIntelligenceBuilderInput, StructuredIntelligenceArtifactContent>({
-      builderType: STRUCTURED_INTELLIGENCE_BUILDER_TYPE,
-      companyId: "MSFT",
-      periodId: "2026-Q2",
-      executionId: "execution-1",
-      input: input(),
-      inputHash: "structured-input-hash",
-      dependencies: {
-        filing: filingArtifact(),
-        themes: themesArtifact(),
-      },
-    });
-
-    assert.equal(llm.requests[0]?.temperature, 0);
   });
 });
 
-function registerStructuredBuilder(llmClient: LLMClient): BuilderRegistry {
+async function execute(
+  llmClient: LLMClient,
+  overrides: {
+    filing?: Artifact<FilingArtifactContent>;
+    themes?: Artifact<ThemesArtifactContent>;
+  } = {},
+): Promise<Artifact<StructuredIntelligenceArtifactContent>> {
   const registry = new BuilderRegistry();
 
   registry.registerBuilder({
@@ -473,171 +367,163 @@ function registerStructuredBuilder(llmClient: LLMClient): BuilderRegistry {
     modelVersion: "structured-model-v1",
   }));
 
-  return registry;
-}
-
-function input(): StructuredIntelligenceBuilderInput {
-  return {
-    company_id: "MSFT",
-    period_id: "2026-Q2",
-    filing_id: "msft-2026-q2-10q",
-  };
-}
-
-function validOutput(): string {
-  return JSON.stringify({
-    status: "complete",
-    understanding: understanding(),
+  return new BuilderExecutor(
+    registry,
+    new ArtifactService(new TestArtifactRepository()),
+  ).executeBuilder<
+    StructuredIntelligenceBuilderInput,
+    StructuredIntelligenceArtifactContent
+  >({
+    builderType: STRUCTURED_INTELLIGENCE_BUILDER_TYPE,
+    companyId: "MSFT",
+    periodId: "2026-Q2",
+    executionId: "structured-execution",
+    input: {
+      company_id: "MSFT",
+      period_id: "2026-Q2",
+      filing_id: "msft-2026-q2-10q",
+    },
+    inputHash: "structured-input-hash",
+    dependencies: {
+      filing: overrides.filing ?? filingArtifact(),
+      themes: overrides.themes ?? themesArtifact(),
+    },
+    generatedAt: "2026-06-22T00:00:00.000Z",
   });
 }
 
-function understanding(): StructuredIntelligenceArtifactContent["understanding"] {
+function promptOutput(understanding: StructuredUnderstanding): string {
+  return JSON.stringify({ understanding });
+}
+
+function completeUnderstanding(): StructuredUnderstanding {
   return {
-    business_model: {
-      summary: "Microsoft discusses cloud and AI services.",
-      value_creation: "Microsoft creates value through cloud platforms and productivity software.",
-      revenue_structure: "Recurring cloud and software subscriptions.",
-      evidence_refs: ["theme-1"],
-    },
-    products: [
-      {
-        product_name: "Azure",
-        description: "Cloud infrastructure services discussed in the filing.",
-        importance: "high",
-        evidence_refs: ["theme-1"],
-      },
-    ],
-    customers: [
-      {
-        customer_segment: "enterprise customers",
-        description: "Enterprise customers use Microsoft cloud and productivity services.",
-        evidence_refs: ["theme-1"],
-      },
-    ],
+    business_model: groundedBusinessModel(["evidence-1"]),
+    products: [{
+      product_name: "Azure",
+      description: "Cloud infrastructure services.",
+      importance: "high",
+      confidence: 0.9,
+      evidence_refs: ["evidence-1"],
+    }],
+    customers: [{
+      customer_segment: "Enterprise",
+      description: "Enterprise cloud customers.",
+      confidence: 0.8,
+      evidence_refs: ["evidence-1"],
+    }],
     revenue_model: {
-      summary: "Revenue is discussed through recurring cloud and software subscriptions.",
-      recurring_components: ["cloud subscriptions"],
+      summary: "Recurring subscriptions and consumption.",
+      recurring_components: ["Cloud"],
       transactional_components: [],
-      evidence_refs: ["theme-1"],
+      confidence: 0.9,
+      evidence_refs: ["evidence-1"],
     },
-    revenue_drivers: [
-      {
-        driver: "cloud demand",
-        explanation: "Cloud demand is discussed as a driver.",
-        evidence_refs: ["theme-1"],
-      },
-    ],
-    competitive_positioning: [
-      {
-        position: "cloud platform",
-        supporting_reasoning: "The filing discusses cloud platform services.",
-        evidence_refs: ["theme-1"],
-      },
-    ],
-    strategic_priorities: [
-      {
-        priority: "AI adoption",
-        rationale: "The filing discusses AI adoption.",
-        evidence_refs: ["theme-2"],
-      },
-    ],
-    management_focus: [
-      {
-        focus_area: "cloud and AI execution",
-        explanation: "Management discusses cloud and AI execution.",
-        evidence_refs: ["theme-1"],
-      },
-    ],
-    risks: [
-      {
-        risk: "technology execution",
-        explanation: "The filing discusses technology execution risks.",
-        evidence_refs: ["theme-2"],
-      },
-    ],
-    dependencies: [
-      {
-        dependency: "cloud infrastructure",
-        explanation: "Cloud infrastructure is discussed as operationally important.",
-        evidence_refs: ["theme-1"],
-      },
-    ],
+    revenue_drivers: [{
+      driver: "Cloud demand",
+      explanation: "Cloud consumption supports revenue.",
+      confidence: 0.8,
+      evidence_refs: ["evidence-1"],
+    }],
+    competitive_positioning: [{
+      position: "Integrated cloud platform",
+      supporting_reasoning: "Integrated enterprise services.",
+      confidence: 0.8,
+      evidence_refs: ["evidence-1"],
+    }],
+    strategic_priorities: [{
+      priority: "AI infrastructure",
+      rationale: "Capacity investment supports AI demand.",
+      confidence: 0.8,
+      evidence_refs: ["evidence-2"],
+    }],
+    management_focus: [{
+      focus_area: "Capacity execution",
+      explanation: "Management discussed infrastructure execution.",
+      confidence: 0.8,
+      evidence_refs: ["evidence-2"],
+    }],
+    risks: [{
+      risk: "Capacity constraints",
+      explanation: "Capacity may constrain service delivery.",
+      confidence: 0.8,
+      evidence_refs: ["evidence-2"],
+    }],
+    dependencies: [{
+      dependency: "Data-center capacity",
+      explanation: "Cloud delivery depends on data-center capacity.",
+      confidence: 0.8,
+      evidence_refs: ["evidence-2"],
+    }],
   };
 }
 
-function allEvidenceRefs(
-  content: StructuredIntelligenceArtifactContent,
-): string[][] {
-  const understanding = content.understanding;
-
-  return [
-    understanding.business_model.evidence_refs,
-    understanding.revenue_model.evidence_refs,
-    ...understanding.products.map(({ evidence_refs }) => evidence_refs),
-    ...understanding.customers.map(({ evidence_refs }) => evidence_refs),
-    ...understanding.revenue_drivers.map(({ evidence_refs }) => evidence_refs),
-    ...understanding.competitive_positioning.map(({ evidence_refs }) => evidence_refs),
-    ...understanding.strategic_priorities.map(({ evidence_refs }) => evidence_refs),
-    ...understanding.management_focus.map(({ evidence_refs }) => evidence_refs),
-    ...understanding.risks.map(({ evidence_refs }) => evidence_refs),
-    ...understanding.dependencies.map(({ evidence_refs }) => evidence_refs),
-  ];
-}
-
-function withAllEvidenceReferences(
-  value: StructuredIntelligenceArtifactContent["understanding"],
-  reference: string,
-): StructuredIntelligenceArtifactContent["understanding"] {
+function emptyUnderstanding(): StructuredUnderstanding {
   return {
-    business_model: {
-      ...value.business_model,
-      evidence_refs: [reference],
-    },
-    revenue_model: {
-      ...value.revenue_model,
-      evidence_refs: [reference],
-    },
-    products: value.products.map((item) => ({
-      ...item,
-      evidence_refs: [reference],
-    })),
-    customers: value.customers.map((item) => ({
-      ...item,
-      evidence_refs: [reference],
-    })),
-    revenue_drivers: value.revenue_drivers.map((item) => ({
-      ...item,
-      evidence_refs: [reference],
-    })),
-    competitive_positioning: value.competitive_positioning.map((item) => ({
-      ...item,
-      evidence_refs: [reference],
-    })),
-    strategic_priorities: value.strategic_priorities.map((item) => ({
-      ...item,
-      evidence_refs: [reference],
-    })),
-    management_focus: value.management_focus.map((item) => ({
-      ...item,
-      evidence_refs: [reference],
-    })),
-    risks: value.risks.map((item) => ({
-      ...item,
-      evidence_refs: [reference],
-    })),
-    dependencies: value.dependencies.map((item) => ({
-      ...item,
-      evidence_refs: [reference],
-    })),
+    business_model: null,
+    products: [],
+    customers: [],
+    revenue_model: null,
+    revenue_drivers: [],
+    competitive_positioning: [],
+    strategic_priorities: [],
+    management_focus: [],
+    risks: [],
+    dependencies: [],
   };
+}
+
+function groundedBusinessModel(
+  evidenceRefs: string[],
+): NonNullable<StructuredUnderstanding["business_model"]> {
+  return {
+    summary: "Cloud and productivity software.",
+    value_creation: "Integrated software and cloud services.",
+    confidence: 0.9,
+    evidence_refs: evidenceRefs,
+  };
+}
+
+function setAllEvidence(
+  understanding: StructuredUnderstanding,
+  evidenceRefs: string[],
+): void {
+  if (understanding.business_model !== null) {
+    understanding.business_model.evidence_refs = evidenceRefs;
+  }
+  if (understanding.revenue_model !== null) {
+    understanding.revenue_model.evidence_refs = evidenceRefs;
+  }
+
+  for (const item of [
+    ...understanding.products,
+    ...understanding.customers,
+    ...understanding.revenue_drivers,
+    ...understanding.competitive_positioning,
+    ...understanding.strategic_priorities,
+    ...understanding.management_focus,
+    ...understanding.risks,
+    ...understanding.dependencies,
+  ]) {
+    item.evidence_refs = evidenceRefs;
+  }
+}
+
+function references(understanding: StructuredUnderstanding) {
+  return buildStructuredValueReferences({
+    companyId: "MSFT",
+    periodId: "2026-Q2",
+    filingId: "msft-2026-q2-10q",
+    understanding,
+  });
 }
 
 class StaticPromptResolver {
-  resolve(): ResolvedPrompt {
+  resolve(promptId: string, version?: string): ResolvedPrompt {
     return {
-      promptId: "structured-intelligence-builder-system",
-      version: "structured-intelligence-builder-v1",
-      content: "Generate filing-scoped structured intelligence.",
+      promptId,
+      version: version ?? STRUCTURED_INTELLIGENCE_PROMPT_VERSION,
+      content: promptId,
       hash: "prompt-hash",
       source: "filesystem",
       activationId: "activation-1",
@@ -660,40 +546,6 @@ class StaticLLMClient implements LLMClient {
   }
 }
 
-class TestArtifactRepository implements ArtifactRepository {
-  private readonly artifacts = new Map<string, Artifact<unknown>>();
-  private readonly current = new Map<string, string>();
-
-  async create<T>(artifact: Artifact<T>): Promise<void> {
-    const stored = cloneArtifact(artifact);
-
-    this.artifacts.set(artifact.identity.artifact_id, stored);
-    this.current.set(lookupKey(artifact.identity), artifact.identity.artifact_id);
-  }
-
-  async getById<T>(artifactId: string): Promise<Artifact<T> | null> {
-    const artifact = this.artifacts.get(artifactId);
-
-    return artifact ? cloneArtifact(artifact) as Artifact<T> : null;
-  }
-
-  async getCurrent<T>(lookup: ArtifactLookup): Promise<Artifact<T> | null> {
-    const artifactId = this.current.get(lookupKey(lookup));
-
-    return artifactId ? this.getById<T>(artifactId) : null;
-  }
-
-  async getHistory<T>(lookup: ArtifactLookup): Promise<Artifact<T>[]> {
-    return [...this.artifacts.values()]
-      .filter((artifact) =>
-        artifact.identity.artifact_type === lookup.artifact_type
-        && artifact.identity.company_id === lookup.company_id
-        && artifact.identity.period_id === lookup.period_id)
-      .sort((left, right) => left.identity.version - right.identity.version)
-      .map((artifact) => cloneArtifact(artifact) as Artifact<T>);
-  }
-}
-
 function filingArtifact(): Artifact<FilingArtifactContent> {
   return {
     identity: {
@@ -706,8 +558,8 @@ function filingArtifact(): Artifact<FilingArtifactContent> {
     metadata: {
       version: 1,
       schema_version: "filing-v1",
-      pipeline_version: "filing-ingestion-v1",
-      generated_at: "2026-06-15T00:00:00.000Z",
+      pipeline_version: "filing-v1",
+      generated_at: "2026-06-22T00:00:00.000Z",
       artifact_hash: "filing-artifact-hash",
       input_hash: "filing-input-hash",
       generation_duration_ms: 1,
@@ -715,14 +567,12 @@ function filingArtifact(): Artifact<FilingArtifactContent> {
     },
     lineage: {
       upstream_dependencies: [],
-      generation_context: {
-        builder_type: "filing-ingestion",
-      },
+      generation_context: { builder_type: "filing" },
     },
     content: {
       filing_id: "msft-2026-q2-10q",
       filing_type: "10-Q",
-      filing_content: "Microsoft discusses Azure cloud, AI adoption, enterprise customers, technology execution risks, and cloud infrastructure.",
+      filing_content: "Cloud demand and AI infrastructure were discussed.",
       filing_hash: "filing-hash",
       filing_period: "2026-Q2",
     },
@@ -741,8 +591,8 @@ function themesArtifact(): Artifact<ThemesArtifactContent> {
     metadata: {
       version: 1,
       schema_version: "themes-v1",
-      pipeline_version: "themes-builder-v1",
-      generated_at: "2026-06-15T00:00:00.000Z",
+      pipeline_version: "themes-v1",
+      generated_at: "2026-06-22T00:00:00.000Z",
       artifact_hash: "themes-artifact-hash",
       input_hash: "themes-input-hash",
       generation_duration_ms: 1,
@@ -750,9 +600,7 @@ function themesArtifact(): Artifact<ThemesArtifactContent> {
     },
     lineage: {
       upstream_dependencies: [],
-      generation_context: {
-        builder_type: "themes",
-      },
+      generation_context: { builder_type: "themes" },
     },
     content: {
       company_id: "MSFT",
@@ -762,21 +610,21 @@ function themesArtifact(): Artifact<ThemesArtifactContent> {
       themes: [
         {
           theme_id: "theme-1",
-          title: "Azure Cloud Demand",
-          summary: "Management discussed Azure cloud services and enterprise customers.",
+          title: "Cloud demand",
+          summary: "Cloud demand increased.",
           category: "technology",
-          evidence: [{ section: "MD&A", excerpt_hash: "theme-1" }],
+          evidence: [{ section: "MD&A", excerpt_hash: "evidence-1" }],
           evidence_count: 1,
-          confidence: 0.9,
+          confidence: 1,
         },
         {
           theme_id: "theme-2",
-          title: "AI Adoption",
-          summary: "Management discussed AI adoption and technology execution risks.",
-          category: "technology",
-          evidence: [{ section: "MD&A", excerpt_hash: "theme-2" }],
+          title: "AI infrastructure",
+          summary: "AI infrastructure investment continued.",
+          category: "strategy",
+          evidence: [{ section: "MD&A", excerpt_hash: "evidence-2" }],
           evidence_count: 1,
-          confidence: 0.8,
+          confidence: 1,
         },
       ],
       confidence: {
@@ -786,15 +634,11 @@ function themesArtifact(): Artifact<ThemesArtifactContent> {
         filing_coverage: 1,
       },
       evaluation_hooks: {
-        prompt_version: "theme-generation-v1",
+        prompt_version: "themes-v1",
         model_version: "themes-model-v1",
         theme_count: 2,
-        average_confidence: 0.85,
-        confidence_distribution: {
-          low: 0,
-          medium: 0,
-          high: 2,
-        },
+        average_confidence: 1,
+        confidence_distribution: { low: 0, medium: 0, high: 2 },
         evidence_density: 1,
         duplicate_count: 0,
       },
@@ -802,10 +646,39 @@ function themesArtifact(): Artifact<ThemesArtifactContent> {
   };
 }
 
-function lookupKey(lookup: ArtifactLookup): string {
-  return `${lookup.artifact_type}:${lookup.company_id ?? ""}:${lookup.period_id ?? ""}`;
+class TestArtifactRepository implements ArtifactRepository {
+  private readonly artifacts = new Map<string, Artifact<unknown>>();
+  private readonly current = new Map<string, string>();
+
+  async create<T>(artifact: Artifact<T>): Promise<void> {
+    this.artifacts.set(artifact.identity.artifact_id, structuredClone(artifact));
+    this.current.set(lookupKey(artifact.identity), artifact.identity.artifact_id);
+  }
+
+  async getById<T>(artifactId: string): Promise<Artifact<T> | null> {
+    const artifact = this.artifacts.get(artifactId);
+
+    return artifact === undefined
+      ? null
+      : structuredClone(artifact) as Artifact<T>;
+  }
+
+  async getCurrent<T>(lookup: ArtifactLookup): Promise<Artifact<T> | null> {
+    const artifactId = this.current.get(lookupKey(lookup));
+
+    return artifactId === undefined ? null : this.getById<T>(artifactId);
+  }
+
+  async getHistory<T>(lookup: ArtifactLookup): Promise<Artifact<T>[]> {
+    return [...this.artifacts.values()]
+      .filter((artifact) =>
+        artifact.identity.artifact_type === lookup.artifact_type
+        && artifact.identity.company_id === lookup.company_id
+        && artifact.identity.period_id === lookup.period_id)
+      .map((artifact) => structuredClone(artifact) as Artifact<T>);
+  }
 }
 
-function cloneArtifact<T>(artifact: Artifact<T>): Artifact<T> {
-  return JSON.parse(JSON.stringify(artifact)) as Artifact<T>;
+function lookupKey(lookup: ArtifactLookup): string {
+  return `${lookup.artifact_type}:${lookup.company_id ?? ""}:${lookup.period_id ?? ""}`;
 }

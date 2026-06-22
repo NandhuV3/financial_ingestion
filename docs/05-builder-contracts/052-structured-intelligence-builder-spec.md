@@ -203,6 +203,7 @@ The response parser must:
 * require at least one valid evidence reference for every emitted value
 * reject evidence references absent from the supplied Filing/Theme evidence
   catalog
+* reject duplicate NFKC-normalized primary labels within a collection
 
 Cast-based parsing is prohibited.
 
@@ -244,7 +245,7 @@ The builder owns deterministic status assembly:
 
 An `insufficient_filing` artifact must contain empty collections, null
 singletons, no value references, zero confidence components except
-`hallucination_risk = 0`, and replayability metadata.
+`hallucination_risk = "not_assessed"`, and replayability metadata.
 
 ---
 
@@ -276,12 +277,16 @@ type StructuredIntelligenceConfidence = {
   evidence_coverage: number;
   field_completeness: number;
   theme_utilization: number;
-  hallucination_risk: number;
+  hallucination_risk: "not_assessed";
 };
 ```
 
 Validation must independently recompute all components and reject mismatches.
 Prompt-supplied confidence is forbidden.
+
+V1 `overall` is the arithmetic mean of `evidence_coverage`,
+`field_completeness`, and `theme_utilization`, rounded to four decimals.
+Semantic claim-support validation is not performed in V1.
 
 ---
 

@@ -157,7 +157,22 @@ describe("builder framework", () => {
         input: { filing: "" },
         inputHash: "input-hash-1",
       }),
-      BuilderValidationError,
+      (error: unknown) => {
+        assert.ok(error instanceof BuilderValidationError);
+        assert.equal(error.code, "BUILDER_VALIDATION_ERROR");
+        assert.deepEqual(error.context, {
+          builder_type: "themes-builder",
+          artifact_type: "themes",
+          execution_id: "execution-1",
+          company_id: "MSFT",
+          period_id: "2026-Q2",
+        });
+        assert.ok(error.cause instanceof BuilderValidationError);
+        assert.ok(error.cause.cause instanceof Error);
+        assert.equal(error.cause.cause.message, "invalid input");
+
+        return true;
+      },
     );
 
     assert.equal(repository.createCalls, 0);
@@ -184,6 +199,40 @@ describe("builder framework", () => {
     );
 
     assert.equal(repository.createCalls, 0);
+  });
+
+  it("preserves dependency error type, code, cause, and execution context", async () => {
+    const repository = new TestArtifactRepository();
+    const registry = new BuilderRegistry();
+    const executor = new BuilderExecutor(
+      registry,
+      new ArtifactService(repository),
+    );
+
+    registry.registerBuilder(
+      definition("themes-builder", "themes"),
+      () => new DependencyFailureBuilder(),
+    );
+
+    await assert.rejects(
+      () => executor.executeBuilder({
+        builderType: "themes-builder",
+        companyId: "MSFT",
+        periodId: "2026-Q2",
+        executionId: "dependency-execution",
+        input: { filing: "text" },
+        inputHash: "input-hash-1",
+      }),
+      (error: unknown) => {
+        assert.ok(error instanceof BuilderDependencyError);
+        assert.equal(error.code, "BUILDER_DEPENDENCY_ERROR");
+        assert.equal(error.context.artifact_type, "themes");
+        assert.equal(error.context.execution_id, "dependency-execution");
+        assert.ok(error.cause instanceof BuilderDependencyError);
+
+        return true;
+      },
+    );
   });
 
   it("rejects invalid builder output before artifact persistence", async () => {
@@ -259,6 +308,16 @@ class ExecutionFailureBuilder extends TestBuilder {
 
   override async execute(): Promise<BuilderResult<{ themes: string[] }>> {
     throw new Error("model unavailable");
+  }
+}
+
+class DependencyFailureBuilder extends TestBuilder {
+  constructor() {
+    super("themes-builder");
+  }
+
+  override async execute(): Promise<BuilderResult<{ themes: string[] }>> {
+    throw new BuilderDependencyError("filing dependency is missing");
   }
 }
 
@@ -365,4 +424,3 @@ function lookupKey(lookup: ArtifactLookup): string {
 function cloneArtifact<T>(artifact: Artifact<T>): Artifact<T> {
   return JSON.parse(JSON.stringify(artifact)) as Artifact<T>;
 }
-

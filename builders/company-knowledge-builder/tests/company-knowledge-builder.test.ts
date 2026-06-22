@@ -515,7 +515,7 @@ function baseStructuredIntelligence(): StructuredIntelligenceArtifactContent {
       business_model: {
         summary: "Microsoft sells software, cloud infrastructure, and productivity services.",
         value_creation: "Enterprise customers use Microsoft platforms to run business workloads.",
-        revenue_structure: "Recurring subscriptions and cloud usage.",
+        confidence: 0.82,
         evidence_refs: ["business-model-evidence"],
       },
       products: [
@@ -523,12 +523,14 @@ function baseStructuredIntelligence(): StructuredIntelligenceArtifactContent {
           product_name: "Microsoft 365",
           description: "Productivity applications and collaboration services.",
           importance: "high",
+          confidence: 0.82,
           evidence_refs: ["product-evidence-1"],
         },
         {
           product_name: "Azure",
           description: "Cloud infrastructure and platform services.",
           importance: "high",
+          confidence: 0.82,
           evidence_refs: ["product-evidence-2"],
         },
       ],
@@ -536,6 +538,7 @@ function baseStructuredIntelligence(): StructuredIntelligenceArtifactContent {
         {
           customer_segment: "Enterprise customers",
           description: "Organizations buying software, cloud, and security tools.",
+          confidence: 0.82,
           evidence_refs: ["customer-evidence"],
         },
       ],
@@ -543,12 +546,14 @@ function baseStructuredIntelligence(): StructuredIntelligenceArtifactContent {
         summary: "Recurring subscriptions and consumption-based cloud revenue.",
         recurring_components: ["subscriptions"],
         transactional_components: ["cloud consumption"],
+        confidence: 0.82,
         evidence_refs: ["revenue-model-evidence"],
       },
       revenue_drivers: [
         {
           driver: "Cloud consumption",
           explanation: "Azure workloads increase usage revenue.",
+          confidence: 0.82,
           evidence_refs: ["revenue-driver-evidence"],
         },
       ],
@@ -556,6 +561,7 @@ function baseStructuredIntelligence(): StructuredIntelligenceArtifactContent {
         {
           position: "Enterprise platform breadth",
           supporting_reasoning: "Microsoft bundles cloud, productivity, and security capabilities.",
+          confidence: 0.82,
           evidence_refs: ["competitive-evidence"],
         },
       ],
@@ -563,6 +569,7 @@ function baseStructuredIntelligence(): StructuredIntelligenceArtifactContent {
         {
           priority: "AI platform integration",
           rationale: "Management is integrating AI across cloud and productivity products.",
+          confidence: 0.82,
           evidence_refs: ["strategy-evidence"],
         },
       ],
@@ -570,6 +577,7 @@ function baseStructuredIntelligence(): StructuredIntelligenceArtifactContent {
         {
           focus_area: "Cloud infrastructure scaling",
           explanation: "Management discussed expanding infrastructure for AI workloads.",
+          confidence: 0.82,
           evidence_refs: ["management-evidence"],
         },
       ],
@@ -577,6 +585,7 @@ function baseStructuredIntelligence(): StructuredIntelligenceArtifactContent {
         {
           risk: "Capacity constraints",
           explanation: "Demand may exceed available infrastructure.",
+          confidence: 0.82,
           evidence_refs: ["risk-evidence"],
         },
       ],
@@ -584,6 +593,7 @@ function baseStructuredIntelligence(): StructuredIntelligenceArtifactContent {
         {
           dependency: "Data center capacity",
           explanation: "Cloud and AI services require large-scale infrastructure.",
+          confidence: 0.82,
           evidence_refs: ["dependency-evidence"],
         },
       ],
@@ -592,11 +602,14 @@ function baseStructuredIntelligence(): StructuredIntelligenceArtifactContent {
 }
 
 function currentKnowledgeMatchingStructured(structured: StructuredIntelligenceArtifactContent): CompanyKnowledge {
+  const businessModel = structured.understanding.business_model!;
+  const revenueModel = structured.understanding.revenue_model!;
+
   return {
     business_model: {
-      summary: structured.understanding.business_model.summary,
-      value_creation: structured.understanding.business_model.value_creation,
-      revenue_structure: structured.understanding.business_model.revenue_structure,
+      summary: businessModel.summary,
+      value_creation: businessModel.value_creation,
+      revenue_structure: revenueModel.summary,
       confidence: structured.confidence.overall,
       supporting_periods: [structured.period_id],
       last_updated_period: structured.period_id,
@@ -617,9 +630,9 @@ function currentKnowledgeMatchingStructured(structured: StructuredIntelligenceAr
       last_updated_period: structured.period_id,
     })),
     revenue_structure: {
-      summary: structured.understanding.revenue_model.summary,
-      recurring_components: [...structured.understanding.revenue_model.recurring_components],
-      transactional_components: [...structured.understanding.revenue_model.transactional_components],
+      summary: revenueModel.summary,
+      recurring_components: [...revenueModel.recurring_components],
+      transactional_components: [...revenueModel.transactional_components],
       confidence: structured.confidence.overall,
       supporting_periods: [structured.period_id],
       last_updated_period: structured.period_id,

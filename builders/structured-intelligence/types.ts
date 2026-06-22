@@ -1,5 +1,6 @@
+import type { Artifact } from "../../contracts/artifacts/artifact.js";
 import type { ThemesArtifactContent } from "../themes/contract.js";
-import type { StructuredUnderstanding, StructuredIntelligenceStatus } from "./contract.js";
+import type { StructuredUnderstanding } from "./contract.js";
 
 export type FilingArtifactContent = {
   filing_id: string;
@@ -15,17 +16,29 @@ export type StructuredIntelligenceBuilderInput = {
   filing_id: string;
 };
 
-export type StructuredIntelligencePromptInput = {
+export type StructuredIntelligenceDependencies = {
+  filing: Artifact<FilingArtifactContent>;
+  themes: Artifact<ThemesArtifactContent>;
+};
+
+export type StructuredPromptContext = {
   company_id: string;
   period_id: string;
-  filing_id: string;
-  filing_type: string;
-  filing_content: string;
-  themes: ThemesArtifactContent["themes"];
+  filing: {
+    filing_id: string;
+    filing_type: string;
+    filing_content: string;
+    evidence_hashes: string[];
+  };
+  themes: Array<{
+    theme_id: string;
+    title: string;
+    summary: string;
+    category: string;
+    evidence_hashes: string[];
+  }>;
 };
 
-export type StructuredIntelligenceLLMOutput = {
-  status: StructuredIntelligenceStatus;
+export type StructuredIntelligencePromptOutput = {
   understanding: StructuredUnderstanding;
 };
-

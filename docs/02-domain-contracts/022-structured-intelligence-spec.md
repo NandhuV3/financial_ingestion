@@ -272,14 +272,22 @@ understanding.risks[risk=<normalized>]
 understanding.dependencies[dependency=<normalized>]
 ```
 
-Normalization is deterministic: Unicode normalization, trim, collapse internal
-whitespace, and lowercase. It is used only for identity and does not rewrite
-the emitted value.
+Normalization is deterministic: Unicode NFKC normalization, trim, collapse
+internal whitespace, and lowercase. The normalized label is URI-encoded in the
+field path. It is used only for identity and does not rewrite the emitted
+value.
+
+Normalized primary labels must be unique within each collection. A duplicate
+normalized label is a validation failure; positional suffixes are forbidden.
 
 ## Hash and Reference Generation
 
 `value_hash` is the stable hash of the canonical JSON value excluding
 `confidence` and `evidence_refs`.
+
+Canonical JSON recursively sorts object keys, applies Unicode NFKC
+normalization to strings, removes undefined fields, and sorts and deduplicates
+set-like arrays.
 
 `evidence_refs` are sorted, deduplicated filing evidence references copied from
 the source value.
@@ -304,6 +312,24 @@ or orphaned references.
 
 ---
 
+# Status Calculation
+
+```text
+no emitted grounded values
+→ insufficient_filing
+
+at least one emitted grounded value and fewer than ten populated top-level fields
+→ partial
+
+all ten top-level fields populated
+→ complete
+```
+
+An `insufficient_filing` artifact emits no value references and numeric
+confidence components are `0`.
+
+---
+
 # Confidence Model
 
 The builder owns confidence computation. Prompt output must not emit artifact
@@ -315,7 +341,7 @@ type StructuredIntelligenceConfidence = {
   evidence_coverage: number;
   field_completeness: number;
   theme_utilization: number;
-  hallucination_risk: number;
+  hallucination_risk: "not_assessed";
 };
 ```
 
@@ -324,14 +350,15 @@ Definitions:
 * `evidence_coverage`: emitted values with valid evidence divided by emitted
   values; `0` when no values are emitted.
 * `field_completeness`: populated top-level understanding fields divided by the
-  ten defined top-level fields.
-* `theme_utilization`: distinct source themes referenced by emitted evidence
-  divided by available themes; `0` when no themes are available.
-* `hallucination_risk`: unsupported emitted values divided by emitted values;
-  `0` when no values are emitted. Validation must reject any non-zero
-  unsupported count before a successful artifact is returned.
-* `overall`: arithmetic mean of `evidence_coverage`, `field_completeness`,
-  `theme_utilization`, and `1 - hallucination_risk`.
+  ten defined top-level fields. A singleton is populated when non-null; a
+  collection is populated when it contains at least one item.
+* `theme_utilization`: themes whose evidence excerpt hashes intersect the union
+  of emitted `evidence_refs`, divided by available themes; `0` when no themes
+  are available. Theme IDs do not count as evidence references.
+* `hallucination_risk`: always `"not_assessed"` in V1. Semantic claim-support
+  assessment is deferred.
+* `overall`: arithmetic mean of `evidence_coverage`, `field_completeness`, and
+  `theme_utilization`.
 
 All components are rounded to four decimals and must be recomputed by
 validation.
@@ -370,12 +397,14 @@ type StructuredIntelligenceEvaluationHooks = {
   field_coverage: number;
   evidence_coverage: number;
   theme_utilization: number;
-  unsupported_claim_count: number;
+  unsupported_claim_count: "not_assessed";
 };
 ```
 
 Evaluation hooks are content-level observability fields. They do not own
 evaluation policy or Artifact Framework metadata.
+
+V1 does not perform semantic claim-support validation.
 
 ---
 
