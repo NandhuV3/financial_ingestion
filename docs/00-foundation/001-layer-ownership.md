@@ -108,8 +108,11 @@ What canonical business topics may filing observations normalize to?
 ## Owns
 
 * Canonical Topic IDs
+* Universal and sector topic tiers
 * Topic definitions
 * Topic aliases
+* Topic examples and exclusions
+* Topic embedding versions
 * Topic lifecycle status
 * Topic governance
 
@@ -123,14 +126,24 @@ What canonical business topics may filing observations normalize to?
 ## Inputs
 
 * Governed Topic Proposals
+* Cross-company evidence
+* Uniqueness analysis
+* Topic Evolution utility review
 
 ## Outputs
 
-* Active Topic Registry
+* Versioned Topic Registry
+* Active universal topics
+* Active sector topics
 
 Topic creation is governed.
 
 Topic Assignment cannot create topics.
+
+Only active topics are assignable.
+
+Proposed and provisional topics remain governance-owned and are not production
+assignment targets.
 
 ---
 

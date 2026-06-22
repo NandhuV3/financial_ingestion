@@ -2,7 +2,7 @@
 
 # Themes Specification
 
-Version: 1.0
+Version: 1.1
 Status: LOCKED
 Owner: Filing Intelligence Layer
 
@@ -599,6 +599,16 @@ Concept Registry
 
 not Themes.
 
+Themes does not:
+
+* choose universal versus sector topic tier
+* propose registry lifecycle transitions
+* emit registry examples or exclusions
+* select an embedding version
+
+Themes remains filing-specific evidence even when an observation later supports
+a governed Topic Proposal.
+
 ---
 
 # Archive Strategy
@@ -696,5 +706,6 @@ The following are LOCKED:
 11. Themes are observation clusters, not topic labels.
 12. Themes owns Theme Summary extraction.
 13. Themes never performs cross-period comparison.
+14. Themes never chooses Topic Registry tier, lifecycle, or canonical scope.
 
 End of Specification.

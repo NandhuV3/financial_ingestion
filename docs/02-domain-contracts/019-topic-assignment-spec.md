@@ -2,7 +2,7 @@
 
 # Topic Assignment Specification
 
-Version: 1.0
+Version: 1.1
 Status: LOCKED
 Owner: Topic Intelligence Layer
 
@@ -169,8 +169,13 @@ type TopicAssignmentInputs = {
   themes: ThemesArtifact;
 
   topic_registry: TopicRegistry;
+
+  company_sector_id: string;
 };
 ```
+
+`company_sector_id` is governed company classification context. Topic
+Assignment does not infer or modify company sector.
 
 ---
 
@@ -185,6 +190,10 @@ type TopicAssignmentArtifact = {
   filing_id: string;
 
   period: string;
+
+  registry_version: string;
+
+  embedding_version: string;
 
   assignments: TopicAssignment[];
 
@@ -289,14 +298,28 @@ type CandidateTopic = {
 Topic Assignment depends on:
 
 ```text
-Active Topics Only
+Active Universal Topics
+
++
+
+Active Sector Topics Matching company_sector_id
 ```
+
+Proposed topics ignored.
+
+Provisional topics ignored.
 
 Deprecated topics ignored.
 
 Merged topics redirected.
 
 Rejected topics unavailable.
+
+An active sector topic must not be considered when its `sector_id` differs from
+`company_sector_id`.
+
+Topic Assignment must record the registry version and embedding version used
+for classification in the Topic Assignment artifact.
 
 ---
 
@@ -316,6 +339,13 @@ Topic Synonym
 
 Assign immediately.
 
+Exact matching uses only:
+
+* `topic_name`
+* `aliases`
+
+The topic must be active and eligible for the company sector.
+
 ---
 
 ## Step 2
@@ -323,6 +353,16 @@ Assign immediately.
 Semantic Similarity
 
 Embedding similarity.
+
+The deterministic topic representation is derived from:
+
+* `topic_name`
+* `definition`
+* `aliases`
+* `examples`
+
+`exclusions` are deterministic negative constraints. A candidate that matches a
+governed exclusion must not be assigned to that topic.
 
 ---
 
@@ -463,6 +503,8 @@ Both vectors must originate from the same pinned embedding model version.
 Runtime token overlap, keyword matching, regex classification, and
 string-contains classification are forbidden.
 
+Runtime LLM topic classification is forbidden.
+
 ```typescript
 similarity_score =
   cosine_similarity(
@@ -474,6 +516,10 @@ similarity_score =
 `confidence` equals the normalized `similarity_score`.
 
 Similarity values are rounded to four decimal places for stable replay.
+
+The Topic Registry entry `embedding_version`, registry artifact
+`embedding_version`, and Topic Assignment artifact `embedding_version` must
+reconcile.
 
 ---
 
@@ -520,6 +566,12 @@ type TopicProposal = {
 
   proposed_topic_name: string;
 
+  proposed_tier:
+    | "universal"
+    | "sector";
+
+  proposed_sector_id?: string;
+
   triggering_themes: string[];
 
   companies_observed: string[];
@@ -529,6 +581,12 @@ type TopicProposal = {
   confidence: number;
 };
 ```
+
+Topic Proposals do not create assignable topics.
+
+Proposal governance, uniqueness analysis, cross-company evidence review,
+Topic Evolution utility review, provisional evaluation, and activation belong
+to Topic Registry governance.
 
 ---
 
@@ -568,6 +626,8 @@ Topic Assignment becomes stale when:
 - Topic Registry changes
 - Assignment rules change
 - Similarity model changes
+- Company sector classification changes
+- Topic definition, examples, exclusions, tier, or sector changes
 
 ---
 
@@ -715,7 +775,9 @@ type ArtifactMetadata = {
 type ArtifactLineage = {
   themes_version: number;
 
-  topic_registry_version: number;
+  topic_registry_version: string;
+
+  embedding_version: string;
 
   input_hash: string;
 };
@@ -759,5 +821,10 @@ The following are LOCKED:
 10. Topic Evolution begins only after Topic Assignment.
 11. Topic Assignment propagates Theme Summaries unchanged.
 12. Topic Assignment never performs temporal comparison.
+13. Topic Assignment considers only active universal topics and active matching
+    sector topics.
+14. Topic Assignment records registry and embedding versions.
+15. Runtime LLM topic classification is forbidden.
+16. Topic Assignment applies governed exclusions as negative constraints.
 
 End of Specification.

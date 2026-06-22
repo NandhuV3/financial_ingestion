@@ -1,6 +1,6 @@
 # Topic Evolution Specification
 
-Version: 1.0
+Version: 1.1
 Status: LOCKED
 Owner: Longitudinal Topic Intelligence Layer
 
@@ -57,6 +57,8 @@ Topic Evolution consumes:
 * assignment confidence
 * Theme Summaries
 * historical Topic Assignments
+* Topic Assignment registry versions
+* Topic Assignment embedding versions
 
 Topic Evolution never consumes raw filing text.
 
@@ -145,6 +147,9 @@ No LLM is allowed.
 
 Identical ordered input artifacts, Theme Summaries, rules version, and Topic
 Registry version must produce identical output.
+
+Topic tier does not change temporal classification. Universal and sector topics
+use the same Topic Evolution rules after deterministic Topic Assignment.
 
 ---
 
@@ -355,6 +360,57 @@ Rebuild the affected period and all dependent future periods for the company.
 
 ---
 
+# Topic Registry Stability Requirements
+
+Topic Evolution relies on stable canonical topic identity across periods.
+
+Each contributing Topic Assignment artifact must record:
+
+```typescript
+registry_version: string;
+embedding_version: string;
+```
+
+Topic Evolution may compare assignments produced by different registry
+versions only when the canonical topic meaning is compatible.
+
+Compatible changes are limited to non-semantic governance updates such as
+alias additions that preserve:
+
+* topic ID
+* definition
+* tier
+* sector
+* examples
+* exclusions
+* merge target
+* embedding version
+
+The following are semantic canonicalization changes:
+
+* topic definition change
+* universal or sector tier change
+* sector reassignment
+* examples or exclusions that alter topic scope
+* topic merge
+* embedding version change
+
+When a semantic canonicalization change occurs:
+
+1. affected historical Topic Assignments must be rebuilt against the new
+   registry version;
+2. affected Topic Evolution artifacts and dependent future periods must be
+   rebuilt;
+3. Topic Evolution must not compare unreconciled topic meanings across
+   versions.
+
+Deprecated and merged topic IDs remain historical references. New assignments
+must use the active canonical topic.
+
+Topic Evolution cannot modify or reinterpret Topic Registry governance.
+
+---
+
 # Outputs Used By
 
 ```text
@@ -388,5 +444,8 @@ remain reserved for future Topic Evolution versions.
 12. V1 emits `not_assessed` for strength direction and narrative drift.
 13. V1 confidence follows the locked assignment-confidence formulas and is
     rounded to four decimal places.
+14. Registry and embedding versions must be replayable from contributing Topic
+    Assignments.
+15. Topic Evolution must not compare unreconciled canonical topic meanings.
 
 End of Specification.
