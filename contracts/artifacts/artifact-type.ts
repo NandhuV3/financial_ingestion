@@ -1,5 +1,6 @@
 export const ARTIFACT_TYPES = [
   "filing",
+  "evidence_catalog",
   "themes",
   "topic_registry",
   "topic_assignment",

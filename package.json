@@ -20,40 +20,23 @@
     "normalize:sections": "tsx src/processing/normalize-sections.ts",
     "chunk:sections": "tsx src/processing/chunk-sections.ts",
 
-    "generate:themes": "tsx src/ai/generate-themes.ts",
-
-    "generate:structured-intelligence": "tsx src/structured-intelligence/generate-structured-intelligence.ts",
-    
-    "generate:company-knowledge": "tsx src/company-knowledge/generate-company-knowledge-command.ts",
-
-    "generate:business-signals": "tsx src/business-signal-intelligence/generate-business-signals-command.ts",
-
-    "generate:quarter-understanding": "tsx src/quarter-understanding-intelligence/generate-quarter-understanding-command.ts",
     "demo:upstream": "tsx builders/upstream-pipeline/run-demo.ts",
 
     "generate:partner-domain": "tsx src/partner-domain/build-partner-intelligence.ts",
-
-    "generate:topic-embeddings": "tsx src/topic-intelligence/generate-topic-embeddings.ts",
-    "generate:topic-matches": "tsx src/topic-intelligence/match-topics.ts",
-    "generate:topic-assignments": "tsx src/topic-assignment-v2/generate-topic-assignments.ts",
-    "generate:topic-evolution": "tsx src/topic-evolution/generate-topic-evolution-report.ts",
-
-    "harness": "tsx src/harness/run-harness.ts",
 
     "freshness:company": "tsx src/reporting/check-artifact-freshness.ts",
     "report:company": "tsx src/reporting/generate-company-report.ts",
     "pipeline": "tsx src/pipeline/run-company.ts",
     "pipeline:filing": "tsx src/pipeline/pipeline-filing.ts",
     "pipeline:pre-ai": "tsx src/pipeline/pipeline-pre-ai.ts",
-    "pipeline:themes": "tsx src/pipeline/pipeline-themes.ts",
-    "compare:changes": "tsx src/change-engine/generate-quarter-change-report.ts",
+
     "token:estimate": "tsx src/reporting/estimate-tokens.ts",
 
     "api:partner": "tsx src/api/server.ts",
     "web:dev": "vite --config apps/partner-web/vite.config.ts",
     "web:build": "vite build --config apps/partner-web/vite.config.ts",
     "typecheck": "tsc --noEmit && tsc -p apps/partner-web/tsconfig.json --noEmit",
-    "test": "tsx --test tests/*.test.ts tests/contracts/*.test.ts packages/artifact-framework/tests/*.test.ts packages/builder-framework/tests/*.test.ts builders/themes/tests/*.test.ts builders/topic-assignment-builder/tests/*.test.ts builders/topic-evolution-builder/tests/*.test.ts builders/structured-intelligence/tests/*.test.ts builders/company-knowledge-builder/tests/*.test.ts builders/business-signals-builder/tests/*.test.ts builders/upstream-pipeline/tests/*.test.ts builders/capital-allocation-tracking-builder/tests/*.test.ts builders/commitment-tracking-builder/tests/*.test.ts builders/narrative-consistency-builder/tests/*.test.ts builders/accounting-stability-builder/tests/*.test.ts builders/trust-signals-builder/tests/*.test.ts builders/quarter-understanding-builder/tests/*.test.ts builders/investor-intelligence-builder/tests/*.test.ts governance/company-knowledge-governance/tests/*.test.ts"
+    "test": "tsx --test tests/*.test.ts tests/contracts/*.test.ts packages/artifact-framework/tests/*.test.ts packages/builder-framework/tests/*.test.ts builders/filing-artifact-builder/tests/*.test.ts builders/evidence-catalog-builder/tests/*.test.ts builders/themes/tests/*.test.ts builders/topic-assignment-builder/tests/*.test.ts builders/topic-evolution-builder/tests/*.test.ts builders/structured-intelligence/tests/*.test.ts builders/company-knowledge-builder/tests/*.test.ts builders/business-signals-builder/tests/*.test.ts builders/upstream-pipeline/tests/*.test.ts builders/capital-allocation-tracking-builder/tests/*.test.ts builders/commitment-tracking-builder/tests/*.test.ts builders/narrative-consistency-builder/tests/*.test.ts builders/accounting-stability-builder/tests/*.test.ts builders/trust-signals-builder/tests/*.test.ts builders/quarter-understanding-builder/tests/*.test.ts builders/investor-intelligence-builder/tests/*.test.ts governance/company-knowledge-governance/tests/*.test.ts"
   },
   "keywords": [],
   "author": "",

@@ -1,6 +1,6 @@
+import type { FilingArtifactContent } from "../../contracts/artifacts/filing-artifact-content.js";
 import type { ThemesArtifactContent } from "../themes/contract.js";
 import type {
-  FilingArtifactContent,
   StructuredPromptContext,
 } from "./types.js";
 
@@ -17,8 +17,8 @@ export function buildStructuredPromptContext(input: {
       title: theme.title,
       summary: theme.summary,
       category: theme.category,
-      evidence_hashes: uniqueSorted(
-        theme.evidence.map(({ excerpt_hash }) => excerpt_hash),
+      evidence_refs: uniqueSorted(
+        theme.evidence.map(({ evidence_ref }) => evidence_ref),
       ),
     }));
 
@@ -29,8 +29,8 @@ export function buildStructuredPromptContext(input: {
       filing_id: input.filing.filing_id,
       filing_type: input.filing.filing_type,
       filing_content: input.filing.filing_content,
-      evidence_hashes: uniqueSorted(
-        orderedThemes.flatMap(({ evidence_hashes }) => evidence_hashes),
+      evidence_refs: uniqueSorted(
+        orderedThemes.flatMap(({ evidence_refs }) => evidence_refs),
       ),
     },
     themes: orderedThemes,

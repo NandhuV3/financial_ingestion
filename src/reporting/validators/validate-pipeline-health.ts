@@ -46,7 +46,7 @@ export function validatePipelineHealth(input: {
   if (input.themeMetrics.missing_evidence_ids.length > 0) {
     healthChecks.push({
       status: "failed",
-      message: `Theme evidence references missing chunk IDs: ${input.themeMetrics.missing_evidence_ids.join(", ")}.`,
+      message: `Theme evidence references missing from the configured evidence source: ${input.themeMetrics.missing_evidence_ids.join(", ")}.`,
     });
   }
 

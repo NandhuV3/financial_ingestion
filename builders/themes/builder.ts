@@ -1,3 +1,4 @@
+import { promises as fs } from "node:fs";
 import type { PromptResolver } from "../../src/prompt-registry/prompt-resolver.js";
 import type { Builder } from "../../packages/builder-framework/src/builder.js";
 import type { BuilderContext } from "../../packages/builder-framework/src/builder-context.js";
@@ -10,22 +11,27 @@ import {
   type Theme,
   type ThemesArtifactContent,
 } from "./contract.js";
-import {
-  buildFilingEvidenceCatalog,
-  canonicalEvidenceForHash,
-} from "./evidence.js";
 import { calculateThemesConfidence, buildThemesEvaluationHooks } from "./evaluation.js";
-import { buildThemesUserPrompt, THEMES_PROMPT_ID } from "./prompt.js";
+import {
+  renderThemesUserPrompt,
+  THEMES_PROMPT_ID,
+  THEMES_PROMPT_VERSION,
+} from "../../src/prompt-registry/themes-prompt.js";
 import {
   createThemeId,
   normalizeThemeKey,
   parseThemesLLMOutput,
+  resolveThemesDependencies,
   validateThemeCandidate,
   validateThemesArtifactContent,
   validateThemesInput,
 } from "./validator.js";
-import type { ThemeCandidate, ThemesBuilderInput } from "./types.js";
-import type { FilingEvidenceCatalogEntry } from "./types.js";
+import type {
+  ThemeCandidate,
+  ThemePromptEvidence,
+  ThemesBuilderInput,
+} from "./types.js";
+import type { EvidenceCatalogEntry } from "../../contracts/artifacts/evidence-catalog-artifact-content.js";
 
 export type ThemesBuilderOptions = {
   promptResolver: Pick<PromptResolver, "resolve">;
@@ -47,8 +53,19 @@ export class ThemesBuilder implements Builder<ThemesBuilderInput, ThemesArtifact
   async execute(
     context: BuilderContext<ThemesBuilderInput>,
   ): Promise<BuilderResult<ThemesArtifactContent>> {
-    const evidenceCatalog = buildFilingEvidenceCatalog(context.input);
-    const prompt = this.options.promptResolver.resolve(THEMES_PROMPT_ID);
+    const dependencies = resolveThemesDependencies({
+      dependencies: context.dependencies,
+      companyId: context.companyId,
+      periodId: context.periodId,
+    });
+    const evidenceCatalogContent = dependencies.evidence_catalog.content;
+    const evidenceCatalog = evidenceCatalogContent.entries;
+    const promptEvidence = buildThemePromptEvidence(evidenceCatalog);
+
+    const prompt = this.options.promptResolver.resolve(
+      THEMES_PROMPT_ID,
+      THEMES_PROMPT_VERSION,
+    );
     const modelVersion = this.options.modelVersion ?? THEMES_MODEL_VERSION;
 
     context.recordPromptReference({
@@ -76,7 +93,10 @@ export class ThemesBuilder implements Builder<ThemesBuilderInput, ThemesArtifact
           },
           {
             role: "user",
-            content: buildThemesUserPrompt(context.input, evidenceCatalog),
+            content: renderThemesUserPrompt({
+              filingType: context.input.filing_type,
+              evidence: promptEvidence,
+            }),
           },
         ],
       });
@@ -87,23 +107,38 @@ export class ThemesBuilder implements Builder<ThemesBuilderInput, ThemesArtifact
     }
 
     const parsed = parseThemesLLMOutput(outputText);
+
+    await fs.mkdir("tmp", { recursive: true });
+    await fs.writeFile(
+      "tmp/themes-raw.json",
+      JSON.stringify(parsed, null, 2),
+    );
+    console.log("[themes] raw response written to tmp/themes-raw.json");
+
     const { themes, duplicateCount } = buildThemes(
-      context.input,
+      evidenceCatalogContent.filing_id,
       parsed.themes,
       evidenceCatalog,
+      promptEvidence,
     );
     const confidence = calculateThemesConfidence(themes, duplicateCount);
     const content: ThemesArtifactContent = {
-      company_id: context.input.company_id,
-      period_id: context.input.period_id,
-      filing_id: context.input.filing_id,
+      company_id: evidenceCatalogContent.company_id,
+      period_id: evidenceCatalogContent.period_id,
+      filing_id: evidenceCatalogContent.filing_id,
       filing_type: context.input.filing_type,
       themes,
       confidence,
-      evaluation_hooks: buildThemesEvaluationHooks(themes, duplicateCount, prompt.version, modelVersion),
+      evaluation_hooks: buildThemesEvaluationHooks(
+        themes,
+        duplicateCount,
+        prompt.version,
+        modelVersion,
+        evidenceCatalog,
+      ),
     };
 
-    validateThemesArtifactContent(content);
+    validateThemesArtifactContent(content, evidenceCatalog);
 
     return {
       content,
@@ -113,16 +148,17 @@ export class ThemesBuilder implements Builder<ThemesBuilderInput, ThemesArtifact
 }
 
 function buildThemes(
-  input: ThemesBuilderInput,
+  filingId: string,
   candidates: ThemeCandidate[],
-  evidenceCatalog: FilingEvidenceCatalogEntry[],
+  evidenceCatalog: EvidenceCatalogEntry[],
+  promptEvidence: ThemePromptEvidence[],
 ): { themes: Theme[]; duplicateCount: number } {
   const seen = new Set<string>();
   const themes: Theme[] = [];
   let duplicateCount = 0;
 
   for (const [index, candidate] of candidates.entries()) {
-    validateThemeCandidate(candidate, index, evidenceCatalog);
+    validateThemeCandidate(candidate, index, promptEvidence);
 
     const key = normalizeThemeKey(candidate.title, candidate.summary);
 
@@ -133,25 +169,30 @@ function buildThemes(
 
     seen.add(key);
     themes.push({
-      theme_id: createThemeId(input.filing_id, candidate.title, candidate.summary),
+      theme_id: createThemeId(filingId, candidate.title, candidate.summary),
       title: candidate.title.trim(),
       summary: candidate.summary.trim(),
       category: candidate.category,
-      evidence: candidate.evidence.map((evidence) => {
-        const canonical = canonicalEvidenceForHash(
-          evidenceCatalog,
-          evidence.excerpt_hash,
+      evidence: candidate.paragraph_indexes.map((paragraphIndex) => {
+        const promptEvidenceIndex = promptEvidence.findIndex(
+          ({ paragraph_index }) => paragraph_index === paragraphIndex,
         );
+        const canonical = evidenceCatalog[promptEvidenceIndex];
 
         if (!canonical) {
           throw new BuilderValidationError(
-            `Theme evidence hash is not present in the filing evidence catalog: ${evidence.excerpt_hash}`,
+            `Theme paragraph_index is not present in the supplied filing paragraphs: ${paragraphIndex}`,
           );
         }
 
-        return canonical;
+        return {
+          evidence_ref: canonical.evidence_ref,
+          evidence_hash: canonical.evidence_hash,
+          section_name: canonical.section_name,
+          paragraph_index: canonical.paragraph_index,
+        };
       }),
-      evidence_count: candidate.evidence.length,
+      evidence_count: candidate.paragraph_indexes.length,
       confidence: confidenceFromCandidate(candidate),
     });
   }
@@ -160,5 +201,15 @@ function buildThemes(
 }
 
 function confidenceFromCandidate(candidate: ThemeCandidate): number {
-  return candidate.evidence.length > 0 ? 1 : 0;
+  return candidate.paragraph_indexes.length > 0 ? 1 : 0;
+}
+
+function buildThemePromptEvidence(
+  evidenceCatalog: EvidenceCatalogEntry[],
+): ThemePromptEvidence[] {
+  return evidenceCatalog.map((entry, index) => ({
+    paragraph_index: index + 1,
+    section_name: entry.section_name,
+    paragraph_text: entry.paragraph_text,
+  }));
 }

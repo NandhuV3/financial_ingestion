@@ -1,7 +1,6 @@
 import { getCompanyConfig } from "../config/companies.js";
 import { resolveFilingDate } from "../storage/resolve-filing.js";
 import { runPreAiPipeline } from "./pipeline-pre-ai.js";
-import { runThemePipeline } from "./pipeline-themes.js";
 
 async function runFilingPipeline(ticker: string, filingDate?: string): Promise<void> {
   const company = getCompanyConfig(ticker);
@@ -10,7 +9,6 @@ async function runFilingPipeline(ticker: string, filingDate?: string): Promise<v
   console.log(`Running filing pipeline for ${company.company} (${company.ticker}) ${resolvedFilingDate}`);
 
   await runPreAiPipeline(company.ticker, resolvedFilingDate);
-  await runThemePipeline(company.ticker, resolvedFilingDate);
 
   console.log(`Filing pipeline complete for ${company.company} (${company.ticker}) ${resolvedFilingDate}`);
 }

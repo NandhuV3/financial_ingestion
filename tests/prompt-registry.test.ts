@@ -10,9 +10,11 @@ import {
 } from "../src/prompt-registry/cache-prompt-provider.js";
 import {
   FilesystemPromptProvider,
-  STRUCTURED_INTELLIGENCE_SYSTEM_PROMPT_ID,
   THEME_GENERATION_SYSTEM_PROMPT_ID,
 } from "../src/prompt-registry/filesystem-prompt-provider.js";
+import {
+  STRUCTURED_INTELLIGENCE_PROMPT_ID,
+} from "../builders/structured-intelligence/contract.js";
 import { FilePromptActivationStore } from "../src/prompt-registry/prompt-activation-store.js";
 import type { PromptActivation } from "../src/prompt-registry/prompt-activation.types.js";
 import { FilePromptEvaluationStore } from "../src/prompt-registry/prompt-evaluation-store.js";
@@ -21,30 +23,53 @@ import { refreshPromptCache } from "../src/prompt-registry/prompt-cache.js";
 import { calculateEffectivePromptHash, calculatePromptHash } from "../src/prompt-registry/prompt-hash.js";
 import { PromptResolver } from "../src/prompt-registry/prompt-resolver.js";
 import type { PromptProvider } from "../src/prompt-registry/prompt.types.js";
-import { STRUCTURED_INTELLIGENCE_SYSTEM_PROMPT } from "../src/structured-intelligence/build-structured-intelligence.prompt.js";
-import { STRUCTURED_INTELLIGENCE_PROMPT_VERSION } from "../src/structured-intelligence/structured-intelligence.constants.js";
-import { THEME_SYSTEM_PROMPT } from "../src/themes/theme-input.js";
+
 
 describe("prompt registry", () => {
   it("resolves the theme generation prompt from filesystem source", () => {
     const prompt = new PromptResolver(new FilesystemPromptProvider()).resolve(THEME_GENERATION_SYSTEM_PROMPT_ID);
 
     assert.equal(prompt.promptId, THEME_GENERATION_SYSTEM_PROMPT_ID);
-    assert.equal(prompt.version, "theme-generation-v1");
+    assert.equal(prompt.version, "theme-generation-v5");
     assert.equal(prompt.source, "filesystem");
-    assert.equal(prompt.content, THEME_SYSTEM_PROMPT);
-    assert.equal(prompt.hash, calculatePromptHash(THEME_SYSTEM_PROMPT));
     assert.equal(prompt.activationId, null);
+    assert.match(prompt.content, /filing-supported business narratives/);
+    assert.match(prompt.content, /not a section heading, generic topic/);
+    assert.match(prompt.content, /Prefer fewer high-quality Themes/);
+    assert.match(prompt.content, /prompt-local paragraph_index values/);
+    assert.match(prompt.content, /Select the\s+paragraph indexes/);
+    assert.match(
+      prompt.content,
+      /Do not create or manage evidence\s+identifiers/,
+    );
+    assert.doesNotMatch(prompt.content, /evidence_ref/);
+    assert.doesNotMatch(prompt.content, /chunk ids?/i);
+    assert.doesNotMatch(prompt.content, /filing chunks?/i);
+  });
+
+  it("keeps Theme prompt content in Prompt Registry", async () => {
+    const builderPromptSource = await readFile(
+      join(process.cwd(), "builders/themes/prompt.ts"),
+      "utf8",
+    );
+
+    assert.doesNotMatch(
+      builderPromptSource,
+      /Generate filing-supported business narratives/,
+    );
+    assert.match(
+      builderPromptSource,
+      /from "\.\.\/\.\.\/src\/prompt-registry\/themes-prompt\.js"/,
+    );
   });
 
   it("resolves the Structured Intelligence prompt from filesystem source", () => {
-    const prompt = new PromptResolver(new FilesystemPromptProvider()).resolve(STRUCTURED_INTELLIGENCE_SYSTEM_PROMPT_ID);
+    const prompt = new PromptResolver(new FilesystemPromptProvider()).resolve(
+      STRUCTURED_INTELLIGENCE_PROMPT_ID,
+    );
 
-    assert.equal(prompt.promptId, STRUCTURED_INTELLIGENCE_SYSTEM_PROMPT_ID);
-    assert.equal(prompt.version, STRUCTURED_INTELLIGENCE_PROMPT_VERSION);
+    assert.equal(prompt.promptId, STRUCTURED_INTELLIGENCE_PROMPT_ID);
     assert.equal(prompt.source, "filesystem");
-    assert.equal(prompt.content, STRUCTURED_INTELLIGENCE_SYSTEM_PROMPT);
-    assert.equal(prompt.hash, calculatePromptHash(STRUCTURED_INTELLIGENCE_SYSTEM_PROMPT));
     assert.equal(prompt.activationId, null);
   });
 
@@ -68,10 +93,10 @@ describe("prompt registry", () => {
       new FilesystemPromptProvider(),
     ).resolve(
       "structured-intelligence-builder-system",
-      "structured-intelligence-builder-v2",
+      "structured-intelligence-builder-v4",
     );
 
-    assert.equal(prompt.version, "structured-intelligence-builder-v2");
+    assert.equal(prompt.version, "structured-intelligence-builder-v4");
     assert.match(prompt.content, /"product_name": "string"/);
   });
 
@@ -130,7 +155,6 @@ describe("prompt registry", () => {
     ]).resolve(THEME_GENERATION_SYSTEM_PROMPT_ID);
 
     assert.equal(prompt.source, "filesystem");
-    assert.equal(prompt.content, THEME_SYSTEM_PROMPT);
   });
 
   it("falls back to filesystem when cache is corrupt", async () => {
@@ -144,7 +168,6 @@ describe("prompt registry", () => {
     ]).resolve(THEME_GENERATION_SYSTEM_PROMPT_ID);
 
     assert.equal(prompt.source, "filesystem");
-    assert.equal(prompt.content, THEME_SYSTEM_PROMPT);
   });
 
   it("falls back to filesystem on cache miss", async () => {
@@ -155,7 +178,6 @@ describe("prompt registry", () => {
     ]).resolve(THEME_GENERATION_SYSTEM_PROMPT_ID);
 
     assert.equal(prompt.source, "filesystem");
-    assert.equal(prompt.content, THEME_SYSTEM_PROMPT);
   });
 
   it("fails resolution when cached prompt hash does not match content", async () => {
@@ -190,8 +212,6 @@ describe("prompt registry", () => {
 
     assert.ok(prompts.length >= 2);
     assert.ok(themePrompt);
-    assert.equal(themePrompt.source, "cache");
-    assert.equal(themePrompt.hash, calculatePromptHash(themePrompt.content));
     assert.deepEqual(promptFile, themePrompt);
   });
 
@@ -272,12 +292,12 @@ describe("prompt registry", () => {
     const record = activation({
       activation_id: "activation-1",
       prompt_id: THEME_GENERATION_SYSTEM_PROMPT_ID,
-      active_version: "theme-generation-v1",
+      active_version: "theme-generation-v5",
     });
 
     await evaluationStore.saveEvaluation(evaluation({
       prompt_id: THEME_GENERATION_SYSTEM_PROMPT_ID,
-      prompt_version: "theme-generation-v1",
+      prompt_version: "theme-generation-v5",
     }));
     await store.saveActivation(record);
 
@@ -290,12 +310,12 @@ describe("prompt registry", () => {
     const store = new FilePromptActivationStore(cacheRoot);
 
     await evaluationStore.saveEvaluation(evaluation({
-      prompt_version: "theme-generation-v1",
+      prompt_version: "theme-generation-v5",
       overall_score: 0.94,
     }));
     await store.saveActivation(activation({
       activation_id: "activation-success",
-      active_version: "theme-generation-v1",
+      active_version: "theme-generation-v5",
     }));
 
     assert.equal(store.getActivation(THEME_GENERATION_SYSTEM_PROMPT_ID)?.activation_id, "activation-success");
@@ -308,7 +328,7 @@ describe("prompt registry", () => {
     await assert.rejects(
       () => store.saveActivation(activation({
         activation_id: "activation-missing-eval",
-        active_version: "theme-generation-v1",
+        active_version: "theme-generation-v5",
       })),
       /evaluation is missing/,
     );
@@ -320,14 +340,14 @@ describe("prompt registry", () => {
     const store = new FilePromptActivationStore(cacheRoot);
 
     await evaluationStore.saveEvaluation(evaluation({
-      prompt_version: "theme-generation-v1",
+      prompt_version: "theme-generation-v5",
       overall_score: 0.89,
     }));
 
     await assert.rejects(
       () => store.saveActivation(activation({
         activation_id: "activation-low-score",
-        active_version: "theme-generation-v1",
+        active_version: "theme-generation-v5",
       })),
       /below minimum/,
     );
@@ -339,14 +359,14 @@ describe("prompt registry", () => {
     const store = new FilePromptActivationStore(cacheRoot);
 
     await evaluationStore.saveEvaluation(evaluation({
-      prompt_version: "theme-generation-v1",
+      prompt_version: "theme-generation-v5",
       failures: ["structured intelligence score regressed"],
     }));
 
     await assert.rejects(
       () => store.saveActivation(activation({
         activation_id: "activation-failures",
-        active_version: "theme-generation-v1",
+        active_version: "theme-generation-v5",
       })),
       /evaluation has failures/,
     );
@@ -365,7 +385,7 @@ describe("prompt registry", () => {
 
     await evaluationStore.saveEvaluation(evaluation({
       evaluation_id: "evaluation-baseline",
-      prompt_version: "theme-generation-v1",
+      prompt_version: "theme-generation-v5",
       overall_score: 0.98,
       created_at: "2026-06-12T00:00:00.000Z",
     }));
@@ -373,7 +393,7 @@ describe("prompt registry", () => {
       evaluation_id: "evaluation-candidate",
       prompt_version: "theme-generation-candidate-v1",
       overall_score: 0.94,
-      compared_against: "theme-generation-v1",
+      compared_against: "theme-generation-v5",
       created_at: "2026-06-12T00:01:00.000Z",
     }));
 
@@ -391,13 +411,13 @@ describe("prompt registry", () => {
     const store = new FilePromptEvaluationStore(cacheRoot);
     const record = evaluation({
       evaluation_id: "evaluation-persisted",
-      prompt_version: "theme-generation-v1",
+      prompt_version: "theme-generation-v5",
       overall_score: 0.93,
     });
 
     await store.saveEvaluation(record);
 
-    assert.deepEqual(store.getEvaluation(THEME_GENERATION_SYSTEM_PROMPT_ID, "theme-generation-v1"), record);
+    assert.deepEqual(store.getEvaluation(THEME_GENERATION_SYSTEM_PROMPT_ID, "theme-generation-v5"), record);
   });
 });
 
@@ -425,7 +445,7 @@ function activation(overrides: Partial<PromptActivation>): PromptActivation {
   return {
     activation_id: "activation-test",
     prompt_id: THEME_GENERATION_SYSTEM_PROMPT_ID,
-    active_version: "theme-generation-v1",
+    active_version: "theme-generation-v5",
     activated_at: "2026-06-12T00:00:00.000Z",
     activated_by: "test",
     reason: "test activation",
@@ -437,7 +457,7 @@ function evaluation(overrides: Partial<PromptEvaluation>): PromptEvaluation {
   return {
     evaluation_id: "evaluation-test",
     prompt_id: THEME_GENERATION_SYSTEM_PROMPT_ID,
-    prompt_version: "theme-generation-v1",
+    prompt_version: "theme-generation-v5",
     overall_score: 0.95,
     passed: true,
     warnings: [],

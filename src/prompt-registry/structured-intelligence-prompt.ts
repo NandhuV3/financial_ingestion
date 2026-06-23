@@ -1,6 +1,6 @@
 export const STRUCTURED_INTELLIGENCE_BUILDER_SYSTEM_PROMPT = `Generate filing-scoped Structured Intelligence from the supplied JSON context.
 
-Use only the supplied filing content, themes, and evidence hashes.
+Use only the supplied filing content, themes, and evidence references.
 Return JSON only. The root object must contain exactly one field: "understanding".
 
 Return exactly this schema:
@@ -10,7 +10,7 @@ Return exactly this schema:
       "summary": "string",
       "value_creation": "string",
       "confidence": 0.0,
-      "evidence_refs": ["supplied-evidence-hash"]
+      "evidence_refs": ["supplied-evidence-ref"]
     } | null,
     "products": [
       {
@@ -18,7 +18,7 @@ Return exactly this schema:
         "description": "string",
         "importance": "high | medium | low",
         "confidence": 0.0,
-        "evidence_refs": ["supplied-evidence-hash"]
+        "evidence_refs": ["supplied-evidence-ref"]
       }
     ],
     "customers": [
@@ -26,7 +26,7 @@ Return exactly this schema:
         "customer_segment": "string",
         "description": "string",
         "confidence": 0.0,
-        "evidence_refs": ["supplied-evidence-hash"]
+        "evidence_refs": ["supplied-evidence-ref"]
       }
     ],
     "revenue_model": {
@@ -34,14 +34,14 @@ Return exactly this schema:
       "recurring_components": ["string"],
       "transactional_components": ["string"],
       "confidence": 0.0,
-      "evidence_refs": ["supplied-evidence-hash"]
+      "evidence_refs": ["supplied-evidence-ref"]
     } | null,
     "revenue_drivers": [
       {
         "driver": "string",
         "explanation": "string",
         "confidence": 0.0,
-        "evidence_refs": ["supplied-evidence-hash"]
+        "evidence_refs": ["supplied-evidence-ref"]
       }
     ],
     "competitive_positioning": [
@@ -49,7 +49,7 @@ Return exactly this schema:
         "position": "string",
         "supporting_reasoning": "string",
         "confidence": 0.0,
-        "evidence_refs": ["supplied-evidence-hash"]
+        "evidence_refs": ["supplied-evidence-ref"]
       }
     ],
     "strategic_priorities": [
@@ -57,7 +57,7 @@ Return exactly this schema:
         "priority": "string",
         "rationale": "string",
         "confidence": 0.0,
-        "evidence_refs": ["supplied-evidence-hash"]
+        "evidence_refs": ["supplied-evidence-ref"]
       }
     ],
     "management_focus": [
@@ -65,15 +65,15 @@ Return exactly this schema:
         "focus_area": "string",
         "explanation": "string",
         "confidence": 0.0,
-        "evidence_refs": ["supplied-evidence-hash"]
+        "evidence_refs": ["supplied-evidence-ref"]
       }
     ],
     "risks": [
       {
         "risk": "string",
-        "explanation": "string",
+        "explanation": "string | null",
         "confidence": 0.0,
-        "evidence_refs": ["supplied-evidence-hash"]
+        "evidence_refs": ["supplied-evidence-ref"]
       }
     ],
     "dependencies": [
@@ -81,7 +81,7 @@ Return exactly this schema:
         "dependency": "string",
         "explanation": "string",
         "confidence": 0.0,
-        "evidence_refs": ["supplied-evidence-hash"]
+        "evidence_refs": ["supplied-evidence-ref"]
       }
     ]
   }
@@ -97,12 +97,37 @@ Schema rules:
 - All collection fields must be arrays and may be empty.
 - Every emitted singleton or collection item must include confidence between
   0 and 1 and at least one evidence_refs entry.
-- evidence_refs may contain only evidence hashes supplied in the context.
+- evidence_refs may contain only canonical evidence_ref values supplied in the
+  context.
 - Do not emit theme IDs as evidence references.
 - Do not emit status, artifact confidence, value references, replayability
   metadata, evaluation metadata, framework metadata, or lineage.
 - Do not emit duplicate items with labels that differ only by Unicode form,
   case, leading or trailing whitespace, or repeated internal whitespace.
+- Produce concise, filing-supported descriptions. Normalize filing language
+  without adding implications that are not explicitly stated in the supplied
+  evidence.
+- Do not generate consequences, effects, predictions, management intent,
+  significance judgments, strategic conclusions, causal explanations, or
+  investor conclusions unless the supplied evidence explicitly states them.
+- Forbidden consequence language includes: could impact, could affect, may
+  affect, may result in, may cause, might cause, could hinder, could reduce,
+  and could increase.
+- Forbidden unsupported significance language includes: significant,
+  significantly, major, critical, key, primary, essential, important,
+  and meaningful.
+- Forbidden unsupported causal language includes: because, therefore, thus,
+  enables, drives, supports, improves, strengthens, and results in.
+- When a risk is explicitly identified but its explanation cannot be grounded,
+  emit null for explanation. Do not invent an explanation.
+- Example of unsupported output:
+  {"risk":"Cybersecurity incidents","explanation":"Could impact customer trust."}
+- Grounded replacement:
+  {"risk":"Cybersecurity incidents","explanation":null}
+- Example of unsupported output:
+  {"driver":"Azure consumption","explanation":"A significant revenue driver."}
+- Grounded replacement:
+  {"driver":"Azure consumption","explanation":"Identified as a revenue driver."}
 - Do not use prior filings, external knowledge, Company Knowledge, Topic
   Assignment, Topic Evolution, Business Signals, Trust artifacts, market data,
   recommendations, valuation language, or investor conclusions.`;

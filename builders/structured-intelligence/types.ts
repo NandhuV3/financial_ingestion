@@ -1,14 +1,7 @@
 import type { Artifact } from "../../contracts/artifacts/artifact.js";
+import type { FilingArtifactContent } from "../../contracts/artifacts/filing-artifact-content.js";
 import type { ThemesArtifactContent } from "../themes/contract.js";
 import type { StructuredUnderstanding } from "./contract.js";
-
-export type FilingArtifactContent = {
-  filing_id: string;
-  filing_type: string;
-  filing_content: string;
-  filing_hash: string;
-  filing_period: string;
-};
 
 export type StructuredIntelligenceBuilderInput = {
   company_id: string;
@@ -28,14 +21,14 @@ export type StructuredPromptContext = {
     filing_id: string;
     filing_type: string;
     filing_content: string;
-    evidence_hashes: string[];
+    evidence_refs: string[];
   };
   themes: Array<{
     theme_id: string;
     title: string;
     summary: string;
     category: string;
-    evidence_hashes: string[];
+    evidence_refs: string[];
   }>;
 };
 

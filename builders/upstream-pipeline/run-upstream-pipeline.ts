@@ -1,4 +1,6 @@
 import type { Artifact } from "../../contracts/artifacts/artifact.js";
+import type { EvidenceCatalogArtifactContent } from "../../contracts/artifacts/evidence-catalog-artifact-content.js";
+import type { FilingArtifactContent } from "../../contracts/artifacts/filing-artifact-content.js";
 import { calculateArtifactHash } from "../../packages/artifact-framework/src/artifact-service.js";
 import { BuilderExecutionError } from "../../packages/builder-framework/src/builder-errors.js";
 import type { BuilderResult } from "../../packages/builder-framework/src/builder-result.js";
@@ -14,6 +16,12 @@ import {
   COMPANY_KNOWLEDGE_BUILDER_TYPE,
   type CompanyKnowledgeCandidateContent,
 } from "../company-knowledge-builder/contract.js";
+import {
+  EVIDENCE_CATALOG_BUILDER_TYPE,
+} from "../evidence-catalog-builder/contract.js";
+import type {
+  EvidenceCatalogBuilderInput,
+} from "../evidence-catalog-builder/types.js";
 import type {
   CompanyKnowledgeArtifactContent,
   CompanyKnowledgeBuilderInput,
@@ -23,7 +31,6 @@ import {
   type StructuredIntelligenceArtifactContent,
 } from "../structured-intelligence/contract.js";
 import type {
-  FilingArtifactContent,
   StructuredIntelligenceBuilderInput,
 } from "../structured-intelligence/types.js";
 import {
@@ -64,6 +71,8 @@ export type RunUpstreamPipelineInput = {
 };
 
 export const UPSTREAM_PIPELINE_STAGES = [
+  "filing",
+  "evidence_catalog",
   "themes",
   "topic_assignment",
   "topic_evolution",
@@ -86,13 +95,28 @@ export async function runUpstreamPipeline(
 ): Promise<BuilderResult<BusinessSignalsArtifactContent>> {
   validateFilingIdentity(input);
 
+  const evidenceCatalogInput: EvidenceCatalogBuilderInput = {
+    filing_artifact: input.filingArtifact.content,
+  };
+  const evidenceCatalog = await input.runtime.executor.executeBuilder<
+    EvidenceCatalogBuilderInput,
+    EvidenceCatalogArtifactContent
+  >({
+    builderType: EVIDENCE_CATALOG_BUILDER_TYPE,
+    companyId: input.companyId,
+    periodId: input.periodId,
+    executionId: executionId(input, "evidence-catalog"),
+    input: evidenceCatalogInput,
+    inputHash: calculateArtifactHash(evidenceCatalogInput),
+    dependencies: {
+      filing: input.filingArtifact,
+    },
+    generatedAt: input.generatedAt,
+  });
+  await emitArtifact(input, "evidence_catalog", evidenceCatalog);
+
   const themesInput: ThemesBuilderInput = {
-    company_id: input.companyId,
-    period_id: input.periodId,
-    filing_id: input.filingArtifact.content.filing_id,
     filing_type: filingType(input.filingArtifact.content.filing_type),
-    filing_content: input.filingArtifact.content.filing_content,
-    filing_hash: input.filingArtifact.content.filing_hash,
   };
   const themes = await input.runtime.executor.executeBuilder<
     ThemesBuilderInput,
@@ -103,9 +127,12 @@ export async function runUpstreamPipeline(
     periodId: input.periodId,
     executionId: executionId(input, "themes"),
     input: themesInput,
-    inputHash: calculateArtifactHash(themesInput),
+    inputHash: calculateArtifactHash({
+      input: themesInput,
+      evidence_catalog: evidenceCatalog.metadata.artifact_hash,
+    }),
     dependencies: {
-      filing: input.filingArtifact,
+      evidence_catalog: evidenceCatalog,
     },
     generatedAt: input.generatedAt,
   });

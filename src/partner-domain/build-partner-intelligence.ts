@@ -1,6 +1,4 @@
 import { join } from "node:path";
-import type { QuarterChangeReport } from "../change-engine/change.types.js";
-import { FileCompanyKnowledgeRepository } from "../company-knowledge/company-knowledge.repository.js";
 import { getCompanyConfig } from "../config/companies.js";
 import { fileExists, readJsonFile } from "../shared/filesystem/file-reader.js";
 import { createLogger } from "../shared/logger.js";
@@ -19,7 +17,12 @@ import { buildMoneyProfile } from "./builders/build-money-profile.js";
 import { buildPartnerSummary } from "./builders/build-partner-summary.js";
 import { buildTrustProfile } from "./builders/build-trust-profile.js";
 import type { PartnerCompanyIntelligence, PartnerIntelligenceSource } from "./partner-domain.types.js";
-import type { PartnerSourceArtifacts, PartnerTopicEvolutionSource } from "./partner-source.types.js";
+import type {
+  PartnerCompanyKnowledgeSource,
+  PartnerQuarterChange,
+  PartnerSourceArtifacts,
+  PartnerTopicEvolutionSource,
+} from "./partner-source.types.js";
 
 const logger = createLogger("partner-domain");
 
@@ -83,22 +86,26 @@ export async function loadPartnerSourceArtifacts(ticker: string, filingDate: str
     filing,
     companyKnowledge,
     themes: await readOptionalJson<ThemeOutput>(join(filingDir, "intelligence", "themes.json")),
-    quarterChange: await readOptionalJson<QuarterChangeReport>(join(filingDir, "comparison", "quarter-change-report.json")),
+    quarterChange: await readOptionalJson<PartnerQuarterChange>(
+      join(filingDir, "comparison", "quarter-change-report.json"),
+    ),
     topicEvolution: await readOptionalJson<PartnerTopicEvolutionSource>(
       join(getCompanyDirectory(ticker), "reports", "topic-evolution-report.json"),
     ),
   };
 }
 
-async function readCompanyKnowledge(ticker: string) {
-  const repository = new FileCompanyKnowledgeRepository(process.env.PARTNER_WAREHOUSE_ROOT);
-  const companyKnowledge = await repository.loadCurrent(ticker);
+async function readCompanyKnowledge(
+  ticker: string,
+): Promise<PartnerCompanyKnowledgeSource> {
+  // const repository = new FileCompanyKnowledgeRepository(process.env.PARTNER_WAREHOUSE_ROOT);
+  // const companyKnowledge = await repository.loadCurrent(ticker);
 
-  if (!companyKnowledge) {
+  // if (!companyKnowledge) {
     throw new Error(`Company Knowledge not found for ${ticker.trim().toUpperCase()}`);
-  }
+  // }
 
-  return companyKnowledge;
+  // return companyKnowledge;
 }
 
 async function readOptionalJson<T>(path: string): Promise<T | null> {

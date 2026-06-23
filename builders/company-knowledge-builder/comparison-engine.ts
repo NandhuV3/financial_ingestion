@@ -532,3 +532,4 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 const comparisonMetadataKeys = new Set(["confidence", "supporting_periods", "last_updated_period"]);
+

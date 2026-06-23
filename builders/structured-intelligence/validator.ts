@@ -1,4 +1,5 @@
 import type { Artifact } from "../../contracts/artifacts/artifact.js";
+import type { FilingArtifactContent } from "../../contracts/artifacts/filing-artifact-content.js";
 import { BuilderValidationError } from "../../packages/builder-framework/src/builder-errors.js";
 import type { ResolvedPrompt } from "../../src/prompt-registry/prompt.types.js";
 import { stableHash } from "../investor-intelligence-builder/hashes.js";
@@ -21,7 +22,6 @@ import {
   recomputeStructuredIntelligenceOutputHash,
 } from "./replayability.js";
 import type {
-  FilingArtifactContent,
   StructuredIntelligenceBuilderInput,
   StructuredIntelligenceDependencies,
   StructuredPromptContext,
@@ -45,6 +45,44 @@ const forbiddenPatterns = [
   /\bconcept[_ -]?id\b/i,
   /\btopic[_ -]?id\b/i,
 ];
+
+const forbiddenGroundingPatterns = [
+  { phrase: "could impact", pattern: /\bcould\s+impact\b/i },
+  { phrase: "could affect", pattern: /\bcould\s+affect\b/i },
+  { phrase: "may affect", pattern: /\bmay\s+affect\b/i },
+  { phrase: "may result in", pattern: /\bmay\s+result\s+in\b/i },
+  { phrase: "may cause", pattern: /\bmay\s+cause\b/i },
+  { phrase: "might cause", pattern: /\bmight\s+cause\b/i },
+  { phrase: "could hinder", pattern: /\bcould\s+hinder\b/i },
+  { phrase: "could reduce", pattern: /\bcould\s+reduce\b/i },
+  { phrase: "could increase", pattern: /\bcould\s+increase\b/i },
+  { phrase: "significant", pattern: /\bsignificant\b/i },
+  { phrase: "significantly", pattern: /\bsignificantly\b/i },
+  { phrase: "major", pattern: /\bmajor\b/i },
+  { phrase: "critical", pattern: /\bcritical\b/i },
+  { phrase: "key", pattern: /\bkey\b/i },
+  { phrase: "primary", pattern: /\bprimary\b/i },
+  { phrase: "essential", pattern: /\bessential\b/i },
+  { phrase: "important", pattern: /\bimportant\b/i },
+  { phrase: "meaningful", pattern: /\bmeaningful\b/i },
+  { phrase: "because", pattern: /\bbecause\b/i },
+  { phrase: "therefore", pattern: /\btherefore\b/i },
+  { phrase: "thus", pattern: /\bthus\b/i },
+  { phrase: "enables", pattern: /\benables\b/i },
+  { phrase: "drives", pattern: /\bdrives\b/i },
+  { phrase: "supports", pattern: /\bsupports\b/i },
+  { phrase: "improves", pattern: /\bimproves\b/i },
+  { phrase: "strengthens", pattern: /\bstrengthens\b/i },
+  { phrase: "results in", pattern: /\bresults\s+in\b/i },
+] as const;
+
+const groundingTextFields = new Set([
+  "description",
+  "explanation",
+  "rationale",
+  "supporting_reasoning",
+  "value_creation",
+]);
 
 export function validateStructuredIntelligenceInput(
   input: StructuredIntelligenceBuilderInput,
@@ -111,7 +149,7 @@ export function validateStructuredUnderstanding(
 
   const allowedEvidence = new Set(
     themes.flatMap((theme) =>
-      theme.evidence.map(({ excerpt_hash }) => excerpt_hash)),
+      theme.evidence.map(({ evidence_ref }) => evidence_ref)),
   );
 
   for (const value of groundedValues(understanding)) {
@@ -293,6 +331,8 @@ function validateGroundedValue(
     }
   }
 
+  validateGroundingLanguage(value, field);
+
   const text = Object.entries(value)
     .filter(([key]) => key !== "confidence" && key !== "evidence_refs")
     .flatMap(([, entry]) =>
@@ -303,6 +343,30 @@ function validateGroundedValue(
     throw new BuilderValidationError(
       `${field} contains forbidden boundary-crossing language.`,
     );
+  }
+}
+
+function validateGroundingLanguage(
+  value: GroundedUnderstanding,
+  field: string,
+): void {
+  for (const [key, emittedValue] of Object.entries(value)) {
+    if (
+      !groundingTextFields.has(key)
+      || emittedValue === null
+      || typeof emittedValue !== "string"
+    ) {
+      continue;
+    }
+
+    for (const forbidden of forbiddenGroundingPatterns) {
+      if (forbidden.pattern.test(emittedValue)) {
+        throw new BuilderValidationError(
+          `${field}.${key} contains forbidden phrase "${forbidden.phrase}". `
+            + `Emitted value: "${emittedValue}"`,
+        );
+      }
+    }
   }
 }
 

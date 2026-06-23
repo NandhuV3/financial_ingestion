@@ -127,6 +127,7 @@ export class StructuredIntelligenceBuilder implements Builder<
     try {
       understanding =
         parseStructuredIntelligencePromptOutput(outputText).understanding;
+
       validateStructuredUnderstanding(
         understanding,
         dependencies.themes.content.themes,

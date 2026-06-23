@@ -1,4 +1,6 @@
 import type { Theme, ThemesConfidence, ThemesEvaluationHooks } from "./contract.js";
+import type { EvidenceCatalogEntry } from "../../contracts/artifacts/evidence-catalog-artifact-content.js";
+import { evaluateThemeQuality } from "./theme-quality/evaluator.js";
 
 export function calculateThemesConfidence(themes: Theme[], duplicateCount: number): ThemesConfidence {
   const evidenceCoverage = themes.length === 0
@@ -23,6 +25,7 @@ export function buildThemesEvaluationHooks(
   duplicateCount: number,
   promptVersion: string,
   modelVersion: string,
+  evidenceCatalog?: EvidenceCatalogEntry[],
 ): ThemesEvaluationHooks {
   const totalEvidence = themes.reduce((sum, theme) => sum + theme.evidence.length, 0);
   const averageConfidence = themes.length === 0
@@ -41,6 +44,14 @@ export function buildThemesEvaluationHooks(
     },
     evidence_density: themes.length === 0 ? 0 : round(totalEvidence / themes.length),
     duplicate_count: duplicateCount,
+    ...(evidenceCatalog
+      ? {
+          theme_quality: evaluateThemeQuality({
+            themes,
+            evidenceCatalog,
+          }),
+        }
+      : {}),
   };
 }
 

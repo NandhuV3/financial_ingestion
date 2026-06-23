@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 import type { Artifact } from "../../../contracts/artifacts/artifact.js";
+import type { FilingArtifactContent } from "../../../contracts/artifacts/filing-artifact-content.js";
 import { ArtifactStatus } from "../../../contracts/artifacts/artifact-status.js";
 import type { ArtifactType } from "../../../contracts/artifacts/artifact-type.js";
 import type { ArtifactRepository } from "../../../packages/artifact-framework/src/artifact-repository.js";
@@ -15,22 +16,47 @@ import type {
   LLMResponse,
 } from "../../../packages/llm-framework/src/llm-client.js";
 import type { ResolvedPrompt } from "../../../src/prompt-registry/prompt.types.js";
-import type { FilingArtifactContent } from "../../structured-intelligence/types.js";
 import type { CompanyKnowledgeArtifactContent } from "../../company-knowledge-builder/types.js";
 import type { BusinessSignalsArtifactContent } from "../../business-signals-builder/types.js";
+import { buildEvidenceCatalogEntries } from "../../evidence-catalog-builder/catalog-builder.js";
+import type { EvidenceCatalogArtifactContent } from "../../../contracts/artifacts/evidence-catalog-artifact-content.js";
+import type { ThemesArtifactContent } from "../../themes/contract.js";
 import type { TopicRegistryArtifactContent } from "../../topic-assignment-builder/types.js";
 import type { TopicAssignmentArtifactContent } from "../../topic-assignment-builder/types.js";
 import type { TopicEvolutionArtifactContent } from "../../topic-evolution-builder/types.js";
-import { buildFilingEvidenceCatalog } from "../../themes/evidence.js";
 import {
   STRUCTURED_INTELLIGENCE_PROMPT_ID,
 } from "../../structured-intelligence/contract.js";
+import type { StructuredIntelligenceArtifactContent } from "../../structured-intelligence/contract.js";
 import { THEMES_PROMPT_ID } from "../../themes/prompt.js";
-import { createArtifactDumpObserver } from "../artifact-dump.js";
+import {
+  createArtifactDumpObserver,
+  resetArtifactDumps,
+} from "../artifact-dump.js";
 import { registerUpstreamBuilders } from "../register-builders.js";
 import { runUpstreamPipeline } from "../run-upstream-pipeline.js";
 
 describe("upstream pipeline", () => {
+  it("removes stale demo artifacts before a new execution", async (context) => {
+    const outputDirectory = await mkdtemp(join(tmpdir(), "upstream-dumps-"));
+    context.after(async () => rm(outputDirectory, { recursive: true, force: true }));
+    const artifactDumps = createArtifactDumpObserver(outputDirectory);
+    const staleFiling = filingArtifact();
+
+    await artifactDumps.observer("filing", staleFiling);
+    await artifactDumps.observer("themes", staleFiling);
+    await resetArtifactDumps(outputDirectory);
+
+    await assert.rejects(
+      () => readFile(join(outputDirectory, "00-filing.json"), "utf8"),
+      { code: "ENOENT" },
+    );
+    await assert.rejects(
+      () => readFile(join(outputDirectory, "02-themes.json"), "utf8"),
+      { code: "ENOENT" },
+    );
+  });
+
   it("executes and dumps filing through approved Company Knowledge and Business Signals", async (context) => {
     const repository = new InMemoryArtifactRepository();
     const llmClient = new UpstreamLLMClient();
@@ -75,6 +101,7 @@ describe("upstream pipeline", () => {
     );
 
     for (const artifactType of [
+      "evidence_catalog",
       "themes",
       "topic_assignment",
       "topic_evolution",
@@ -119,8 +146,43 @@ describe("upstream pipeline", () => {
         company_id: "MSFT",
         period_id: "2026-Q2",
       });
+    const evidenceCatalog =
+      await repository.getCurrent<EvidenceCatalogArtifactContent>({
+        artifact_type: "evidence_catalog",
+        company_id: "MSFT",
+        period_id: "2026-Q2",
+      });
+    const themes =
+      await repository.getCurrent<ThemesArtifactContent>({
+        artifact_type: "themes",
+        company_id: "MSFT",
+        period_id: "2026-Q2",
+      });
+    const structuredIntelligence =
+      await repository.getCurrent<StructuredIntelligenceArtifactContent>({
+        artifact_type: "structured_intelligence",
+        company_id: "MSFT",
+        period_id: "2026-Q2",
+      });
 
     assert.equal(approvedKnowledge?.content.company_knowledge_version, 1);
+    assert.equal((evidenceCatalog?.content.entries.length ?? 0) > 1, true);
+    const catalogReferences = new Set(
+      evidenceCatalog?.content.entries.map(({ evidence_ref }) => evidence_ref),
+    );
+    assert.equal(
+      themes?.content.themes.every((theme) =>
+        theme.evidence.every(({ evidence_ref }) =>
+          catalogReferences.has(evidence_ref))),
+      true,
+    );
+    assert.equal(
+      (
+        structuredIntelligence?.content.understanding.business_model
+          ?.evidence_refs ?? []
+      ).every((evidenceRef) => catalogReferences.has(evidenceRef)),
+      true,
+    );
     assert.equal(
       businessSignals?.lineage.upstream_dependencies[0]?.artifact_id,
       approvedKnowledge?.identity.artifact_id,
@@ -179,14 +241,15 @@ describe("upstream pipeline", () => {
     );
 
     const expectedDumps = [
-      ["01-themes.json", "themes"],
-      ["02-topic-assignment.json", "topic_assignment"],
-      ["03-topic-evolution.json", "topic_evolution"],
-      ["04-structured-intelligence.json", "structured_intelligence"],
-      ["05-company-knowledge-candidate.json", "company_knowledge_candidate"],
-      ["06-governance-decision.json", "governance_decision"],
-      ["07-company-knowledge.json", "company_knowledge"],
-      ["08-business-signals.json", "business_signals"],
+      ["01-evidence-catalog.json", "evidence_catalog"],
+      ["02-themes.json", "themes"],
+      ["03-topic-assignment.json", "topic_assignment"],
+      ["04-topic-evolution.json", "topic_evolution"],
+      ["05-structured-intelligence.json", "structured_intelligence"],
+      ["06-company-knowledge-candidate.json", "company_knowledge_candidate"],
+      ["07-governance-decision.json", "governance_decision"],
+      ["08-company-knowledge.json", "company_knowledge"],
+      ["09-business-signals.json", "business_signals"],
     ] as const;
 
     for (const [filename, artifactType] of expectedDumps) {
@@ -320,16 +383,6 @@ class UpstreamLLMClient implements LLMClient {
       role === "system")?.content;
 
     if (systemPrompt === THEMES_PROMPT_ID) {
-      const excerptHash = buildFilingEvidenceCatalog({
-        company_id: "MSFT",
-        period_id: "2026-Q2",
-        filing_id: "msft-2026-q2-10q",
-        filing_type: "10-Q",
-        filing_content: demoFilingContent(),
-        filing_hash: "filing-hash-1",
-      })[0]?.excerpt_hash;
-      assert.ok(excerptHash);
-
       return {
         output_text: JSON.stringify({
           themes: [
@@ -337,13 +390,7 @@ class UpstreamLLMClient implements LLMClient {
               title: "Cloud platform demand",
               summary: "Management discussed Azure demand and enterprise adoption.",
               category: "technology",
-              evidence_count: 1,
-              evidence: [
-                {
-                  section: "MD&A",
-                  excerpt_hash: excerptHash,
-                },
-              ],
+              paragraph_indexes: [2],
             },
           ],
         }),
@@ -372,14 +419,9 @@ class UpstreamLLMClient implements LLMClient {
 }
 
 function structuredUnderstanding() {
-  const evidence = buildFilingEvidenceCatalog({
-    company_id: "MSFT",
-    period_id: "2026-Q2",
-    filing_id: "msft-2026-q2-10q",
-    filing_type: "10-Q",
-    filing_content: demoFilingContent(),
-    filing_hash: "filing-hash-1",
-  }).flatMap(({ excerpt_hash }) => [excerpt_hash]);
+  const evidenceRef = evidenceEntries()[1]?.evidence_ref;
+  assert.ok(evidenceRef);
+  const evidence = [evidenceRef];
 
   return {
     business_model: {
@@ -415,7 +457,7 @@ function structuredUnderstanding() {
     revenue_drivers: [
       {
         driver: "Azure consumption",
-        explanation: "Enterprise cloud workload growth supports usage revenue.",
+        explanation: "Enterprise cloud workload growth was identified as a usage revenue driver.",
         confidence: 0.9,
         evidence_refs: evidence,
       },
@@ -431,7 +473,7 @@ function structuredUnderstanding() {
     strategic_priorities: [
       {
         priority: "Cloud capacity",
-        rationale: "Infrastructure investment supports Azure demand.",
+        rationale: "Management discussed infrastructure investment and Azure demand.",
         confidence: 0.9,
         evidence_refs: evidence,
       },
@@ -502,9 +544,16 @@ function filingArtifact(): Artifact<FilingArtifactContent> {
 
 function demoFilingContent(): string {
   return [
+    "ITEM 2. MANAGEMENT'S DISCUSSION AND ANALYSIS",
     "Microsoft discussed Azure demand and enterprise customer adoption.",
     "The integrated enterprise platform depends on data center capacity.",
-  ].join(" ");
+    "ITEM 1A. RISK FACTORS",
+    "Competition and infrastructure constraints may affect cloud execution.",
+  ].join("\n\n");
+}
+
+function evidenceEntries() {
+  return buildEvidenceCatalogEntries(filingArtifact().content);
 }
 
 class InMemoryArtifactRepository implements ArtifactRepository {

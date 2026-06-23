@@ -1,3 +1,4 @@
+import type { FilingArtifactContent } from "../../contracts/artifacts/filing-artifact-content.js";
 import type { ResolvedPrompt } from "../../src/prompt-registry/prompt.types.js";
 import { stableHash } from "../investor-intelligence-builder/hashes.js";
 import {
@@ -7,7 +8,6 @@ import {
   type StructuredIntelligenceReplayabilityMetadata,
 } from "./contract.js";
 import type {
-  FilingArtifactContent,
   StructuredPromptContext,
 } from "./types.js";
 import type { ThemesArtifactContent } from "../themes/contract.js";

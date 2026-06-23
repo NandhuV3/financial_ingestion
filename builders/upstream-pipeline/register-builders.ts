@@ -12,6 +12,20 @@ import {
   BUSINESS_SIGNALS_PIPELINE_VERSION,
   BUSINESS_SIGNALS_SCHEMA_VERSION,
 } from "../business-signals-builder/contract.js";
+import { EvidenceCatalogBuilder } from "../evidence-catalog-builder/builder.js";
+import {
+  EVIDENCE_CATALOG_BUILDER_TYPE,
+  EVIDENCE_CATALOG_BUILDER_VERSION,
+  EVIDENCE_CATALOG_PIPELINE_VERSION,
+  EVIDENCE_CATALOG_SCHEMA_VERSION,
+} from "../evidence-catalog-builder/contract.js";
+import { FilingArtifactBuilder } from "../filing-artifact-builder/builder.js";
+import {
+  FILING_ARTIFACT_BUILDER_TYPE,
+  FILING_ARTIFACT_BUILDER_VERSION,
+  FILING_ARTIFACT_PIPELINE_VERSION,
+  FILING_ARTIFACT_SCHEMA_VERSION,
+} from "../filing-artifact-builder/contract.js";
 import { CompanyKnowledgeBuilder } from "../company-knowledge-builder/builder.js";
 import {
   COMPANY_KNOWLEDGE_BUILDER_TYPE,
@@ -87,6 +101,22 @@ export function registerUpstreamBuilders(
   const registry = new BuilderRegistry();
 
   registry.registerBuilder({
+    builder_type: FILING_ARTIFACT_BUILDER_TYPE,
+    artifact_type: "filing",
+    version: FILING_ARTIFACT_BUILDER_VERSION,
+    schema_version: FILING_ARTIFACT_SCHEMA_VERSION,
+    pipeline_version: FILING_ARTIFACT_PIPELINE_VERSION,
+  }, () => new FilingArtifactBuilder());
+
+  registry.registerBuilder({
+    builder_type: EVIDENCE_CATALOG_BUILDER_TYPE,
+    artifact_type: "evidence_catalog",
+    version: EVIDENCE_CATALOG_BUILDER_VERSION,
+    schema_version: EVIDENCE_CATALOG_SCHEMA_VERSION,
+    pipeline_version: EVIDENCE_CATALOG_PIPELINE_VERSION,
+  }, () => new EvidenceCatalogBuilder());
+
+  registry.registerBuilder({
     builder_type: THEMES_BUILDER_TYPE,
     artifact_type: "themes",
     version: THEMES_BUILDER_VERSION,
@@ -114,33 +144,33 @@ export function registerUpstreamBuilders(
     pipeline_version: TOPIC_EVOLUTION_PIPELINE_VERSION,
   }, () => new TopicEvolutionBuilder());
 
-  registry.registerBuilder({
-    builder_type: STRUCTURED_INTELLIGENCE_BUILDER_TYPE,
-    artifact_type: "structured_intelligence",
-    version: STRUCTURED_INTELLIGENCE_BUILDER_VERSION,
-    schema_version: STRUCTURED_INTELLIGENCE_SCHEMA_VERSION,
-    pipeline_version: STRUCTURED_INTELLIGENCE_PIPELINE_VERSION,
-  }, () => new StructuredIntelligenceBuilder({
-    promptResolver: options.promptResolver,
-    llmClient: options.llmClient,
-    modelVersion: options.structuredIntelligenceModelVersion,
-  }));
+  // registry.registerBuilder({
+  //   builder_type: STRUCTURED_INTELLIGENCE_BUILDER_TYPE,
+  //   artifact_type: "structured_intelligence",
+  //   version: STRUCTURED_INTELLIGENCE_BUILDER_VERSION,
+  //   schema_version: STRUCTURED_INTELLIGENCE_SCHEMA_VERSION,
+  //   pipeline_version: STRUCTURED_INTELLIGENCE_PIPELINE_VERSION,
+  // }, () => new StructuredIntelligenceBuilder({
+  //   promptResolver: options.promptResolver,
+  //   llmClient: options.llmClient,
+  //   modelVersion: options.structuredIntelligenceModelVersion,
+  // }));
 
-  registry.registerBuilder({
-    builder_type: COMPANY_KNOWLEDGE_BUILDER_TYPE,
-    artifact_type: "company_knowledge_candidate",
-    version: COMPANY_KNOWLEDGE_BUILDER_VERSION,
-    schema_version: COMPANY_KNOWLEDGE_CANDIDATE_SCHEMA_VERSION,
-    pipeline_version: COMPANY_KNOWLEDGE_CANDIDATE_PIPELINE_VERSION,
-  }, () => new CompanyKnowledgeBuilder());
+  // registry.registerBuilder({
+  //   builder_type: COMPANY_KNOWLEDGE_BUILDER_TYPE,
+  //   artifact_type: "company_knowledge_candidate",
+  //   version: COMPANY_KNOWLEDGE_BUILDER_VERSION,
+  //   schema_version: COMPANY_KNOWLEDGE_CANDIDATE_SCHEMA_VERSION,
+  //   pipeline_version: COMPANY_KNOWLEDGE_CANDIDATE_PIPELINE_VERSION,
+  // }, () => new CompanyKnowledgeBuilder());
 
-  registry.registerBuilder({
-    builder_type: BUSINESS_SIGNALS_BUILDER_TYPE,
-    artifact_type: "business_signals",
-    version: BUSINESS_SIGNALS_BUILDER_VERSION,
-    schema_version: BUSINESS_SIGNALS_SCHEMA_VERSION,
-    pipeline_version: BUSINESS_SIGNALS_PIPELINE_VERSION,
-  }, () => new BusinessSignalsBuilder());
+  // registry.registerBuilder({
+  //   builder_type: BUSINESS_SIGNALS_BUILDER_TYPE,
+  //   artifact_type: "business_signals",
+  //   version: BUSINESS_SIGNALS_BUILDER_VERSION,
+  //   schema_version: BUSINESS_SIGNALS_SCHEMA_VERSION,
+  //   pipeline_version: BUSINESS_SIGNALS_PIPELINE_VERSION,
+  // }, () => new BusinessSignalsBuilder());
 
   return {
     artifactService,

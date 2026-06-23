@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { Artifact } from "../../contracts/artifacts/artifact.js";
 import type {
@@ -7,14 +7,16 @@ import type {
 } from "./run-upstream-pipeline.js";
 
 const ARTIFACT_DUMP_FILENAMES: Record<UpstreamPipelineStage, string> = {
-  themes: "01-themes.json",
-  topic_assignment: "02-topic-assignment.json",
-  topic_evolution: "03-topic-evolution.json",
-  structured_intelligence: "04-structured-intelligence.json",
-  company_knowledge_candidate: "05-company-knowledge-candidate.json",
-  governance_decision: "06-governance-decision.json",
-  company_knowledge: "07-company-knowledge.json",
-  business_signals: "08-business-signals.json",
+  filing: "00-filing.json",
+  evidence_catalog: "01-evidence-catalog.json",
+  themes: "02-themes.json",
+  topic_assignment: "03-topic-assignment.json",
+  topic_evolution: "04-topic-evolution.json",
+  structured_intelligence: "05-structured-intelligence.json",
+  company_knowledge_candidate: "06-company-knowledge-candidate.json",
+  governance_decision: "07-governance-decision.json",
+  company_knowledge: "08-company-knowledge.json",
+  business_signals: "09-business-signals.json",
 };
 
 export function createArtifactDumpObserver(
@@ -31,6 +33,17 @@ export function createArtifactDumpObserver(
       await writeArtifactDump(absoluteOutputDirectory, stage, artifact);
     },
   };
+}
+
+export async function resetArtifactDumps(
+  outputDirectory = "output/demo",
+): Promise<void> {
+  const absoluteOutputDirectory = resolve(outputDirectory);
+
+  await Promise.all(
+    Object.values(ARTIFACT_DUMP_FILENAMES).map((filename) =>
+      rm(resolve(absoluteOutputDirectory, filename), { force: true })),
+  );
 }
 
 export async function writeArtifactDump(

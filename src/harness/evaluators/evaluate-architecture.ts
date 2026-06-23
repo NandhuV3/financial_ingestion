@@ -13,27 +13,27 @@ const contracts: LayerContract[] = [
   {
     name: "Themes",
     expected: "LLM",
-    paths: ["src/ai/generate-themes.ts"],
+    paths: ["builders/themes"],
   },
   {
     name: "Topic Assignment",
     expected: "deterministic",
-    paths: ["src/topic-assignment-v2"],
+    paths: ["builders/topic-assignment-builder"],
   },
   {
     name: "Topic Evolution",
     expected: "deterministic",
-    paths: ["src/topic-evolution"],
+    paths: ["builders/topic-evolution-builder"],
   },
   {
     name: "Structured Intelligence",
     expected: "LLM",
-    paths: ["src/structured-intelligence/build-structured-intelligence.prompt.ts"],
+    paths: ["builders/structured-intelligence"],
   },
   {
     name: "Company Knowledge",
     expected: "deterministic",
-    paths: ["src/company-knowledge"],
+    paths: ["builders/company-knowledge-builder"],
   },
   {
     name: "Partner Domain",

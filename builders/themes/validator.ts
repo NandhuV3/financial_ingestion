@@ -1,26 +1,23 @@
 import { createHash } from "node:crypto";
+import type { Artifact } from "../../contracts/artifacts/artifact.js";
+import type { EvidenceCatalogArtifactContent } from "../../contracts/artifacts/evidence-catalog-artifact-content.js";
 import { BuilderValidationError } from "../../packages/builder-framework/src/builder-errors.js";
 import { THEME_CATEGORIES, type Theme, type ThemesArtifactContent } from "./contract.js";
 import type {
-  FilingEvidenceCatalogEntry,
   ThemeCandidate,
+  ThemePromptEvidence,
+  ThemesDependencies,
   ThemesBuilderInput,
   ThemesLLMOutput,
 } from "./types.js";
+import { validateThemeQualityMetrics } from "./theme-quality/validator.js";
 
 const validFilingTypes = new Set(["10-K", "10-Q", "Transcript"]);
 const themeOutputKeys = [
   "title",
   "summary",
   "category",
-  "evidence_count",
-  "evidence",
-] as const;
-const evidenceOutputKeys = [
-  "section",
-  "excerpt_hash",
-  "page_number",
-  "paragraph_reference",
+  "paragraph_indexes",
 ] as const;
 const forbiddenPatterns = [
   /\btopic[_ -]?id\b/i,
@@ -35,12 +32,6 @@ const forbiddenPatterns = [
 ];
 
 export function validateThemesInput(input: ThemesBuilderInput): void {
-  requireText(input.company_id, "company_id");
-  requireText(input.period_id, "period_id");
-  requireText(input.filing_id, "filing_id");
-  requireText(input.filing_content, "filing_content");
-  requireText(input.filing_hash, "filing_hash");
-
   if (!validFilingTypes.has(input.filing_type)) {
     throw new BuilderValidationError(`Invalid filing_type: ${String(input.filing_type)}`);
   }
@@ -78,7 +69,7 @@ export function parseThemesLLMOutput(outputText: string): ThemesLLMOutput {
 export function validateThemeCandidate(
   candidate: ThemeCandidate,
   index: number,
-  evidenceCatalog?: FilingEvidenceCatalogEntry[],
+  promptEvidence?: ThemePromptEvidence[],
 ): void {
   requireText(candidate.title, `themes[${index}].title`);
   requireText(candidate.summary, `themes[${index}].summary`);
@@ -87,39 +78,66 @@ export function validateThemeCandidate(
     throw invalidCategoryError(index, candidate.category);
   }
 
-  if (!Array.isArray(candidate.evidence) || candidate.evidence.length === 0) {
-    throw new BuilderValidationError(`themes[${index}].evidence must contain at least one item.`);
-  }
-
   if (
-    !Number.isInteger(candidate.evidence_count)
-    || candidate.evidence_count !== candidate.evidence.length
+    !Array.isArray(candidate.paragraph_indexes)
+    || candidate.paragraph_indexes.length === 0
   ) {
     throw new BuilderValidationError(
-      `themes[${index}].evidence_count must equal evidence length.`,
+      `themes[${index}].paragraph_indexes must contain at least one item.`,
     );
   }
 
-  for (const [evidenceIndex, evidence] of candidate.evidence.entries()) {
-    requireText(evidence.section, `themes[${index}].evidence[${evidenceIndex}].section`);
-    requireText(evidence.excerpt_hash, `themes[${index}].evidence[${evidenceIndex}].excerpt_hash`);
+  const seenParagraphIndexes = new Set<number>();
 
-    if (
-      evidenceCatalog
-      && !evidenceCatalog.some(({ excerpt_hash }) =>
-        excerpt_hash === evidence.excerpt_hash)
-    ) {
+  for (
+    const [paragraphIndexPosition, paragraphIndex]
+    of candidate.paragraph_indexes.entries()
+  ) {
+    if (!Number.isInteger(paragraphIndex) || paragraphIndex < 1) {
       throw new BuilderValidationError(
-        `themes[${index}].evidence[${evidenceIndex}].excerpt_hash is not present in the filing evidence catalog.`,
+        `themes[${index}].paragraph_indexes[${paragraphIndexPosition}] `
+        + "must be a positive integer.",
       );
     }
+
+    if (seenParagraphIndexes.has(paragraphIndex)) {
+      throw new BuilderValidationError(
+        `themes[${index}].paragraph_indexes must contain unique values.`,
+      );
+    }
+
+    seenParagraphIndexes.add(paragraphIndex);
+
+    if (
+      promptEvidence
+      && !promptEvidence.some(({ paragraph_index }) =>
+        paragraph_index === paragraphIndex)
+    ) {
+      throw new BuilderValidationError(
+        `themes[${index}].paragraph_indexes[${paragraphIndexPosition}] `
+        + "is not present in the supplied filing paragraphs.",
+      );
+    }
+  }
+
+  if (
+    promptEvidence
+    && new Set(promptEvidence.map(({ paragraph_index }) => paragraph_index))
+      .size !== promptEvidence.length
+  ) {
+    throw new BuilderValidationError(
+      "Theme prompt evidence paragraph indexes must be unique.",
+    );
   }
 
   rejectForbiddenLanguage(candidate.title, `themes[${index}].title`);
   rejectForbiddenLanguage(candidate.summary, `themes[${index}].summary`);
 }
 
-export function validateThemesArtifactContent(content: ThemesArtifactContent): void {
+export function validateThemesArtifactContent(
+  content: ThemesArtifactContent,
+  evidenceCatalog?: EvidenceCatalogArtifactContent["entries"],
+): void {
   requireText(content.company_id, "content.company_id");
   requireText(content.period_id, "content.period_id");
   requireText(content.filing_id, "content.filing_id");
@@ -136,6 +154,20 @@ export function validateThemesArtifactContent(content: ThemesArtifactContent): v
   validateConfidence(content.confidence.evidence_coverage, "confidence.evidence_coverage");
   validateConfidence(content.confidence.extraction_consistency, "confidence.extraction_consistency");
   validateConfidence(content.confidence.filing_coverage, "confidence.filing_coverage");
+
+  if (evidenceCatalog) {
+    if (!content.evaluation_hooks.theme_quality) {
+      throw new BuilderValidationError(
+        "evaluation_hooks.theme_quality is required when the Evidence Catalog is available.",
+      );
+    }
+
+    validateThemeQualityMetrics({
+      themes: content.themes,
+      evidenceCatalog,
+      metrics: content.evaluation_hooks.theme_quality,
+    });
+  }
 }
 
 export function normalizeThemeKey(title: string, summary: string): string {
@@ -172,13 +204,26 @@ function validateTheme(theme: Theme, index: number): void {
 
   for (const [evidenceIndex, evidence] of theme.evidence.entries()) {
     requireText(
-      evidence.section,
-      `themes[${index}].evidence[${evidenceIndex}].section`,
+      evidence.evidence_ref,
+      `themes[${index}].evidence[${evidenceIndex}].evidence_ref`,
     );
     requireText(
-      evidence.excerpt_hash,
-      `themes[${index}].evidence[${evidenceIndex}].excerpt_hash`,
+      evidence.evidence_hash,
+      `themes[${index}].evidence[${evidenceIndex}].evidence_hash`,
     );
+    requireText(
+      evidence.section_name,
+      `themes[${index}].evidence[${evidenceIndex}].section_name`,
+    );
+
+    if (
+      !Number.isInteger(evidence.paragraph_index)
+      || evidence.paragraph_index < 1
+    ) {
+      throw new BuilderValidationError(
+        `themes[${index}].evidence[${evidenceIndex}].paragraph_index must be a positive integer.`,
+      );
+    }
   }
 
   if (theme.evidence_count !== theme.evidence.length) {
@@ -242,72 +287,27 @@ function parseThemeCandidate(
     throw invalidCategoryError(index, value.category);
   }
 
-  if (!Number.isInteger(value.evidence_count)) {
+  if (
+    !Array.isArray(value.paragraph_indexes)
+    || value.paragraph_indexes.length === 0
+  ) {
     throw new BuilderValidationError(
-      `themes[${index}].evidence_count must be an integer.`,
+      `themes[${index}].paragraph_indexes must contain at least one item.`,
     );
   }
-
-  if (!Array.isArray(value.evidence) || value.evidence.length === 0) {
-    throw new BuilderValidationError(
-      `themes[${index}].evidence must contain at least one item.`,
-    );
-  }
-
-  const evidence = value.evidence.map((item, evidenceIndex) =>
-    parseSourceEvidence(item, index, evidenceIndex));
 
   const candidate: ThemeCandidate = {
     title: value.title,
     summary: value.summary,
     category: value.category as ThemeCandidate["category"],
-    evidence_count: value.evidence_count as number,
-    evidence,
+    paragraph_indexes: value.paragraph_indexes.map(
+      (paragraphIndex) => paragraphIndex,
+    ) as number[],
   };
 
   validateThemeCandidate(candidate, index);
 
   return candidate;
-}
-
-function parseSourceEvidence(
-  value: unknown,
-  themeIndex: number,
-  evidenceIndex: number,
-): ThemeCandidate["evidence"][number] {
-  const field = `themes[${themeIndex}].evidence[${evidenceIndex}]`;
-
-  if (!isRecord(value)) {
-    throw new BuilderValidationError(`${field} must be an object.`);
-  }
-
-  assertExactKeys(value, evidenceOutputKeys, field);
-  requireText(value.section, `${field}.section`);
-  requireText(value.excerpt_hash, `${field}.excerpt_hash`);
-
-  if (
-    value.page_number !== undefined
-    && (!Number.isInteger(value.page_number) || (value.page_number as number) < 0)
-  ) {
-    throw new BuilderValidationError(
-      `${field}.page_number must be a non-negative integer when provided.`,
-    );
-  }
-
-  if (value.paragraph_reference !== undefined) {
-    requireText(value.paragraph_reference, `${field}.paragraph_reference`);
-  }
-
-  return {
-    section: value.section,
-    excerpt_hash: value.excerpt_hash,
-    ...(value.page_number === undefined
-      ? {}
-      : { page_number: value.page_number as number }),
-    ...(value.paragraph_reference === undefined
-      ? {}
-      : { paragraph_reference: value.paragraph_reference as string }),
-  };
 }
 
 function assertExactKeys(
@@ -317,9 +317,7 @@ function assertExactKeys(
 ): void {
   const actualKeys = Object.keys(value);
   const unknownKeys = actualKeys.filter((key) => !allowedKeys.includes(key));
-  const missingKeys = allowedKeys
-    .filter((key) => !["page_number", "paragraph_reference"].includes(key))
-    .filter((key) => !(key in value));
+  const missingKeys = allowedKeys.filter((key) => !(key in value));
 
   if (unknownKeys.length > 0 || missingKeys.length > 0) {
     throw new BuilderValidationError(
@@ -328,6 +326,59 @@ function assertExactKeys(
       + `Missing: ${missingKeys.join(", ") || "none"}.`,
     );
   }
+}
+
+export function resolveThemesDependencies(input: {
+  dependencies: Record<string, Artifact<unknown>>;
+  companyId: string;
+  periodId: string;
+}): ThemesDependencies {
+  if (input.dependencies.filing !== undefined) {
+    throw new BuilderValidationError(
+      "Themes must not consume a direct Filing Artifact dependency.",
+    );
+  }
+
+  const evidenceCatalog = requiredArtifact<EvidenceCatalogArtifactContent>(
+    input.dependencies.evidence_catalog,
+    "evidence_catalog",
+  );
+
+  if (
+    evidenceCatalog.identity.artifact_type !== "evidence_catalog"
+    || evidenceCatalog.identity.company_id !== input.companyId
+    || evidenceCatalog.identity.period_id !== input.periodId
+  ) {
+    throw new BuilderValidationError(
+      "Themes dependency identity does not match the build target.",
+    );
+  }
+
+  if (
+    evidenceCatalog.content.company_id !== input.companyId
+    || evidenceCatalog.content.period_id !== input.periodId
+  ) {
+    throw new BuilderValidationError(
+      "Themes dependency content does not reconcile.",
+    );
+  }
+
+  return {
+    evidence_catalog: evidenceCatalog,
+  };
+}
+
+function requiredArtifact<T>(
+  artifact: Artifact<unknown> | undefined,
+  name: string,
+): Artifact<T> {
+  if (!artifact) {
+    throw new BuilderValidationError(
+      `Missing required Themes dependency: ${name}.`,
+    );
+  }
+
+  return artifact as Artifact<T>;
 }
 
 function invalidCategoryError(

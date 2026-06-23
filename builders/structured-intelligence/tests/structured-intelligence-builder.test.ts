@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { Artifact } from "../../../contracts/artifacts/artifact.js";
+import type { FilingArtifactContent } from "../../../contracts/artifacts/filing-artifact-content.js";
 import { ArtifactStatus } from "../../../contracts/artifacts/artifact-status.js";
 import type { ArtifactRepository } from "../../../packages/artifact-framework/src/artifact-repository.js";
 import { ArtifactService } from "../../../packages/artifact-framework/src/artifact-service.js";
@@ -31,7 +32,6 @@ import {
 } from "../contract.js";
 import { buildStructuredPromptContext } from "../context-builder.js";
 import type {
-  FilingArtifactContent,
   StructuredIntelligenceBuilderInput,
 } from "../types.js";
 import {
@@ -58,6 +58,10 @@ describe("structured intelligence builder V1", () => {
     assert.match(prompt?.content ?? "", /"risk": "string"/);
     assert.match(prompt?.content ?? "", /"dependency": "string"/);
     assert.match(prompt?.content ?? "", /generic aliases such as name/);
+    assert.match(prompt?.content ?? "", /could impact/);
+    assert.match(prompt?.content ?? "", /significant/);
+    assert.match(prompt?.content ?? "", /causal language/);
+    assert.match(prompt?.content ?? "", /emit null for explanation/);
   });
 
   it("builds complete content through governed prompt execution", async () => {
@@ -193,6 +197,82 @@ describe("structured intelligence builder V1", () => {
         BuilderValidationError,
       );
     }
+  });
+
+  it("rejects unsupported consequence language", async () => {
+    const understanding = completeUnderstanding();
+    understanding.risks[0]!.explanation = "Could impact customer trust.";
+
+    await assert.rejects(
+      () => execute(new StaticLLMClient(promptOutput(understanding))),
+      (error: unknown) =>
+        error instanceof BuilderValidationError
+        && error.message.includes(
+          'understanding.risks[0].explanation contains forbidden phrase "could impact"',
+        )
+        && error.message.includes(
+          'Emitted value: "Could impact customer trust."',
+        ),
+    );
+  });
+
+  it("rejects unsupported significance language", async () => {
+    const understanding = completeUnderstanding();
+    understanding.revenue_drivers[0]!.explanation =
+      "A significant revenue driver.";
+
+    await assert.rejects(
+      () => execute(new StaticLLMClient(promptOutput(understanding))),
+      (error: unknown) =>
+        error instanceof BuilderValidationError
+        && error.message.includes(
+          'understanding.revenue_drivers[0].explanation contains forbidden phrase "significant"',
+        ),
+    );
+  });
+
+  it("rejects unsupported causal reasoning", async () => {
+    const understanding = completeUnderstanding();
+    understanding.competitive_positioning[0]!.supporting_reasoning =
+      "Integrated services supports competitive advantage.";
+
+    await assert.rejects(
+      () => execute(new StaticLLMClient(promptOutput(understanding))),
+      (error: unknown) =>
+        error instanceof BuilderValidationError
+        && error.message.includes(
+          'understanding.competitive_positioning[0].supporting_reasoning contains forbidden phrase "supports"',
+        ),
+    );
+  });
+
+  it("accepts grounded factual descriptions", async () => {
+    const understanding = completeUnderstanding();
+    understanding.management_focus[0]!.explanation =
+      "Management discussed AI infrastructure investment.";
+
+    const artifact = await execute(
+      new StaticLLMClient(promptOutput(understanding)),
+    );
+
+    assert.equal(
+      artifact.content.understanding.management_focus[0]?.explanation,
+      "Management discussed AI infrastructure investment.",
+    );
+  });
+
+  it("accepts null risk explanations", async () => {
+    const understanding = completeUnderstanding();
+    understanding.risks[0]!.explanation = null;
+
+    const artifact = await execute(
+      new StaticLLMClient(promptOutput(understanding)),
+    );
+
+    assert.equal(
+      artifact.content.understanding.risks[0]?.explanation,
+      null,
+    );
   });
 
   it("rejects duplicate normalized collection labels", async () => {
@@ -421,7 +501,7 @@ function completeUnderstanding(): StructuredUnderstanding {
     },
     revenue_drivers: [{
       driver: "Cloud demand",
-      explanation: "Cloud consumption supports revenue.",
+      explanation: "Cloud consumption was identified as a revenue driver.",
       confidence: 0.8,
       evidence_refs: ["evidence-1"],
     }],
@@ -433,7 +513,7 @@ function completeUnderstanding(): StructuredUnderstanding {
     }],
     strategic_priorities: [{
       priority: "AI infrastructure",
-      rationale: "Capacity investment supports AI demand.",
+      rationale: "Management discussed capacity investment and AI demand.",
       confidence: 0.8,
       evidence_refs: ["evidence-2"],
     }],
@@ -445,7 +525,7 @@ function completeUnderstanding(): StructuredUnderstanding {
     }],
     risks: [{
       risk: "Capacity constraints",
-      explanation: "Capacity may constrain service delivery.",
+      explanation: null,
       confidence: 0.8,
       evidence_refs: ["evidence-2"],
     }],
@@ -613,7 +693,12 @@ function themesArtifact(): Artifact<ThemesArtifactContent> {
           title: "Cloud demand",
           summary: "Cloud demand increased.",
           category: "technology",
-          evidence: [{ section: "MD&A", excerpt_hash: "evidence-1" }],
+          evidence: [{
+            evidence_ref: "evidence-1",
+            evidence_hash: "hash-1",
+            section_name: "management_discussion",
+            paragraph_index: 1,
+          }],
           evidence_count: 1,
           confidence: 1,
         },
@@ -622,7 +707,12 @@ function themesArtifact(): Artifact<ThemesArtifactContent> {
           title: "AI infrastructure",
           summary: "AI infrastructure investment continued.",
           category: "strategy",
-          evidence: [{ section: "MD&A", excerpt_hash: "evidence-2" }],
+          evidence: [{
+            evidence_ref: "evidence-2",
+            evidence_hash: "hash-2",
+            section_name: "management_discussion",
+            paragraph_index: 2,
+          }],
           evidence_count: 1,
           confidence: 1,
         },

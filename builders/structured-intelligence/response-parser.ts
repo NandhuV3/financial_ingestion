@@ -239,7 +239,7 @@ function parseRisk(value: unknown, index: number): RiskUnderstanding {
 
   return {
     risk: requiredString(record.risk, `${field}.risk`),
-    explanation: requiredString(record.explanation, `${field}.explanation`),
+    explanation: nullableString(record.explanation, `${field}.explanation`),
     confidence: requiredConfidence(record.confidence, `${field}.confidence`),
     evidence_refs: requiredEvidence(record.evidence_refs, `${field}.evidence_refs`),
   };
@@ -309,6 +309,14 @@ function requiredString(value: unknown, field: string): string {
   }
 
   return value;
+}
+
+function nullableString(value: unknown, field: string): string | null {
+  if (value === null) {
+    return null;
+  }
+
+  return requiredString(value, field);
 }
 
 function requiredStringArray(value: unknown, field: string): string[] {

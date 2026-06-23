@@ -121,7 +121,7 @@ function calculateThemeUtilization(
 
   const usedEvidence = new Set(evidenceReferenceSets(understanding).flat());
   const usedThemeCount = themes.filter((theme) =>
-    theme.evidence.some(({ excerpt_hash }) => usedEvidence.has(excerpt_hash)))
+    theme.evidence.some(({ evidence_ref }) => usedEvidence.has(evidence_ref)))
     .length;
 
   return usedThemeCount / themes.length;

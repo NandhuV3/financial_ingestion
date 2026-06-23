@@ -1,10 +1,4 @@
 import {
-  STRUCTURED_INTELLIGENCE_PROMPT_VERSION,
-} from "../structured-intelligence/structured-intelligence.constants.js";
-import {
-  STRUCTURED_INTELLIGENCE_SYSTEM_PROMPT,
-} from "../structured-intelligence/build-structured-intelligence.prompt.js";
-import {
   STRUCTURED_INTELLIGENCE_PROMPT_ID as STRUCTURED_INTELLIGENCE_BUILDER_PROMPT_ID,
   STRUCTURED_INTELLIGENCE_PROMPT_VERSION as STRUCTURED_INTELLIGENCE_BUILDER_PROMPT_VERSION,
 } from "../../builders/structured-intelligence/contract.js";
@@ -31,21 +25,20 @@ import {
 import {
   QUARTER_UNDERSTANDING_SYSTEM_PROMPT,
 } from "./quarter-understanding-prompt.js";
-import { THEME_SYSTEM_PROMPT } from "../themes/theme-input.js";
+import {
+  THEMES_PROMPT_ID,
+  THEMES_PROMPT_VERSION,
+  THEMES_SYSTEM_PROMPT,
+} from "./themes-prompt.js";
 import { calculatePromptHash } from "./prompt-hash.js";
 import type { PromptProvider, ResolvedPrompt } from "./prompt.types.js";
 
-export const THEME_GENERATION_SYSTEM_PROMPT_ID = "theme-generation-system";
-export const STRUCTURED_INTELLIGENCE_SYSTEM_PROMPT_ID = "structured-intelligence-system";
+export const THEME_GENERATION_SYSTEM_PROMPT_ID = THEMES_PROMPT_ID;
 
 const prompts: Record<string, Omit<ResolvedPrompt, "promptId" | "source" | "hash" | "activationId">> = {
   [THEME_GENERATION_SYSTEM_PROMPT_ID]: {
-    version: "theme-generation-v1",
-    content: THEME_SYSTEM_PROMPT,
-  },
-  [STRUCTURED_INTELLIGENCE_SYSTEM_PROMPT_ID]: {
-    version: STRUCTURED_INTELLIGENCE_PROMPT_VERSION,
-    content: STRUCTURED_INTELLIGENCE_SYSTEM_PROMPT,
+    version: THEMES_PROMPT_VERSION,
+    content: THEMES_SYSTEM_PROMPT,
   },
   [STRUCTURED_INTELLIGENCE_BUILDER_PROMPT_ID]: {
     version: STRUCTURED_INTELLIGENCE_BUILDER_PROMPT_VERSION,

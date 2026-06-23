@@ -89,20 +89,33 @@ describe("pipeline error rendering", () => {
   it("parses the optional debug flag without consuming its neighbors", () => {
     const parsed = parseArguments([
       "--debug",
-      "--input",
-      "filing.json",
+      "--ticker",
+      "msft",
+      "--filing-date",
+      "2026-04-29",
       "--output",
       "output/test",
     ]);
 
     assert.equal(parsed.debug, true);
+    assert.equal(parsed.ticker, "MSFT");
+    assert.equal(parsed.filingDate, "2026-04-29");
     assert.equal(parsed.outputDirectory, "output/test");
-    assert.equal(parsed.inputPath.endsWith("filing.json"), true);
+  });
+
+  it("defaults demo execution to the latest MSFT normalized filing", () => {
+    const parsed = parseArguments([]);
+
+    assert.equal(parsed.ticker, "MSFT");
+    assert.equal(parsed.filingDate, undefined);
+    assert.equal(parsed.outputDirectory, "output/demo");
   });
 
   it("renders CLI failures without stacks by default and with stacks in debug mode", async () => {
-    const normal = await captureConsoleError(() => runDemoCli([]));
-    const debug = await captureConsoleError(() => runDemoCli(["--debug"]));
+    const normal = await captureConsoleError(() =>
+      runDemoCli(["--unknown"]));
+    const debug = await captureConsoleError(() =>
+      runDemoCli(["--debug", "--unknown"]));
 
     assert.equal(normal.exitCode, 1);
     assert.match(normal.output, /Error Type: ConfigurationError/);

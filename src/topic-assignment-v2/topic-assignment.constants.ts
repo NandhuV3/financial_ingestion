@@ -1,2 +1,0 @@
-export const AUTO_ASSIGN_THRESHOLD = 0.85;
-export const LOW_CONFIDENCE_THRESHOLD = 0.70;

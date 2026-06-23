@@ -3,7 +3,7 @@ export const STRUCTURED_INTELLIGENCE_BUILDER_VERSION = "structured-intelligence-
 export const STRUCTURED_INTELLIGENCE_SCHEMA_VERSION = "structured-intelligence-artifact-v1";
 export const STRUCTURED_INTELLIGENCE_PIPELINE_VERSION = "structured-intelligence-pipeline-v1";
 export const STRUCTURED_INTELLIGENCE_PROMPT_ID = "structured-intelligence-builder-system";
-export const STRUCTURED_INTELLIGENCE_PROMPT_VERSION = "structured-intelligence-builder-v2";
+export const STRUCTURED_INTELLIGENCE_PROMPT_VERSION = "structured-intelligence-builder-v4";
 export const STRUCTURED_INTELLIGENCE_MODEL_VERSION = "gpt-4o-mini";
 export const STRUCTURED_INTELLIGENCE_EVALUATION_VERSION = "structured-intelligence-evaluation-v1";
 export const STRUCTURED_INTELLIGENCE_TEMPERATURE = 0 as const;
@@ -78,7 +78,7 @@ export type ManagementFocusUnderstanding = GroundedUnderstanding & {
 
 export type RiskUnderstanding = GroundedUnderstanding & {
   risk: string;
-  explanation: string;
+  explanation: string | null;
 };
 
 export type DependencyUnderstanding = GroundedUnderstanding & {

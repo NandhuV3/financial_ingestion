@@ -1,7 +1,9 @@
+import type { ThemeQualityMetrics } from "./theme-quality/types.js";
+
 export const THEMES_BUILDER_TYPE = "themes";
-export const THEMES_BUILDER_VERSION = "themes-builder-v1";
-export const THEMES_SCHEMA_VERSION = "themes-artifact-v1";
-export const THEMES_PIPELINE_VERSION = "themes-pipeline-v1";
+export const THEMES_BUILDER_VERSION = "themes-builder-v3";
+export const THEMES_SCHEMA_VERSION = "themes-artifact-v3";
+export const THEMES_PIPELINE_VERSION = "themes-pipeline-v3";
 export const THEMES_MODEL_VERSION = "gpt-4o-mini";
 
 export const THEME_CATEGORIES = [
@@ -22,10 +24,10 @@ export const THEME_CATEGORIES = [
 export type ThemeCategory = typeof THEME_CATEGORIES[number];
 
 export type SourceEvidence = {
-  section: string;
-  excerpt_hash: string;
-  page_number?: number;
-  paragraph_reference?: string;
+  evidence_ref: string;
+  evidence_hash: string;
+  section_name: string;
+  paragraph_index: number;
 };
 
 export type Theme = {
@@ -58,6 +60,7 @@ export type ThemesEvaluationHooks = {
   };
   evidence_density: number;
   duplicate_count: number;
+  theme_quality?: ThemeQualityMetrics;
 };
 
 export type ThemesArtifactContent = {

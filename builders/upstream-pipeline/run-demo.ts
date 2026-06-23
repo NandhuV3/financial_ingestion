@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { Artifact } from "../../contracts/artifacts/artifact.js";
+import type { FilingArtifactContent } from "../../contracts/artifacts/filing-artifact-content.js";
 import { ArtifactStatus } from "../../contracts/artifacts/artifact-status.js";
-import { validateArtifact } from "../../packages/artifact-framework/src/artifact-validation.js";
 import { calculateArtifactHash } from "../../packages/artifact-framework/src/artifact-service.js";
 import {
   ArtifactValidationError,
@@ -17,18 +17,30 @@ import {
 } from "../../packages/builder-framework/src/platform-error-renderer.js";
 import { PromptResolver } from "../../src/prompt-registry/prompt-resolver.js";
 import { loadEnv } from "../../src/shared/config/load.env.js";
-import type { FilingArtifactContent } from "../structured-intelligence/types.js";
 import type {
   TopicRegistryArtifactContent,
 } from "../topic-assignment-builder/types.js";
-import { createArtifactDumpObserver } from "./artifact-dump.js";
+import {
+  FILING_ARTIFACT_BUILDER_TYPE,
+} from "../filing-artifact-builder/contract.js";
+import type {
+  FilingArtifactBuilderInput,
+} from "../filing-artifact-builder/types.js";
+import {
+  createArtifactDumpObserver,
+  resetArtifactDumps,
+} from "./artifact-dump.js";
 import { MemoryArtifactRepository } from "./memory-artifact-repository.js";
+import {
+  loadNormalizedFilingBuilderInput,
+} from "./normalized-filing-adapter.js";
 import { OpenAIResponsesLLMClient } from "./openai-llm-client.js";
 import { registerUpstreamBuilders } from "./register-builders.js";
 import { runUpstreamPipeline } from "./run-upstream-pipeline.js";
 
 export type DemoArguments = {
-  inputPath: string;
+  ticker: string;
+  filingDate?: string;
   outputDirectory: string;
   debug: boolean;
 };
@@ -43,7 +55,10 @@ type StoredTopicRegistryEntry = {
 
 export async function runDemo(rawArguments: string[]): Promise<void> {
   const args = parseArguments(rawArguments);
-  const filingArtifact = await loadFilingArtifact(args.inputPath);
+  const normalizedFiling = await loadNormalizedFilingBuilderInput({
+    ticker: args.ticker,
+    filingDate: args.filingDate,
+  });
   const topicRegistryArtifact = await loadTopicRegistryArtifact();
   const apiKey = process.env.OPENAI_API_KEY;
 
@@ -69,10 +84,27 @@ export async function runDemo(rawArguments: string[]): Promise<void> {
   });
   const artifactDumps = createArtifactDumpObserver(args.outputDirectory);
 
-  await repository.create(filingArtifact);
+  await resetArtifactDumps(args.outputDirectory);
   await repository.create(topicRegistryArtifact);
 
   try {
+    const filingArtifact = await runtime.executor.executeBuilder<
+      FilingArtifactBuilderInput,
+      FilingArtifactContent
+    >({
+      builderType: FILING_ARTIFACT_BUILDER_TYPE,
+      companyId: normalizedFiling.builderInput.company_id,
+      periodId: normalizedFiling.builderInput.period_id,
+      executionId: [
+        normalizedFiling.builderInput.company_id,
+        normalizedFiling.builderInput.period_id,
+        "filing-artifact",
+      ].join(":"),
+      input: normalizedFiling.builderInput,
+      inputHash: calculateArtifactHash(normalizedFiling.builderInput),
+    });
+    await artifactDumps.observer("filing", filingArtifact);
+
     const result = await runUpstreamPipeline({
       runtime,
       filingArtifact,
@@ -185,7 +217,8 @@ async function loadTopicRegistryArtifact(): Promise<
 }
 
 export function parseArguments(args: string[]): DemoArguments {
-  let inputPath: string | undefined;
+  let ticker = "MSFT";
+  let filingDate: string | undefined;
   let outputDirectory = "output/demo";
   let debug = false;
 
@@ -193,8 +226,14 @@ export function parseArguments(args: string[]): DemoArguments {
     const argument = args[index];
     const value = args[index + 1];
 
-    if (argument === "--input" && value) {
-      inputPath = value;
+    if (argument === "--ticker" && value) {
+      ticker = value;
+      index += 1;
+      continue;
+    }
+
+    if (argument === "--filing-date" && value) {
+      filingDate = value;
       index += 1;
       continue;
     }
@@ -214,65 +253,26 @@ export function parseArguments(args: string[]): DemoArguments {
       `Unknown or incomplete argument: ${argument ?? ""}`,
       {
         suggestedAction:
-          "Use --input <filing-artifact.json>, optional --output <directory>, and optional --debug.",
+          "Use optional --ticker <ticker>, --filing-date <YYYY-MM-DD>, --output <directory>, and --debug.",
       },
     );
   }
 
-  if (!inputPath) {
+  if (ticker.trim() === "") {
     throw new ConfigurationError(
-      "Usage: npm run demo:upstream -- --input <filing-artifact.json> [--output output/demo] [--debug]",
+      "Ticker must be a non-empty value.",
       {
-        suggestedAction: "Provide the required --input filing artifact path.",
+        suggestedAction: "Provide a valid ticker with --ticker.",
       },
     );
   }
 
   return {
-    inputPath: resolve(inputPath),
+    ticker: ticker.trim().toUpperCase(),
+    filingDate,
     outputDirectory,
     debug,
   };
-}
-
-async function loadFilingArtifact(
-  inputPath: string,
-): Promise<Artifact<FilingArtifactContent>> {
-  let parsed: Artifact<unknown>;
-
-  try {
-    parsed = JSON.parse(await readFile(inputPath, "utf8")) as Artifact<unknown>;
-    validateArtifact(parsed);
-  } catch (error) {
-    throw new ArtifactValidationError(
-      `Demo filing artifact could not be loaded or validated: ${platformErrorMessage(error)}`,
-      {
-        cause: error,
-        suggestedAction: "Provide a valid filing artifact JSON file and retry.",
-      },
-    );
-  }
-
-  if (parsed.identity.artifact_type !== "filing") {
-    throw new ArtifactValidationError(
-      "Demo input must be an Artifact<FilingArtifactContent> with artifact_type filing.",
-      {
-        suggestedAction: "Use a filing artifact as the --input value.",
-      },
-    );
-  }
-
-  if (calculateArtifactHash(parsed.content) !== parsed.metadata.artifact_hash) {
-    throw new ArtifactValidationError(
-      "Demo filing artifact_hash does not match its content.",
-      {
-        suggestedAction:
-          "Regenerate the filing artifact hash from the unchanged content.",
-      },
-    );
-  }
-
-  return parsed as Artifact<FilingArtifactContent>;
 }
 
 function requireIdentity(

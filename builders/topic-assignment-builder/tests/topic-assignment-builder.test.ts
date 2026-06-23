@@ -513,8 +513,10 @@ function theme(
     summary,
     category: "technology",
     evidence: [{
-      section: "MD&A",
-      excerpt_hash: "evidence-hash",
+      evidence_ref: "evidence:evidence-ref",
+      evidence_hash: "evidence-hash",
+      section_name: "management_discussion",
+      paragraph_index: 1,
     }],
     evidence_count: 1,
     confidence: 1,
