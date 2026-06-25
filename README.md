@@ -1,157 +1,479 @@
-# Financial Ingestion
+# Partner Investing Intelligence Platform
 
-A financial document intelligence pipeline for ingesting, processing, and analyzing SEC filings.
+> Production-grade business intelligence platform for transforming SEC filings into long-term ownership intelligence.
 
----
-
-## Purpose
-
-The goal of this project is to transform raw SEC filings into structured, evidence-backed financial intelligence.
-
-The pipeline focuses on:
-
-- SEC filing ingestion
-- document extraction
-- text normalization
-- semantic chunking
-- theme extraction
-- evidence attribution
+Status: **Architecture Locked**
 
 ---
 
-## Current Scope
+# Vision
 
-Current implementation supports:
+This platform is designed to transform raw SEC filings into structured, explainable, evidence-backed ownership intelligence.
 
-- Apple (AAPL)
-- SEC 10-Q filings
-- narrative section extraction
-- evidence-backed theme generation
+The system is built around one principle:
 
-This repository is currently a prototype focused on validating the financial intelligence pipeline before expanding to multiple companies and filing types.
+> Every conclusion must be traceable to filing evidence through well-defined architectural layers.
+
+The architecture prioritizes:
+
+- Clear ownership boundaries
+- Explainable intelligence
+- Governance over heuristics
+- Long-term maintainability
+- Production-grade traceability
 
 ---
 
-## Pipeline
+# Repository Philosophy
 
-```text
+This repository is built from architecture first.
+
+The implementation must never redefine the architecture.
+
+Every Builder, Prompt, Artifact, and API exists to implement an approved specification.
+
+The architecture is considered the source of truth.
+
+---
+
+# Repository Reading Order
+
+New contributors should read the documentation in the following order.
+
+---
+
+## Phase 1 — Platform Foundation
+
+Read first.
+
+These documents explain the platform before any implementation details.
+
+```
+README.md
+
+↓
+
+docs/000-platform-glossary.md
+
+↓
+
+docs/001-layer-ownership.md
+
+↓
+
+docs/002-platform-execution.md
+
+↓
+
+docs/003-repository-roadmap.md
+```
+
+After reading these four documents, an engineer should understand:
+
+- What the platform does
+- Why it exists
+- How it executes
+- How implementation should proceed
+
+---
+
+## Phase 2 — Core Architecture
+
+Read next.
+
+```
+020-filing-artifact-spec.md
+
+021-evidence-identity-spec.md
+
+022-themes-quality-spec.md
+
+023-themes-spec.md
+
+024-structured-intelligence-spec.md
+
+025-company-knowledge-spec.md
+
+026-quarter-change-spec.md
+
+027-business-signals-spec.md
+
+028-topic-assignment-spec.md
+
+029-topic-evolution-spec.md
+```
+
+These define the Business Intelligence pipeline.
+
+---
+
+## Phase 3 — Trust Architecture
+
+```
+030-commitment-tracking-spec.md
+
+031-narrative-consistency-spec.md
+
+032-accounting-stability-spec.md
+
+033-capital-allocation-tracking-spec.md
+
+034-trust-architecture-spec.md
+```
+
+These define the Trust Intelligence pipeline.
+
+---
+
+## Phase 4 — Governance
+
+```
+035-topic-registry-governance-contract.md
+
+036-topic-registry-schema.md
+
+037-first-period-handling-spec.md
+
+038-prompt-registry-contract.md
+
+039-builder-contract.md
+```
+
+These documents define platform governance.
+
+---
+
+## Phase 5 — Prompt Contracts
+
+```
+040-themes-prompt-contract.md
+
+041-structured-intelligence-prompt-contract.md
+
+042-quarter-understanding-prompt-contract.md
+
+043-investor-intelligence-prompt-contract.md
+```
+
+These documents define the behavior of every LLM layer.
+
+---
+
+# Architectural Layers
+
+```
 SEC Filing
-    ↓
-Ingestion
-    ↓
+
+↓
+
 Extraction
-    ↓
+
+↓
+
 Normalization
-    ↓
-Chunking
-    ↓
-Theme Extraction
-    ↓
-Evidence Attribution
-    ↓
-Financial Intelligence
+
+↓
+
+Filing Artifact
+
+↓
+
+Evidence Identity
+
+↓
+
+Themes Quality
+
+↓
+
+Themes
+
+├──────────────┐
+│              │
+▼              ▼
+
+Topic Pipeline
+
+Business Pipeline
+
+↓
+
+Business Signals
+
+↓
+
+Quarter Understanding
+
+↓
+
+Investor Intelligence
+
+↓
+
+Partner Domain
 ```
+
+The complete execution model is documented in:
+
+> `002-platform-execution.md`
+
 ---
 
-## Repository Structure
+# Repository Structure
 
-```text
-src/
-├── ingestion/
-├── extraction/
-├── processing/
-├── ai/
-└── storage/
-
+```
 docs/
+    Platform documentation
+
+src/
+    Production implementation
+
 tests/
-data/
+    Automated validation
+
+builders/
+    Intelligence builders
+
+prompt-registry/
+    Versioned LLM prompts
+
+topic-registry/
+    Canonical Topics
+
+schemas/
+    Artifact schemas
+
+validators/
+    Artifact validation
+
+repositories/
+    Artifact persistence
 ```
 
 ---
 
-## Commands
+# Repository Rules
 
-### Install dependencies:
-```bash
-npm install
-```
+Every implementation must satisfy the following rules.
 
-### Type check:
-```bash
-npm run typecheck
-```
+## Architecture First
 
-### Run SEC ingestion:
-```bash
-npm run ingest:sec
-```
+Architecture is written before code.
 
-### Extract sections:
-```bash
-npm run extract:sections
-```
-
-### Extract boundaries:
-```bash
-npm run extract:boundaries
-```
-
-### Normalize sections:
-```bash
-npm run normalize:sections
-```
-
-### Chunk sections:
-```bash
-npm run chunk:sections
-```
-
-### Generate intelligence:
-```bash
-npm run generate:intelligence
-```
-
-### Generate themes:
-```bash
-npm run generate:themes
-```
-
-### Run tests:
-```bash
-npm test
-```
+Code never changes architecture.
 
 ---
 
-## Engineering Principles
+## One Owner
 
-- evidence over assumptions
-- traceability over convenience
-- deterministic processing
-- explicit contracts
-- testability first
-- architecture before features
+Every responsibility has one owner.
+
+No duplicated intelligence.
+
+No overlapping Builders.
 
 ---
 
-## Current Status
+## Upstream Only
 
-### Implemented:
+A layer may consume approved upstream artifacts only.
 
-- SEC ingestion
-- filing extraction
-- section discovery
-- normalization
-- chunking
-- theme extraction
-- evidence attribution
-- contract testing
+Downstream access is forbidden.
 
-### Planned:
+---
 
-- embeddings
-- retrieval
-- RAG
-- multi-company support
-- comparative intelligence
+## Deterministic Before LLM
+
+Deterministic processing is preferred whenever possible.
+
+LLMs are used only where reasoning is required.
+
+---
+
+## Governance Before Mutation
+
+No Builder may modify durable knowledge.
+
+Governance owns promotion.
+
+---
+
+## Evidence First
+
+Every conclusion must be traceable to filing evidence.
+
+---
+
+# LLM Layers
+
+Only four architectural layers perform reasoning.
+
+| Layer | Purpose |
+|---------|----------|
+| Themes | Extract filing narratives |
+| Structured Intelligence | Describe business structure |
+| Quarter Understanding | Interpret the quarter |
+| Investor Intelligence | Produce ownership intelligence |
+
+Everything else is deterministic or governed.
+
+---
+
+# Deterministic Layers
+
+The following layers contain no business reasoning.
+
+- Extraction
+- Normalization
+- Filing Artifact
+- Evidence Identity
+- Themes Quality
+- Topic Assignment
+- Topic Evolution
+- Quarter Change
+- Business Signals
+- Trust Pillars
+- Trust Signals
+- Governance Promotion
+
+---
+
+# Ownership Questions
+
+The platform ultimately answers five ownership questions.
+
+## Q1
+
+What does this company actually sell?
+
+---
+
+## Q2
+
+Where does the next rupee come from?
+
+---
+
+## Q3
+
+Can the story be trusted?
+
+---
+
+## Q4
+
+Is the story already too expensive?
+
+(Currently requires future Market Data integration.)
+
+---
+
+## Q5
+
+Why would I own this business, and what would change my mind?
+
+Only Investor Intelligence answers these questions.
+
+---
+
+# Implementation Order
+
+Implementation follows the roadmap.
+
+```
+Foundation
+
+↓
+
+Themes
+
+↓
+
+Topic Assignment
+
+↓
+
+Structured Intelligence
+
+↓
+
+Company Knowledge
+
+↓
+
+Quarter Change
+
+↓
+
+Topic Evolution
+
+↓
+
+Business Signals
+
+↓
+
+Trust Architecture
+
+↓
+
+Quarter Understanding
+
+↓
+
+Investor Intelligence
+
+↓
+
+Partner Domain
+```
+
+The detailed implementation plan is defined in:
+
+> `003-repository-roadmap.md`
+
+---
+
+# Current Status
+
+## Architecture
+
+✅ Locked
+
+## Specifications
+
+✅ Locked
+
+## Contracts
+
+✅ Locked
+
+## Prompt Contracts
+
+✅ Locked
+
+## Implementation
+
+🚧 Beginning
+
+---
+
+# Engineering Principles
+
+This platform is built on a small number of principles.
+
+- One responsibility per layer.
+- One producer per artifact.
+- Governance before mutation.
+- Evidence before conclusions.
+- Architecture before implementation.
+- Long-term maintainability over short-term convenience.
+- Every output must remain explainable and reproducible.
+
+---
+
+# Final Principle
+
+The goal of this repository is not to build another financial application.
+
+The goal is to build an explainable intelligence platform where every investor-facing conclusion can be traced back through governed artifacts to the original SEC filing evidence.

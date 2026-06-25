@@ -5,7 +5,7 @@ export type ThemePromptEvidence = {
 };
 
 export const THEMES_PROMPT_ID = "theme-generation-system";
-export const THEMES_PROMPT_VERSION = "theme-generation-v5";
+export const THEMES_PROMPT_VERSION = "theme-generation-v6";
 
 /**
  * Prompt Registry owns Theme prompt content and rendering. The Themes Builder
@@ -72,8 +72,16 @@ Ownership Alignment:
     regulatory, management, trust, or capital allocation developments were
     discussed?
   - What facts could later support or challenge an ownership thesis?
+- Prefer Themes that improve understanding of:
+  - what the company sells
+  - how the company makes money
+  - where future revenue may come from
+  - what management is investing behind
+  - what operational constraints exist
+  - what risks could challenge business performance
 - These questions are internal guidance only.
-- Do not answer them directly.
+- Themes do not answer investor questions directly.
+- Themes should maximize downstream usefulness for future intelligence layers.
 - Do not emit investor conclusions, recommendations, valuation opinions,
   price targets, trust verdicts, investment decisions, predictions, or
   unsupported reasoning.
@@ -119,9 +127,12 @@ Balanced Representation:
 
 Narrative Independence:
 - A Theme should remain useful when viewed independently.
+- A Theme title should describe a single narrative.
 - Do not merge unrelated developments into one Theme.
 - Do not combine separate business narratives merely because they appear in
   the same paragraph.
+- Avoid combining separate narratives into one Theme solely because they are
+  related.
 - If multiple evidence entries discuss the same narrative, aggregate them into
   a single Theme.
 - If evidence entries describe different narratives, create separate Themes.
@@ -129,6 +140,49 @@ Narrative Independence:
 - GOOD: AI Infrastructure Investment Increase.
 - BAD: Cloud Growth And AI Infrastructure Investments when the filing
   discusses those as separate developments.
+- BAD: Cloud Revenue Growth and AI Infrastructure Investment.
+- GOOD: Cloud Revenue Growth.
+- GOOD: AI Infrastructure Expansion.
+
+Evidence Selection Discipline:
+- Do not cite a paragraph merely because it contains multiple topics.
+- A paragraph may only support a Theme when the Theme narrative is explicitly
+  discussed in that paragraph.
+- If a paragraph contains multiple unrelated narratives, use it only for the
+  narrative directly supported by the text.
+- Do not reuse broad multi-topic paragraphs across multiple Themes unless the
+  paragraph explicitly supports each Theme independently.
+- Prefer the most specific supporting evidence available.
+
+Theme Uniqueness:
+- Do not create multiple Themes that rely on substantially the same evidence
+  set.
+- If two candidate Themes cite mostly the same evidence and describe the same
+  business narrative, emit a single Theme.
+- Different wording does not justify separate Themes.
+- A Theme must represent a distinct business narrative.
+
+Generic Narrative Filter:
+- Do not emit Themes that would remain materially unchanged if the company
+  name were replaced by another company in the same industry.
+- Prefer company-specific business developments, company-specific economics,
+  company-specific products, company-specific investments, company-specific
+  customer behavior, company-specific risks, or company-specific operational
+  changes.
+- Generic industry observations, generic competition descriptions, generic
+  innovation language, and generic market commentary should be excluded unless
+  accompanied by company-specific business substance.
+- Themes should improve understanding of the company, not the industry in
+  general.
+- Undesirable: Competitive Landscape and Market Adaptation.
+- Undesirable: Technology Industry Competition.
+- Undesirable: Innovation Opportunities.
+- Undesirable: Dynamic Market Conditions.
+- Desirable: OpenAI Partnership Expansion.
+- Desirable: Azure Consumption Growth.
+- Desirable: AI Infrastructure Capacity Expansion.
+- Desirable: Commercial Remaining Performance Obligation Growth.
+- Desirable: Xbox Hardware Revenue Decline.
 
 Metric Theme Suppression:
 - Do not create a Theme whose only purpose is to restate a single KPI,

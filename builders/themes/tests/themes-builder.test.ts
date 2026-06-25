@@ -176,7 +176,7 @@ describe("themes builder", () => {
     assert.match(prompt, /filing-supported business narrative/);
     assert.match(prompt, /what does the company actually sell/i);
     assert.match(prompt, /where does future business performance come from/i);
-    assert.match(prompt, /Do not answer them directly/);
+    assert.match(prompt, /Themes do not answer investor questions directly/);
     assert.match(prompt, /Multiple Evidence Catalog entries may support the same Theme/);
     assert.match(prompt, /many relevant evidence entries supporting one coherent narrative/);
     assert.match(prompt, /Use neutral, descriptive language/);
@@ -189,6 +189,16 @@ describe("themes builder", () => {
     assert.match(prompt, /Company Understanding Theme/);
     assert.match(prompt, /Period Development Theme/);
     assert.match(prompt, /Narrative Independence/);
+    assert.match(prompt, /Evidence Selection Discipline/);
+    assert.match(prompt, /Prefer the most specific supporting evidence/);
+    assert.match(prompt, /Theme Uniqueness/);
+    assert.match(prompt, /substantially the same evidence/);
+    assert.match(prompt, /Generic Narrative Filter/);
+    assert.match(prompt, /Competitive Landscape and Market Adaptation/);
+    assert.match(prompt, /OpenAI Partnership Expansion/);
+    assert.match(prompt, /how the company makes money/);
+    assert.match(prompt, /maximize downstream usefulness/);
+    assert.match(prompt, /Cloud Revenue Growth and AI Infrastructure Investment/);
     assert.match(prompt, /Theme Quality Filter/);
     assert.match(prompt, /Is this a business narrative/);
   });
@@ -408,7 +418,7 @@ class StaticPromptResolver {
   resolve(): ResolvedPrompt {
     return {
       promptId: "theme-generation-system",
-      version: "theme-generation-v5",
+      version: "theme-generation-v6",
       content: "Extract observed themes only.",
       hash: "prompt-hash",
       source: "filesystem",
