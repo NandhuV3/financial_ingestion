@@ -143,9 +143,12 @@ describe("themes builder", () => {
     );
 
     assert.match(prompt, /"paragraph_index": 1/);
-    assert.match(prompt, /Use only paragraph_index values present/);
+    assert.match(prompt, /Use only supplied paragraph_index values/);
     assert.match(prompt, /paragraph_indexes must contain positive integers/);
     assert.match(prompt, /paragraph_indexes must be unique/);
+    assert.match(prompt, /Never invent evidence/);
+    assert.match(prompt, /Never infer unseen evidence/);
+    assert.match(prompt, /Never reference information outside the supplied Theme Input/);
     assert.doesNotMatch(prompt, /evidence_ref/);
     assert.doesNotMatch(prompt, /evidence_hash/);
     assert.doesNotMatch(prompt, /filing_id/);
@@ -161,7 +164,7 @@ describe("themes builder", () => {
       promptEvidence(catalog),
     );
 
-    assert.match(prompt, /Filing paragraphs:/);
+    assert.match(prompt, /Filing Paragraphs:/);
     assert.match(prompt, new RegExp(catalog.entries[1]!.paragraph_text));
     assert.doesNotMatch(prompt, /Filing content:/);
     assert.doesNotMatch(prompt, new RegExp(filing.filing_content));
@@ -174,33 +177,28 @@ describe("themes builder", () => {
     );
 
     assert.match(prompt, /filing-supported business narrative/);
-    assert.match(prompt, /what does the company actually sell/i);
-    assert.match(prompt, /where does future business performance come from/i);
+    assert.match(prompt, /approved Theme Input package/);
+    assert.match(prompt, /already visibility constrained/);
+    assert.match(prompt, /Reason only over the supplied Theme Input/);
+    assert.match(prompt, /Aggregate evidence around business narratives/);
+    assert.match(prompt, /Cluster related observations/);
     assert.match(prompt, /Themes do not answer investor questions directly/);
-    assert.match(prompt, /Multiple Evidence Catalog entries may support the same Theme/);
-    assert.match(prompt, /many relevant evidence entries supporting one coherent narrative/);
-    assert.match(prompt, /Use neutral, descriptive language/);
-    assert.match(prompt, /future potential/);
-    assert.match(prompt, /Keep positive and negative segment developments separate/);
-    assert.match(prompt, /different segment narratives/);
-    assert.match(prompt, /Ownership Alignment/);
-    assert.match(prompt, /What does the company actually sell/);
-    assert.match(prompt, /Theme Types/);
-    assert.match(prompt, /Company Understanding Theme/);
-    assert.match(prompt, /Period Development Theme/);
-    assert.match(prompt, /Narrative Independence/);
-    assert.match(prompt, /Evidence Selection Discipline/);
-    assert.match(prompt, /Prefer the most specific supporting evidence/);
-    assert.match(prompt, /Theme Uniqueness/);
-    assert.match(prompt, /substantially the same evidence/);
-    assert.match(prompt, /Generic Narrative Filter/);
-    assert.match(prompt, /Competitive Landscape and Market Adaptation/);
+    assert.match(prompt, /Do not emit investor conclusions/);
+    assert.match(prompt, /price targets, trust verdicts, investment decisions/);
+    assert.match(prompt, /LLM Boundary/);
+    assert.match(prompt, /Never reopen Filing Artifact/);
+    assert.match(prompt, /Never reopen Evidence Identity/);
+    assert.match(prompt, /Never reconstruct Theme Grounding/);
+    assert.match(prompt, /Never expand beyond supplied input/);
+    assert.match(prompt, /Canonical Evidence Rules/);
     assert.match(prompt, /OpenAI Partnership Expansion/);
-    assert.match(prompt, /how the company makes money/);
-    assert.match(prompt, /maximize downstream usefulness/);
-    assert.match(prompt, /Cloud Revenue Growth and AI Infrastructure Investment/);
+    assert.match(prompt, /AI Infrastructure Capacity Expansion/);
+    assert.match(prompt, /Confidence Rules/);
+    assert.match(prompt, /Theme extraction confidence only/);
+    assert.match(prompt, /Confidence never represents model confidence/);
     assert.match(prompt, /Theme Quality Filter/);
     assert.match(prompt, /Is this a business narrative/);
+    assert.match(prompt, /Is every supporting paragraph contained within the supplied Theme Input/);
   });
 
   it("suppresses boilerplate and generic topic extraction", () => {
@@ -417,8 +415,8 @@ function artifact<T>(
 class StaticPromptResolver {
   resolve(): ResolvedPrompt {
     return {
-      promptId: "theme-generation-system",
-      version: "theme-generation-v6",
+      promptId: "theme-generation",
+      version: "v7",
       content: "Extract observed themes only.",
       hash: "prompt-hash",
       source: "filesystem",

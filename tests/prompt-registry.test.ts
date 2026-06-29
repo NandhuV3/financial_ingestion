@@ -30,18 +30,16 @@ describe("prompt registry", () => {
     const prompt = new PromptResolver(new FilesystemPromptProvider()).resolve(THEME_GENERATION_SYSTEM_PROMPT_ID);
 
     assert.equal(prompt.promptId, THEME_GENERATION_SYSTEM_PROMPT_ID);
-    assert.equal(prompt.version, "theme-generation-v6");
+    assert.equal(prompt.version, "v7");
     assert.equal(prompt.source, "filesystem");
     assert.equal(prompt.activationId, null);
-    assert.match(prompt.content, /filing-supported business narratives/);
-    assert.match(prompt.content, /not a section heading, generic topic/);
+    assert.match(prompt.content, /Themes Builder/);
+    assert.match(prompt.content, /first Intelligence Builder/);
+    assert.match(prompt.content, /approved Theme Input package/);
+    assert.match(prompt.content, /filing-scoped observation extraction/);
+    assert.match(prompt.content, /no downstream reasoning/i);
     assert.match(prompt.content, /Prefer fewer high-quality Themes/);
-    assert.match(prompt.content, /prompt-local paragraph_index values/);
-    assert.match(prompt.content, /Select the\s+paragraph indexes/);
-    assert.match(
-      prompt.content,
-      /Do not create or manage evidence\s+identifiers/,
-    );
+    assert.match(prompt.content, /Return JSON only/);
     assert.doesNotMatch(prompt.content, /evidence_ref/);
     assert.doesNotMatch(prompt.content, /chunk ids?/i);
     assert.doesNotMatch(prompt.content, /filing chunks?/i);
@@ -292,12 +290,12 @@ describe("prompt registry", () => {
     const record = activation({
       activation_id: "activation-1",
       prompt_id: THEME_GENERATION_SYSTEM_PROMPT_ID,
-      active_version: "theme-generation-v6",
+      active_version: "v7",
     });
 
     await evaluationStore.saveEvaluation(evaluation({
       prompt_id: THEME_GENERATION_SYSTEM_PROMPT_ID,
-      prompt_version: "theme-generation-v6",
+      prompt_version: "v7",
     }));
     await store.saveActivation(record);
 
@@ -310,12 +308,12 @@ describe("prompt registry", () => {
     const store = new FilePromptActivationStore(cacheRoot);
 
     await evaluationStore.saveEvaluation(evaluation({
-      prompt_version: "theme-generation-v6",
+      prompt_version: "v7",
       overall_score: 0.94,
     }));
     await store.saveActivation(activation({
       activation_id: "activation-success",
-      active_version: "theme-generation-v6",
+      active_version: "v7",
     }));
 
     assert.equal(store.getActivation(THEME_GENERATION_SYSTEM_PROMPT_ID)?.activation_id, "activation-success");
@@ -328,7 +326,7 @@ describe("prompt registry", () => {
     await assert.rejects(
       () => store.saveActivation(activation({
         activation_id: "activation-missing-eval",
-        active_version: "theme-generation-v6",
+        active_version: "v7",
       })),
       /evaluation is missing/,
     );
@@ -340,14 +338,14 @@ describe("prompt registry", () => {
     const store = new FilePromptActivationStore(cacheRoot);
 
     await evaluationStore.saveEvaluation(evaluation({
-      prompt_version: "theme-generation-v6",
+      prompt_version: "v7",
       overall_score: 0.89,
     }));
 
     await assert.rejects(
       () => store.saveActivation(activation({
         activation_id: "activation-low-score",
-        active_version: "theme-generation-v6",
+        active_version: "v7",
       })),
       /below minimum/,
     );
@@ -359,14 +357,14 @@ describe("prompt registry", () => {
     const store = new FilePromptActivationStore(cacheRoot);
 
     await evaluationStore.saveEvaluation(evaluation({
-      prompt_version: "theme-generation-v6",
+      prompt_version: "v7",
       failures: ["structured intelligence score regressed"],
     }));
 
     await assert.rejects(
       () => store.saveActivation(activation({
         activation_id: "activation-failures",
-        active_version: "theme-generation-v6",
+        active_version: "v7",
       })),
       /evaluation has failures/,
     );
@@ -385,7 +383,7 @@ describe("prompt registry", () => {
 
     await evaluationStore.saveEvaluation(evaluation({
       evaluation_id: "evaluation-baseline",
-      prompt_version: "theme-generation-v6",
+      prompt_version: "v7",
       overall_score: 0.98,
       created_at: "2026-06-12T00:00:00.000Z",
     }));
@@ -393,7 +391,7 @@ describe("prompt registry", () => {
       evaluation_id: "evaluation-candidate",
       prompt_version: "theme-generation-candidate-v1",
       overall_score: 0.94,
-      compared_against: "theme-generation-v6",
+      compared_against: "v7",
       created_at: "2026-06-12T00:01:00.000Z",
     }));
 
@@ -411,13 +409,13 @@ describe("prompt registry", () => {
     const store = new FilePromptEvaluationStore(cacheRoot);
     const record = evaluation({
       evaluation_id: "evaluation-persisted",
-      prompt_version: "theme-generation-v6",
+      prompt_version: "v7",
       overall_score: 0.93,
     });
 
     await store.saveEvaluation(record);
 
-    assert.deepEqual(store.getEvaluation(THEME_GENERATION_SYSTEM_PROMPT_ID, "theme-generation-v6"), record);
+    assert.deepEqual(store.getEvaluation(THEME_GENERATION_SYSTEM_PROMPT_ID, "v7"), record);
   });
 });
 
@@ -445,7 +443,7 @@ function activation(overrides: Partial<PromptActivation>): PromptActivation {
   return {
     activation_id: "activation-test",
     prompt_id: THEME_GENERATION_SYSTEM_PROMPT_ID,
-    active_version: "theme-generation-v6",
+    active_version: "v7",
     activated_at: "2026-06-12T00:00:00.000Z",
     activated_by: "test",
     reason: "test activation",
@@ -457,7 +455,7 @@ function evaluation(overrides: Partial<PromptEvaluation>): PromptEvaluation {
   return {
     evaluation_id: "evaluation-test",
     prompt_id: THEME_GENERATION_SYSTEM_PROMPT_ID,
-    prompt_version: "theme-generation-v6",
+    prompt_version: "v7",
     overall_score: 0.95,
     passed: true,
     warnings: [],

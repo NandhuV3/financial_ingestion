@@ -9,6 +9,7 @@ import {
 import {
   assembleFilingContent,
   calculateFilingHash,
+  canonicalizeFilingSection,
   filingSections,
 } from "./content-assembler.js";
 import type { FilingArtifactBuilderInput } from "./types.js";
@@ -37,6 +38,7 @@ export function validateFilingArtifactBuilderInput(
 
   for (const section of requirements.required_sections) {
     requireText(sections[section], section);
+    requireText(canonicalizeFilingSection(sections[section]), section);
   }
 }
 

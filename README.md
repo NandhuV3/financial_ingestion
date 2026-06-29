@@ -82,11 +82,11 @@ After reading these four documents, an engineer should understand:
 Read next.
 
 ```
-020-filing-artifact-spec.md
+008-filing-artifact-spec.md
 
-021-evidence-identity-spec.md
+009-evidence-identity-spec.md
 
-022-themes-quality-spec.md
+010-themes-quality-spec.md
 
 023-themes-spec.md
 

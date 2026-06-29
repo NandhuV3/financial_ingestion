@@ -37,4 +37,10 @@ tmp/
 .cache/
 
 /output/
-src.zip
+
+*.notes
+notes
+
+docs/reviews
+docs/updates_required
+/bug-reviews

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { describe, it } from "node:test";
 import type { FilingArtifactContent } from "../../../contracts/artifacts/filing-artifact-content.js";
 import { ArtifactService } from "../../../packages/artifact-framework/src/artifact-service.js";
@@ -18,6 +19,7 @@ import {
 import {
   assembleFilingContent,
   calculateFilingHash,
+  canonicalizeFilingSection,
 } from "../content-assembler.js";
 import type { FilingArtifactBuilderInput } from "../types.js";
 
@@ -37,10 +39,22 @@ describe("filing artifact builder", () => {
 
   it("generates a stable filing hash from assembled content", () => {
     const content = assembleFilingContent(baseInput());
+    const expectedHash = createHash("sha256")
+      .update(content, "utf8")
+      .digest("hex");
 
-    assert.equal(calculateFilingHash(content), stableHash(content));
+    assert.equal(calculateFilingHash(content), expectedHash);
     assert.equal(calculateFilingHash(content), calculateFilingHash(content));
     assert.notEqual(calculateFilingHash(content), baseInput().raw_html_hash);
+  });
+
+  it("canonicalizes normalized sections before assembly", () => {
+    assert.equal(
+      canonicalizeFilingSection(
+        "  Management\u212B paragraph.  \r\n\r\n\r\nSecond paragraph. \t\n",
+      ),
+      "ManagementÅ paragraph.\n\nSecond paragraph.",
+    );
   });
 
   it("rejects a missing Management Discussion section", async () => {
@@ -122,9 +136,23 @@ describe("filing artifact builder", () => {
 
     assert.equal(
       content,
-      " First paragraph.\n\nSecond paragraph.\n\nThird paragraph.\n"
+      "First paragraph.\n\nSecond paragraph.\n\nThird paragraph."
         + FILING_SECTION_SEPARATOR
-        + "\nFirst risk.\n\nSecond risk. ",
+        + "First risk.\n\nSecond risk.",
+    );
+  });
+
+  it("normalizes repeated blank lines to one canonical section separator", () => {
+    const content = assembleFilingContent({
+      management_discussion: "Management one.\n\n\n\nManagement two.",
+      risk_factors: "Risk one.\n \n \nRisk two.",
+    });
+
+    assert.equal(
+      content,
+      "Management one.\n\nManagement two."
+        + FILING_SECTION_SEPARATOR
+        + "Risk one.\n\nRisk two.",
     );
   });
 });
