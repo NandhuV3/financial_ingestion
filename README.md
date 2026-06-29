@@ -82,26 +82,86 @@ After reading these four documents, an engineer should understand:
 Read next.
 
 ```
-008-filing-artifact-spec.md
+SEC Filing
+    │
+    ▼
+Extraction
+    │
+    ▼
+Normalization
+    │
+    ▼
+Filing Artifact
+    │
+    ▼
+Evidence Identity
+    │
+    ▼
+Themes Quality
+    │
+    ▼
+Theme Grounding
+    │
+    ▼
+Theme Input Boundary
+    │
+    ▼
+Themes
+    ├──────────────────────────────┐
+    │                              │
+    ▼                              ▼
+Topic Assignment        Structured Intelligence
+    │                              │
+    ▼                              ▼
+Topic Evolution      Company Knowledge Candidate
+                                   │
+                                   ▼
+                          Governance Promotion
+                                   │
+                                   ▼
+                          Company Knowledge
+                                   │
+                 ┌─────────────────┴─────────────────┐
+                 │                                   │
+                 ▼                                   ▼
+          Quarter Change                     Topic Evolution
+                 │                                   │
+                 └──────────────┬────────────────────┘
+                                ▼
+                        Business Signals
 
-009-evidence-identity-spec.md
 
-010-themes-quality-spec.md
+Parallel Trust Architecture
 
-023-themes-spec.md
+Filing Artifact
+      │
+      ├──────────────┐
+      │              │
+      ▼              ▼
+Commitment Tracking
+Narrative Consistency
+Accounting Stability
+Capital Allocation Tracking
+      │
+      ▼
+Trust Signals
 
-024-structured-intelligence-spec.md
 
-025-company-knowledge-spec.md
-
-026-quarter-change-spec.md
-
-027-business-signals-spec.md
-
-028-topic-assignment-spec.md
-
-029-topic-evolution-spec.md
+Business Signals
+Company Knowledge
+Trust Signals
+Topic Evolution
+      │
+      ▼
+Quarter Understanding
+      │
+      ▼
+Investor Intelligence
+      │
+      ▼
+Partner Domain
 ```
+
 
 These define the Business Intelligence pipeline.
 

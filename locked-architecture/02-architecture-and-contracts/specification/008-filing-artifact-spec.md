@@ -60,6 +60,10 @@ Evidence Identity
       ↓
 Themes Quality
       ↓
+Theme Grounding
+      ↓
+Theme Input Boundary
+      ↓
 Themes Builder
       ↓
 Topic Assignment

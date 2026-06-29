@@ -23,6 +23,7 @@ import { refreshPromptCache } from "../src/prompt-registry/prompt-cache.js";
 import { calculateEffectivePromptHash, calculatePromptHash } from "../src/prompt-registry/prompt-hash.js";
 import { PromptResolver } from "../src/prompt-registry/prompt-resolver.js";
 import type { PromptProvider } from "../src/prompt-registry/prompt.types.js";
+import type { ThemesPromptRenderContext } from "../src/prompt-registry/themes-prompt.js";
 
 
 describe("prompt registry", () => {
@@ -123,6 +124,81 @@ describe("prompt registry", () => {
       ...params,
       schemaVersion: "schema-v2",
     }));
+  });
+
+  it("renders the theme prompt through the Prompt Registry", () => {
+    const context = themeRenderContext();
+    const rendered = new PromptResolver(
+      new FilesystemPromptProvider(),
+    ).render(THEME_GENERATION_SYSTEM_PROMPT_ID, context);
+
+    assert.equal(rendered.prompt_id, THEME_GENERATION_SYSTEM_PROMPT_ID);
+    assert.equal(rendered.prompt_version, "v7");
+    assert.equal(rendered.activation_id, null);
+    assert.equal(rendered.source, "filesystem");
+    assert.match(rendered.system_prompt, /Themes Builder/);
+    assert.match(rendered.user_prompt, /Generate filing-supported business narratives/);
+    assert.match(rendered.user_prompt, /approved Theme Input package/);
+    assert.match(rendered.user_prompt, /Azure demand expanded/);
+    assert.equal(
+      rendered.render_hash,
+      calculateEffectivePromptHash({
+        systemPrompt: rendered.system_prompt,
+        userPrompt: rendered.user_prompt,
+        schemaVersion: rendered.prompt_version,
+      }),
+    );
+  });
+
+  it("renders activated prompt versions and preserves activation metadata", async () => {
+    const cacheRoot = await createPromptCache([
+      cachedPrompt({
+        prompt_id: THEME_GENERATION_SYSTEM_PROMPT_ID,
+        version: "theme-generation-cache-v1",
+        content: "cached theme prompt",
+      }),
+    ]);
+    await writeActivations(cacheRoot, [
+      activation({
+        activation_id: "activation-render",
+        prompt_id: THEME_GENERATION_SYSTEM_PROMPT_ID,
+        active_version: "theme-generation-cache-v1",
+      }),
+    ]);
+
+    const rendered = new PromptResolver([
+      new CachePromptProvider(cacheRoot),
+      new FilesystemPromptProvider(),
+    ], new FilePromptActivationStore(cacheRoot)).render(
+      THEME_GENERATION_SYSTEM_PROMPT_ID,
+      themeRenderContext(),
+    );
+
+    assert.equal(rendered.prompt_version, "theme-generation-cache-v1");
+    assert.equal(rendered.activation_id, "activation-render");
+    assert.equal(rendered.system_prompt, "cached theme prompt");
+    assert.match(rendered.user_prompt, /Azure demand expanded/);
+  });
+
+  it("produces different render hashes when prompt context changes", () => {
+    const resolver = new PromptResolver(new FilesystemPromptProvider());
+    const first = resolver.render(
+      THEME_GENERATION_SYSTEM_PROMPT_ID,
+      themeRenderContext(),
+    );
+    const second = resolver.render(
+      THEME_GENERATION_SYSTEM_PROMPT_ID,
+      {
+        ...themeRenderContext(),
+        evidence: [{
+          paragraph_index: 1,
+          section_name: "management_discussion",
+          paragraph_text: "Different visible evidence.",
+        }],
+      },
+    );
+
+    assert.notEqual(first.render_hash, second.render_hash);
   });
 
   it("resolves prompts from cache before filesystem when cache is valid", async () => {
@@ -462,5 +538,16 @@ function evaluation(overrides: Partial<PromptEvaluation>): PromptEvaluation {
     failures: [],
     created_at: "2026-06-12T00:00:00.000Z",
     ...overrides,
+  };
+}
+
+function themeRenderContext(): ThemesPromptRenderContext {
+  return {
+    filingType: "10-Q",
+    evidence: [{
+      paragraph_index: 1,
+      section_name: "management_discussion",
+      paragraph_text: "Azure demand expanded during the quarter.",
+    }],
   };
 }

@@ -210,42 +210,34 @@ Every execution should produce a trace.
 Example
 
 ```text
+SEC Filing
+      ↓
 Extraction
-
-↓
-
+      ↓
 Normalization
-
-↓
-
+      ↓
 Filing Artifact
-
-↓
-
+      ↓
 Evidence Identity
-
-↓
-
+      ↓
+Themes Quality
+      ↓
+Theme Grounding
+      ↓
+Theme Input Boundary
+      ↓
 Themes
-
-↓
-
+      ↓
+Topic Assignment
+      ↓
 Structured Intelligence
-
-↓
-
+      ↓
 Company Knowledge
-
-↓
-
+      ↓
 Business Signals
-
-↓
-
+      ↓
 Quarter Understanding
-
-↓
-
+      ↓
 Investor Intelligence
 ```
 

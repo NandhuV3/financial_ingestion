@@ -59,6 +59,12 @@ Evidence Identity
 Themes Quality 
     │
     ▼
+Theme Grounding
+    │
+    ▼
+Theme Input Boundary
+    │
+    ▼
 Themes 
     │
     ├─────────────────────────────┐
@@ -156,6 +162,10 @@ Filing Artifact
 Evidence Identity
     │
 Themes Quality
+    │
+Theme Grounding
+    │
+Theme Input Boundary
 ```
 
 Produces

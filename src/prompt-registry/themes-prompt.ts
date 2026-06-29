@@ -17,6 +17,11 @@ export type ThemePromptEvidence = {
   paragraph_text: string;
 };
 
+export type ThemesPromptRenderContext = {
+  filingType: string;
+  evidence: ThemePromptEvidence[];
+};
+
 export const THEMES_PROMPT_ID = "theme-generation";
 export const THEMES_PROMPT_VERSION = "v7";
 
@@ -61,10 +66,7 @@ development.
 
 Return JSON only.`;
 
-export function renderThemesUserPrompt(input: {
-  filingType: string;
-  evidence: ThemePromptEvidence[];
-}): string {
+export function renderThemesUserPrompt(input: ThemesPromptRenderContext): string {
   return `Generate filing-supported business narratives from the approved Theme Input package.
 
 The supplied input is already visibility constrained.
