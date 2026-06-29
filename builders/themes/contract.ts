@@ -1,10 +1,11 @@
 import type { ThemeQualityMetrics } from "./theme-quality/types.js";
 
 export const THEMES_BUILDER_TYPE = "themes";
-export const THEMES_BUILDER_VERSION = "themes-builder-v3";
-export const THEMES_SCHEMA_VERSION = "themes-artifact-v3";
-export const THEMES_PIPELINE_VERSION = "themes-pipeline-v3";
+export const THEMES_BUILDER_VERSION = "themes-builder-v4";
+export const THEMES_SCHEMA_VERSION = "themes-artifact-v4";
+export const THEMES_PIPELINE_VERSION = "themes-pipeline-v4";
 export const THEMES_MODEL_VERSION = "gpt-4o-mini";
+export const THEMES_REASONING_VERSION = "themes-reasoning-v1";
 
 export const THEME_CATEGORIES = [
   "strategy",
@@ -23,11 +24,11 @@ export const THEME_CATEGORIES = [
 
 export type ThemeCategory = typeof THEME_CATEGORIES[number];
 
-export type SourceEvidence = {
+export type CanonicalEvidenceReference = {
   evidence_ref: string;
-  evidence_hash: string;
-  section_name: string;
-  paragraph_index: number;
+  evidence_hash?: string;
+  section_name?: string;
+  paragraph_index?: number;
 };
 
 export type Theme = {
@@ -35,10 +36,14 @@ export type Theme = {
   title: string;
   summary: string;
   category: ThemeCategory;
-  evidence: SourceEvidence[];
+  evidence: CanonicalEvidenceReference[];
   evidence_count: number;
+  extraction_confidence?: number;
+  prompt_id?: string;
+  prompt_version?: string;
+  reasoning_version?: string;
+  confidence?: number;
   directional_framing?: string;
-  confidence: number;
 };
 
 export type ThemesConfidence = {
@@ -63,12 +68,20 @@ export type ThemesEvaluationHooks = {
   theme_quality?: ThemeQualityMetrics;
 };
 
-export type ThemesArtifactContent = {
+export type ThemesContent = {
   company_id: string;
   period_id: string;
   filing_id: string;
-  filing_type: string;
+  filing_type?: string;
   themes: Theme[];
-  confidence: ThemesConfidence;
-  evaluation_hooks: ThemesEvaluationHooks;
+  prompt_id?: string;
+  prompt_version?: string;
+  reasoning_version?: string;
+  render_hash?: string;
+  model_name?: string;
+  model_version?: string;
+  confidence?: ThemesConfidence;
+  evaluation_hooks?: ThemesEvaluationHooks;
 };
+
+export type ThemesArtifactContent = ThemesContent;

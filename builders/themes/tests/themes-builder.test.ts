@@ -2,10 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { Artifact } from "../../../contracts/artifacts/artifact.js";
 import type {
-  EvidenceCatalogArtifactContent,
-} from "../../../contracts/artifacts/evidence-catalog-artifact-content.js";
-import type { FilingArtifactContent } from "../../../contracts/artifacts/filing-artifact-content.js";
-import { ArtifactStatus } from "../../../contracts/artifacts/artifact-status.js";
+  ThemeInputBoundaryContent,
+} from "../../../contracts/execution/theme-input-boundary-content.js";
 import { ArtifactService, calculateArtifactHash } from "../../../packages/artifact-framework/src/artifact-service.js";
 import { BuilderExecutionError, BuilderValidationError } from "../../../packages/builder-framework/src/builder-errors.js";
 import { BuilderExecutor } from "../../../packages/builder-framework/src/builder-executor.js";
@@ -15,248 +13,219 @@ import type {
   LLMRequest,
   LLMResponse,
 } from "../../../packages/llm-framework/src/llm-client.js";
-import type { ResolvedPrompt } from "../../../src/prompt-registry/prompt.types.js";
-import { buildEvidenceCatalogEntries } from "../../evidence-catalog-builder/catalog-builder.js";
+import type { ThemesPromptRenderContext } from "../../../src/prompt-registry/themes-prompt.js";
+import type { RenderedPrompt } from "../../../src/prompt-registry/prompt.types.js";
 import { MemoryArtifactRepository } from "../../upstream-pipeline/memory-artifact-repository.js";
 import { ThemesBuilder } from "../builder.js";
 import {
   THEMES_BUILDER_TYPE,
   THEMES_BUILDER_VERSION,
   THEMES_PIPELINE_VERSION,
+  THEMES_REASONING_VERSION,
   THEMES_SCHEMA_VERSION,
   type ThemesArtifactContent,
 } from "../contract.js";
-import { buildThemesUserPrompt } from "../prompt.js";
 import type { ThemesBuilderInput } from "../types.js";
 
 describe("themes builder", () => {
-  it("consumes canonical evidence from the Evidence Catalog", async () => {
+  it("consumes Theme Input Boundary content and emits a governed Themes artifact", async () => {
     const llm = new StaticLLMClient(validLLMOutput());
-    const artifact = await execute(llm);
-    const expected = evidenceCatalogArtifact().content.entries[1]!;
+    const promptResolver = new StaticPromptRenderer();
+    const artifact = await execute({ llmClient: llm, promptResolver });
 
-    assert.deepEqual(artifact.content.themes[0]?.evidence, [{
-      evidence_ref: expected.evidence_ref,
-      evidence_hash: expected.evidence_hash,
-      section_name: expected.section_name,
-      paragraph_index: expected.paragraph_index,
-    }]);
+    assert.equal(promptResolver.calls.length, 1);
+    assert.equal(promptResolver.calls[0]?.promptId, "theme-generation");
     assert.deepEqual(
-      artifact.lineage.upstream_dependencies.map(({ artifact_type }) =>
-        artifact_type),
-      ["evidence_catalog"],
+      promptResolver.calls[0]?.context.evidence.map(({ paragraph_index }) =>
+        paragraph_index),
+      [1, 2, 3],
     );
+    assert.equal(
+      promptResolver.calls[0]?.context.evidence[1]?.paragraph_text,
+      "Management discussed AI infrastructure expansion.",
+    );
+
     assert.equal(llm.requests[0]?.temperature, 0);
-    assert.deepEqual(artifact.content.evaluation_hooks.theme_quality, {
-      theme_count: 2,
-      evidence_utilization: 0.4,
-      unique_evidence_refs: 2,
-      evidence_concentration: 0.5,
-      duplicate_count: 0,
-      overlap_count: 0,
-      category_distribution: {
-        strategy: 0,
-        product: 0,
-        customer: 0,
-        competition: 1,
-        operations: 0,
-        financial: 0,
-        capital_allocation: 0,
-        management: 0,
-        trust: 0,
-        regulatory: 0,
-        technology: 1,
-        other: 0,
-      },
-      section_coverage: 1,
-      section_distribution: {
-        management_discussion: 1,
-        risk_factors: 1,
-      },
-      theme_density: 0.4,
+    assert.equal(llm.requests[0]?.messages[0]?.content, "system prompt");
+    assert.equal(llm.requests[0]?.messages[1]?.content, "rendered user prompt");
+
+    assert.equal(artifact.content.company_id, "MSFT");
+    assert.equal(artifact.content.period_id, "2026-Q2");
+    assert.equal(artifact.content.filing_id, "msft-2026-q2-10q");
+    assert.equal(artifact.content.prompt_id, "theme-generation");
+    assert.equal(artifact.content.prompt_version, "v7");
+    assert.equal(artifact.content.reasoning_version, THEMES_REASONING_VERSION);
+    assert.equal(artifact.content.render_hash, "render-hash");
+    assert.equal(artifact.content.model_name, "themes-model-v1");
+    assert.equal(artifact.content.model_version, "themes-model-v1");
+    assert.deepEqual(artifact.content.themes[0]?.evidence, [{
+      evidence_ref: "evidence:ai",
+    }]);
+    assert.equal(
+      artifact.content.themes[0]?.extraction_confidence,
+      1,
+    );
+    assert.equal(
+      artifact.content.themes[0]?.prompt_version,
+      "v7",
+    );
+    assert.deepEqual(artifact.lineage.upstream_dependencies, []);
+    assert.deepEqual(artifact.lineage.prompt_reference, {
+      prompt_id: "theme-generation",
+      prompt_version: "v7",
+      activation_id: "activation-1",
+    });
+    assert.deepEqual(artifact.lineage.model_reference, {
+      provider: "platform-llm",
+      model_name: "themes-model-v1",
+      model_version: "themes-model-v1",
+      temperature: 0,
     });
   });
 
-  it("requires the Evidence Catalog dependency", async () => {
+  it("rejects direct upstream artifact dependencies", async () => {
     await assert.rejects(
-      () => execute(
-        new StaticLLMClient(validLLMOutput()),
-        { evidenceCatalog: undefined },
-      ),
+      () => execute({
+        llmClient: new StaticLLMClient(validLLMOutput()),
+        dependencies: {
+          evidence_catalog: {} as never,
+        },
+      }),
+      (error: unknown) =>
+        error instanceof BuilderValidationError
+        && error.message.includes("Unsupported dependencies: evidence_catalog"),
+    );
+  });
+
+  it("rejects malformed JSON", async () => {
+    await assert.rejects(
+      () => execute({
+        llmClient: new StaticLLMClient("{not-json"),
+      }),
       BuilderValidationError,
     );
   });
 
-  it("rejects paragraph indexes absent from the prompt evidence", async () => {
+  it("rejects unsupported output fields", async () => {
     await assert.rejects(
-      () => execute(new StaticLLMClient(JSON.stringify({
-        themes: [{
-          title: "AI Adoption",
-          summary: "Management discussed AI adoption.",
-          category: "technology",
-          paragraph_indexes: [999],
-        }],
-      }))),
+      () => execute({
+        llmClient: new StaticLLMClient(JSON.stringify({
+          themes: [{
+            title: "AI Adoption",
+            summary: "Management discussed AI adoption.",
+            category: "technology",
+            paragraph_indexes: [2],
+            topic_id: "topic:ai",
+          }],
+        })),
+      }),
+      BuilderValidationError,
+    );
+  });
+
+  it("rejects paragraph indexes outside visible input", async () => {
+    await assert.rejects(
+      () => execute({
+        llmClient: new StaticLLMClient(JSON.stringify({
+          themes: [{
+            title: "AI Adoption",
+            summary: "Management discussed AI adoption.",
+            category: "technology",
+            paragraph_indexes: [999],
+          }],
+        })),
+      }),
       (error: unknown) =>
         error instanceof BuilderValidationError
-        && error.message.includes(
-          "not present in the supplied filing paragraphs",
-        ),
+        && error.message.includes("not present in the supplied Theme Input Boundary evidence"),
     );
   });
 
   it("rejects duplicate paragraph indexes", async () => {
     await assert.rejects(
-      () => execute(new StaticLLMClient(JSON.stringify({
-        themes: [{
-          title: "AI Adoption",
-          summary: "Management discussed AI adoption.",
-          category: "technology",
-          paragraph_indexes: [2, 2],
-        }],
-      }))),
+      () => execute({
+        llmClient: new StaticLLMClient(JSON.stringify({
+          themes: [{
+            title: "AI Adoption",
+            summary: "Management discussed AI adoption.",
+            category: "technology",
+            paragraph_indexes: [2, 2],
+          }],
+        })),
+      }),
       (error: unknown) =>
         error instanceof BuilderValidationError
         && error.message.includes("must contain unique values"),
     );
   });
 
-  it("rejects legacy evidence identity output", async () => {
+  it("rejects duplicate Themes instead of silently repairing output", async () => {
     await assert.rejects(
-      () => execute(new StaticLLMClient(JSON.stringify({
-        themes: [{
-          title: "AI Adoption",
-          summary: "Management discussed AI adoption.",
-          category: "technology",
-          evidence: [{ evidence_ref: "evidence:legacy" }],
-        }],
-      }))),
-      BuilderValidationError,
-    );
-  });
-
-  it("instructs the LLM to select prompt-local paragraph indexes", () => {
-    const catalog = evidenceCatalogArtifact().content;
-    const prompt = buildThemesUserPrompt(
-      input().filing_type,
-      promptEvidence(catalog),
-    );
-
-    assert.match(prompt, /"paragraph_index": 1/);
-    assert.match(prompt, /Use only supplied paragraph_index values/);
-    assert.match(prompt, /paragraph_indexes must contain positive integers/);
-    assert.match(prompt, /paragraph_indexes must be unique/);
-    assert.match(prompt, /Never invent evidence/);
-    assert.match(prompt, /Never infer unseen evidence/);
-    assert.match(prompt, /Never reference information outside the supplied Theme Input/);
-    assert.doesNotMatch(prompt, /evidence_ref/);
-    assert.doesNotMatch(prompt, /evidence_hash/);
-    assert.doesNotMatch(prompt, /filing_id/);
-    assert.doesNotMatch(prompt, /chunk ids?/i);
-    assert.doesNotMatch(prompt, /filing chunks?/i);
-  });
-
-  it("builds the prompt exclusively from Evidence Catalog content", () => {
-    const catalog = evidenceCatalogArtifact().content;
-    const filing = filingContent();
-    const prompt = buildThemesUserPrompt(
-      input().filing_type,
-      promptEvidence(catalog),
-    );
-
-    assert.match(prompt, /Filing Paragraphs:/);
-    assert.match(prompt, new RegExp(catalog.entries[1]!.paragraph_text));
-    assert.doesNotMatch(prompt, /Filing content:/);
-    assert.doesNotMatch(prompt, new RegExp(filing.filing_content));
-  });
-
-  it("defines Themes as useful aggregated business narratives", () => {
-    const prompt = buildThemesUserPrompt(
-      input().filing_type,
-      promptEvidence(evidenceCatalogArtifact().content),
-    );
-
-    assert.match(prompt, /filing-supported business narrative/);
-    assert.match(prompt, /approved Theme Input package/);
-    assert.match(prompt, /already visibility constrained/);
-    assert.match(prompt, /Reason only over the supplied Theme Input/);
-    assert.match(prompt, /Aggregate evidence around business narratives/);
-    assert.match(prompt, /Cluster related observations/);
-    assert.match(prompt, /Themes do not answer investor questions directly/);
-    assert.match(prompt, /Do not emit investor conclusions/);
-    assert.match(prompt, /price targets, trust verdicts, investment decisions/);
-    assert.match(prompt, /LLM Boundary/);
-    assert.match(prompt, /Never reopen Filing Artifact/);
-    assert.match(prompt, /Never reopen Evidence Identity/);
-    assert.match(prompt, /Never reconstruct Theme Grounding/);
-    assert.match(prompt, /Never expand beyond supplied input/);
-    assert.match(prompt, /Canonical Evidence Rules/);
-    assert.match(prompt, /OpenAI Partnership Expansion/);
-    assert.match(prompt, /AI Infrastructure Capacity Expansion/);
-    assert.match(prompt, /Confidence Rules/);
-    assert.match(prompt, /Theme extraction confidence only/);
-    assert.match(prompt, /Confidence never represents model confidence/);
-    assert.match(prompt, /Theme Quality Filter/);
-    assert.match(prompt, /Is this a business narrative/);
-    assert.match(prompt, /Is every supporting paragraph contained within the supplied Theme Input/);
-  });
-
-  it("suppresses boilerplate and generic topic extraction", () => {
-    const prompt = buildThemesUserPrompt(
-      input().filing_type,
-      promptEvidence(evidenceCatalogArtifact().content),
-    );
-
-    assert.match(prompt, /Do not emit section headings/);
-    assert.match(prompt, /Do not emit forward-looking-statements disclosures/);
-    assert.match(prompt, /Do not emit MD&A introductions/);
-    assert.match(prompt, /Do not emit generic legal disclaimers/);
-    assert.match(prompt, /Management Discussion Overview/);
-    assert.match(prompt, /Competition Risk/);
-  });
-
-  it("executes without filing content in the builder input", async () => {
-    const llm = new StaticLLMClient(validLLMOutput());
-
-    await execute(llm);
-
-    assert.deepEqual(input(), { filing_type: "10-Q" });
-    assert.doesNotMatch(
-      llm.requests[0]?.messages[1]?.content ?? "",
-      /Filing content:/,
-    );
-  });
-
-  it("rejects a direct Filing Artifact dependency", async () => {
-    await assert.rejects(
-      () => execute(
-        new StaticLLMClient(validLLMOutput()),
-        { filing: filingArtifact() },
-      ),
+      () => execute({
+        llmClient: new StaticLLMClient(JSON.stringify({
+          themes: [
+            {
+              title: "AI Adoption",
+              summary: "Management discussed AI adoption.",
+              category: "technology",
+              paragraph_indexes: [2],
+            },
+            {
+              title: "AI Adoption",
+              summary: "Management discussed AI adoption.",
+              category: "technology",
+              paragraph_indexes: [2],
+            },
+          ],
+        })),
+      }),
       (error: unknown) =>
         error instanceof BuilderValidationError
-        && error.message.includes(
-          "must not consume a direct Filing Artifact dependency",
-        ),
+        && error.message.includes("duplicates another Theme narrative"),
     );
   });
 
-  it("rejects invalid dependency identity", async () => {
-    const catalog = evidenceCatalogArtifact();
-    catalog.identity.company_id = "AAPL";
-
+  it("rejects invalid categories", async () => {
     await assert.rejects(
-      () => execute(
-        new StaticLLMClient(validLLMOutput()),
-        { evidenceCatalog: catalog },
-      ),
+      () => execute({
+        llmClient: new StaticLLMClient(JSON.stringify({
+          themes: [{
+            title: "AI Adoption",
+            summary: "Management discussed AI adoption.",
+            category: "artificial_intelligence",
+            paragraph_indexes: [2],
+          }],
+        })),
+      }),
       BuilderValidationError,
     );
   });
 
-  it("is deterministic for identical catalog and model output", async () => {
-    const first = await execute(new StaticLLMClient(validLLMOutput()));
-    const second = await execute(new StaticLLMClient(validLLMOutput()));
+  it("rejects forbidden downstream reasoning language", async () => {
+    await assert.rejects(
+      () => execute({
+        llmClient: new StaticLLMClient(JSON.stringify({
+          themes: [{
+            title: "AI Investment Strengthens The Investment Thesis",
+            summary: "Management discussed AI adoption.",
+            category: "technology",
+            paragraph_indexes: [2],
+          }],
+        })),
+      }),
+      (error: unknown) =>
+        error instanceof BuilderValidationError
+        && error.message.includes("forbidden downstream reasoning language"),
+    );
+  });
+
+  it("is deterministic for identical Theme Input Boundary and model output", async () => {
+    const first = await execute({
+      llmClient: new StaticLLMClient(validLLMOutput()),
+    });
+    const second = await execute({
+      llmClient: new StaticLLMClient(validLLMOutput()),
+    });
 
     assert.deepEqual(first.content, second.content);
     assert.equal(first.metadata.artifact_hash, second.metadata.artifact_hash);
@@ -264,20 +233,20 @@ describe("themes builder", () => {
 
   it("wraps LLM invocation failures in typed execution errors", async () => {
     await assert.rejects(
-      () => execute(new FailingLLMClient()),
+      () => execute({ llmClient: new FailingLLMClient() }),
       BuilderExecutionError,
     );
   });
 });
 
-async function execute(
-  llmClient: LLMClient,
-  overrides: {
-    filing?: Artifact<FilingArtifactContent>;
-    evidenceCatalog?: Artifact<EvidenceCatalogArtifactContent> | undefined;
-  } = {},
-): Promise<Artifact<ThemesArtifactContent>> {
+async function execute(input: {
+  llmClient: LLMClient;
+  promptResolver?: StaticPromptRenderer;
+  themeInputBoundary?: ThemeInputBoundaryContent;
+  dependencies?: Record<string, never>;
+}): Promise<Artifact<ThemesArtifactContent>> {
   const registry = new BuilderRegistry();
+  const themeInputBoundary = input.themeInputBoundary ?? themeInputBoundaryContent();
 
   registry.registerBuilder({
     builder_type: THEMES_BUILDER_TYPE,
@@ -286,16 +255,12 @@ async function execute(
     schema_version: THEMES_SCHEMA_VERSION,
     pipeline_version: THEMES_PIPELINE_VERSION,
   }, () => new ThemesBuilder({
-    promptResolver: new StaticPromptResolver(),
-    llmClient,
+    promptResolver: input.promptResolver ?? new StaticPromptRenderer(),
+    llmClient: input.llmClient,
     modelVersion: "themes-model-v1",
   }));
 
-  const evidenceCatalog = Object.hasOwn(overrides, "evidenceCatalog")
-    ? overrides.evidenceCatalog
-    : evidenceCatalogArtifact();
-
-  return new BuilderExecutor(
+  return await new BuilderExecutor(
     registry,
     new ArtifactService(new MemoryArtifactRepository()),
   ).executeBuilder<ThemesBuilderInput, ThemesArtifactContent>({
@@ -303,140 +268,106 @@ async function execute(
     companyId: "MSFT",
     periodId: "2026-Q2",
     executionId: "MSFT:2026-Q2:themes",
-    input: input(),
-    inputHash: "themes-input-hash",
-    dependencies: {
-      ...(overrides.filing ? { filing: overrides.filing } : {}),
-      ...(evidenceCatalog ? { evidence_catalog: evidenceCatalog } : {}),
+    input: {
+      theme_input_boundary: themeInputBoundary,
     },
+    inputHash: calculateArtifactHash(themeInputBoundary),
+    dependencies: input.dependencies,
     generatedAt: "2026-06-22T00:00:00.000Z",
   });
-}
-
-function input(): ThemesBuilderInput {
-  return {
-    filing_type: "10-Q",
-  };
 }
 
 function validLLMOutput(): string {
   return JSON.stringify({
     themes: [
       {
-        title: "AI Adoption",
-        summary: "Management discussed AI adoption.",
+        title: "AI Infrastructure Expansion",
+        summary: "Management discussed AI infrastructure expansion.",
         category: "technology",
         paragraph_indexes: [2],
       },
       {
-        title: "Competition",
+        title: "Competition Intensity",
         summary: "Competition remained intense.",
         category: "competition",
-        paragraph_indexes: [5],
+        paragraph_indexes: [3],
       },
     ],
   });
 }
 
-function filingContent(): FilingArtifactContent {
-  const filing_content = [
-    "ITEM 2. MANAGEMENT'S DISCUSSION AND ANALYSIS",
-    "Management discussed AI adoption.",
-    "Cloud expansion continued.",
-    "ITEM 1A. RISK FACTORS",
-    "Competition remained intense.",
-  ].join("\n\n");
-
+function themeInputBoundaryContent(): ThemeInputBoundaryContent {
   return {
+    grounding_result_id: "theme-grounding-result:msft-2026-q2-10q",
     filing_id: "msft-2026-q2-10q",
-    filing_type: "10-Q",
-    filing_content,
-    filing_hash: calculateArtifactHash(filing_content),
-    filing_period: "2026-Q2",
+    filing_hash: "filing-hash",
+    input_version: "theme-input-boundary-v1",
+    visible_evidence: [
+      {
+        evidence_ref: "evidence:overview",
+        section_name: "management_discussion",
+        paragraph_index: 1,
+        paragraph_text: "Management discussed cloud demand.",
+      },
+      {
+        evidence_ref: "evidence:ai",
+        section_name: "management_discussion",
+        paragraph_index: 2,
+        paragraph_text: "Management discussed AI infrastructure expansion.",
+      },
+      {
+        evidence_ref: "evidence:competition",
+        section_name: "risk_factors",
+        paragraph_index: 1,
+        paragraph_text: "Competition remained intense.",
+      },
+    ],
+    visible_section_hierarchy: [
+      {
+        section_name: "management_discussion",
+        evidence_refs: ["evidence:overview", "evidence:ai"],
+      },
+      {
+        section_name: "risk_factors",
+        evidence_refs: ["evidence:competition"],
+      },
+    ],
+    permitted_metadata: {
+      source_grounding_result_id: "theme-grounding-result:msft-2026-q2-10q",
+      visible_evidence_count: 3,
+      visible_section_names: ["management_discussion", "risk_factors"],
+    },
   };
 }
 
-function filingArtifact(): Artifact<FilingArtifactContent> {
-  return artifact(
-    "filing-artifact-1",
-    "filing",
-    filingContent(),
-  );
-}
+class StaticPromptRenderer {
+  readonly calls: Array<{
+    promptId: string;
+    context: ThemesPromptRenderContext;
+    version?: string;
+  }> = [];
 
-function evidenceCatalogArtifact(): Artifact<EvidenceCatalogArtifactContent> {
-  const filing = filingContent();
+  render<TContext>(
+    promptId: string,
+    context: TContext,
+    version?: string,
+  ): RenderedPrompt {
+    this.calls.push({
+      promptId,
+      context: context as ThemesPromptRenderContext,
+      version,
+    });
 
-  return artifact(
-    "evidence-catalog-artifact-1",
-    "evidence_catalog",
-    {
-      artifact_type: "evidence_catalog",
-      company_id: "MSFT",
-      period_id: "2026-Q2",
-      filing_id: filing.filing_id,
-      filing_hash: filing.filing_hash,
-      entries: buildEvidenceCatalogEntries(filing),
-    },
-  );
-}
-
-function artifact<T>(
-  artifactId: string,
-  artifactType: "filing" | "evidence_catalog",
-  content: T,
-): Artifact<T> {
-  return {
-    identity: {
-      artifact_id: artifactId,
-      artifact_type: artifactType,
-      company_id: "MSFT",
-      period_id: "2026-Q2",
-      version: 1,
-    },
-    metadata: {
-      version: 1,
-      schema_version: `${artifactType}-v1`,
-      pipeline_version: `${artifactType}-pipeline-v1`,
-      generated_at: "2026-06-22T00:00:00.000Z",
-      artifact_hash: calculateArtifactHash(content),
-      input_hash: `${artifactType}-input-hash`,
-      generation_duration_ms: 0,
-      status: ArtifactStatus.ACTIVE,
-    },
-    lineage: {
-      upstream_dependencies: [],
-      generation_context: { builder_type: artifactType },
-    },
-    content,
-  };
-}
-
-class StaticPromptResolver {
-  resolve(): ResolvedPrompt {
     return {
-      promptId: "theme-generation",
-      version: "v7",
-      content: "Extract observed themes only.",
-      hash: "prompt-hash",
+      prompt_id: promptId,
+      prompt_version: "v7",
+      activation_id: "activation-1",
+      system_prompt: "system prompt",
+      user_prompt: "rendered user prompt",
+      render_hash: "render-hash",
       source: "filesystem",
-      activationId: "activation-1",
     };
   }
-}
-
-function promptEvidence(
-  catalog: EvidenceCatalogArtifactContent,
-): Array<{
-  paragraph_index: number;
-  section_name: string;
-  paragraph_text: string;
-}> {
-  return catalog.entries.map((entry, index) => ({
-    paragraph_index: index + 1,
-    section_name: entry.section_name,
-    paragraph_text: entry.paragraph_text,
-  }));
 }
 
 class StaticLLMClient implements LLMClient {

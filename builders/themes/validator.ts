@@ -1,24 +1,28 @@
 import { createHash } from "node:crypto";
-import type { Artifact } from "../../contracts/artifacts/artifact.js";
-import type { EvidenceCatalogArtifactContent } from "../../contracts/artifacts/evidence-catalog-artifact-content.js";
+import type {
+  ThemeInputBoundaryContent,
+  ThemeVisibleEvidenceEntry,
+} from "../../contracts/execution/theme-input-boundary-content.js";
 import { BuilderValidationError } from "../../packages/builder-framework/src/builder-errors.js";
-import { THEME_CATEGORIES, type Theme, type ThemesArtifactContent } from "./contract.js";
+import {
+  THEME_CATEGORIES,
+  type Theme,
+  type ThemesArtifactContent,
+} from "./contract.js";
 import type {
   ThemeCandidate,
   ThemePromptEvidence,
-  ThemesDependencies,
   ThemesBuilderInput,
   ThemesLLMOutput,
 } from "./types.js";
-import { validateThemeQualityMetrics } from "./theme-quality/validator.js";
 
-const validFilingTypes = new Set(["10-K", "10-Q", "Transcript"]);
 const themeOutputKeys = [
   "title",
   "summary",
   "category",
   "paragraph_indexes",
 ] as const;
+
 const forbiddenPatterns = [
   /\btopic[_ -]?id\b/i,
   /\bconcept[_ -]?id\b/i,
@@ -27,13 +31,33 @@ const forbiddenPatterns = [
   /\bhold\b/i,
   /\bundervalued\b/i,
   /\bovervalued\b/i,
+  /\bprice target\b/i,
+  /\binvestment thesis\b/i,
+  /\binvestor conclusion\b/i,
+  /\bmanagement (is|appears|seems) credible\b/i,
   /\bstrong competitive moat\b/i,
   /\bexcellent execution\b/i,
 ];
 
 export function validateThemesInput(input: ThemesBuilderInput): void {
-  if (!validFilingTypes.has(input.filing_type)) {
-    throw new BuilderValidationError(`Invalid filing_type: ${String(input.filing_type)}`);
+  if (input.theme_input_boundary === undefined) {
+    throw new BuilderValidationError(
+      "Themes Builder requires Theme Input Boundary content.",
+    );
+  }
+
+  validateThemeInputBoundaryContent(input.theme_input_boundary);
+}
+
+export function validateNoThemesDependencies(
+  dependencies: Record<string, unknown>,
+): void {
+  const dependencyNames = Object.keys(dependencies);
+
+  if (dependencyNames.length > 0) {
+    throw new BuilderValidationError(
+      `Themes must consume only Theme Input Boundary content. Unsupported dependencies: ${dependencyNames.join(", ")}.`,
+    );
   }
 }
 
@@ -69,7 +93,7 @@ export function parseThemesLLMOutput(outputText: string): ThemesLLMOutput {
 export function validateThemeCandidate(
   candidate: ThemeCandidate,
   index: number,
-  promptEvidence?: ThemePromptEvidence[],
+  promptEvidence: ThemePromptEvidence[],
 ): void {
   requireText(candidate.title, `themes[${index}].title`);
   requireText(candidate.summary, `themes[${index}].summary`);
@@ -87,6 +111,9 @@ export function validateThemeCandidate(
     );
   }
 
+  const suppliedIndexes = new Set(
+    promptEvidence.map(({ paragraph_index }) => paragraph_index),
+  );
   const seenParagraphIndexes = new Set<number>();
 
   for (
@@ -108,65 +135,93 @@ export function validateThemeCandidate(
 
     seenParagraphIndexes.add(paragraphIndex);
 
-    if (
-      promptEvidence
-      && !promptEvidence.some(({ paragraph_index }) =>
-        paragraph_index === paragraphIndex)
-    ) {
+    if (!suppliedIndexes.has(paragraphIndex)) {
       throw new BuilderValidationError(
         `themes[${index}].paragraph_indexes[${paragraphIndexPosition}] `
-        + "is not present in the supplied filing paragraphs.",
+        + "is not present in the supplied Theme Input Boundary evidence.",
       );
     }
-  }
-
-  if (
-    promptEvidence
-    && new Set(promptEvidence.map(({ paragraph_index }) => paragraph_index))
-      .size !== promptEvidence.length
-  ) {
-    throw new BuilderValidationError(
-      "Theme prompt evidence paragraph indexes must be unique.",
-    );
   }
 
   rejectForbiddenLanguage(candidate.title, `themes[${index}].title`);
   rejectForbiddenLanguage(candidate.summary, `themes[${index}].summary`);
 }
 
-export function validateThemesArtifactContent(
-  content: ThemesArtifactContent,
-  evidenceCatalog?: EvidenceCatalogArtifactContent["entries"],
-): void {
+export function validateThemesArtifactContent(input: {
+  content: ThemesArtifactContent;
+  themeInputBoundary: ThemeInputBoundaryContent;
+  promptId: string;
+  promptVersion: string;
+  reasoningVersion: string;
+  renderHash: string;
+  modelName: string;
+  modelVersion: string;
+}): void {
+  const {
+    content,
+    themeInputBoundary,
+    promptId,
+    promptVersion,
+    reasoningVersion,
+    renderHash,
+    modelName,
+    modelVersion,
+  } = input;
+  const visibleEvidenceRefs = new Set(
+    themeInputBoundary.visible_evidence.map(({ evidence_ref }) => evidence_ref),
+  );
+
   requireText(content.company_id, "content.company_id");
   requireText(content.period_id, "content.period_id");
   requireText(content.filing_id, "content.filing_id");
+
+  if (content.filing_id !== themeInputBoundary.filing_id) {
+    throw new BuilderValidationError(
+      "Themes filing_id must match Theme Input Boundary filing_id.",
+    );
+  }
+
+  requireExactText(content.prompt_id, promptId, "content.prompt_id");
+  requireExactText(content.prompt_version, promptVersion, "content.prompt_version");
+  requireExactText(content.reasoning_version, reasoningVersion, "content.reasoning_version");
+  requireExactText(content.render_hash, renderHash, "content.render_hash");
+  requireExactText(content.model_name, modelName, "content.model_name");
+  requireExactText(content.model_version, modelVersion, "content.model_version");
 
   if (!Array.isArray(content.themes)) {
     throw new BuilderValidationError("content.themes must be an array.");
   }
 
+  const themeIds = new Set<string>();
+  const normalizedThemes = new Set<string>();
+
   for (const [index, theme] of content.themes.entries()) {
-    validateTheme(theme, index);
-  }
+    validateTheme({
+      theme,
+      index,
+      promptId,
+      promptVersion,
+      reasoningVersion,
+      visibleEvidenceRefs,
+    });
 
-  validateConfidence(content.confidence.overall, "confidence.overall");
-  validateConfidence(content.confidence.evidence_coverage, "confidence.evidence_coverage");
-  validateConfidence(content.confidence.extraction_consistency, "confidence.extraction_consistency");
-  validateConfidence(content.confidence.filing_coverage, "confidence.filing_coverage");
-
-  if (evidenceCatalog) {
-    if (!content.evaluation_hooks.theme_quality) {
+    if (themeIds.has(theme.theme_id)) {
       throw new BuilderValidationError(
-        "evaluation_hooks.theme_quality is required when the Evidence Catalog is available.",
+        `content.themes contains duplicate theme_id: ${theme.theme_id}.`,
       );
     }
 
-    validateThemeQualityMetrics({
-      themes: content.themes,
-      evidenceCatalog,
-      metrics: content.evaluation_hooks.theme_quality,
-    });
+    themeIds.add(theme.theme_id);
+
+    const normalizedTheme = normalizeThemeKey(theme.title, theme.summary);
+
+    if (normalizedThemes.has(normalizedTheme)) {
+      throw new BuilderValidationError(
+        `content.themes[${index}] duplicates another Theme narrative.`,
+      );
+    }
+
+    normalizedThemes.add(normalizedTheme);
   }
 }
 
@@ -178,16 +233,118 @@ export function normalizeThemeKey(title: string, summary: string): string {
     .trim();
 }
 
-export function createThemeId(filingId: string, title: string, summary: string): string {
+export function createThemeId(
+  filingId: string,
+  title: string,
+  summary: string,
+  evidenceRefs: string[],
+): string {
   return createHash("sha256")
-    .update(`${filingId}:${normalizeThemeKey(title, summary)}`, "utf8")
+    .update(JSON.stringify({
+      filing_id: filingId,
+      theme: normalizeThemeKey(title, summary),
+      evidence_refs: evidenceRefs,
+    }), "utf8")
     .digest("hex");
 }
 
-function validateTheme(theme: Theme, index: number): void {
+export function buildPromptEvidence(
+  visibleEvidence: ThemeVisibleEvidenceEntry[],
+): ThemePromptEvidence[] {
+  return visibleEvidence.map((entry, index) => ({
+    paragraph_index: index + 1,
+    section_name: entry.section_name,
+    paragraph_text: entry.paragraph_text,
+  }));
+}
+
+export function buildPromptEvidenceIndex(input: {
+  visibleEvidence: ThemeVisibleEvidenceEntry[];
+  promptEvidence: ThemePromptEvidence[];
+}): Map<number, ThemeVisibleEvidenceEntry> {
+  const index = new Map<number, ThemeVisibleEvidenceEntry>();
+
+  for (const [position, promptEvidence] of input.promptEvidence.entries()) {
+    index.set(promptEvidence.paragraph_index, input.visibleEvidence[position]!);
+  }
+
+  return index;
+}
+
+function validateThemeInputBoundaryContent(
+  content: ThemeInputBoundaryContent,
+): void {
+  requireText(content.grounding_result_id, "theme_input_boundary.grounding_result_id");
+  requireText(content.filing_id, "theme_input_boundary.filing_id");
+  requireText(content.filing_hash, "theme_input_boundary.filing_hash");
+  requireText(content.input_version, "theme_input_boundary.input_version");
+
+  if (
+    !Array.isArray(content.visible_evidence)
+    || content.visible_evidence.length === 0
+  ) {
+    throw new BuilderValidationError(
+      "theme_input_boundary.visible_evidence must contain at least one item.",
+    );
+  }
+
+  const evidenceRefs = new Set<string>();
+
+  for (const [index, evidence] of content.visible_evidence.entries()) {
+    requireText(evidence.evidence_ref, `visible_evidence[${index}].evidence_ref`);
+    requireText(evidence.section_name, `visible_evidence[${index}].section_name`);
+    requireText(evidence.paragraph_text, `visible_evidence[${index}].paragraph_text`);
+
+    if (
+      !Number.isInteger(evidence.paragraph_index)
+      || evidence.paragraph_index < 1
+    ) {
+      throw new BuilderValidationError(
+        `visible_evidence[${index}].paragraph_index must be a positive integer.`,
+      );
+    }
+
+    if (evidenceRefs.has(evidence.evidence_ref)) {
+      throw new BuilderValidationError(
+        `theme_input_boundary.visible_evidence contains duplicate evidence_ref: ${evidence.evidence_ref}.`,
+      );
+    }
+
+    evidenceRefs.add(evidence.evidence_ref);
+  }
+}
+
+function validateTheme(input: {
+  theme: Theme;
+  index: number;
+  promptId: string;
+  promptVersion: string;
+  reasoningVersion: string;
+  visibleEvidenceRefs: Set<string>;
+}): void {
+  const {
+    theme,
+    index,
+    promptId,
+    promptVersion,
+    reasoningVersion,
+    visibleEvidenceRefs,
+  } = input;
+
   requireText(theme.theme_id, `themes[${index}].theme_id`);
   requireText(theme.title, `themes[${index}].title`);
   requireText(theme.summary, `themes[${index}].summary`);
+  requireExactText(theme.prompt_id, promptId, `themes[${index}].prompt_id`);
+  requireExactText(
+    theme.prompt_version,
+    promptVersion,
+    `themes[${index}].prompt_version`,
+  );
+  requireExactText(
+    theme.reasoning_version,
+    reasoningVersion,
+    `themes[${index}].reasoning_version`,
+  );
 
   if (!THEME_CATEGORIES.includes(theme.category)) {
     throw invalidCategoryError(index, theme.category);
@@ -202,28 +359,27 @@ function validateTheme(theme: Theme, index: number): void {
     );
   }
 
+  const themeEvidenceRefs = new Set<string>();
+
   for (const [evidenceIndex, evidence] of theme.evidence.entries()) {
     requireText(
       evidence.evidence_ref,
       `themes[${index}].evidence[${evidenceIndex}].evidence_ref`,
     );
-    requireText(
-      evidence.evidence_hash,
-      `themes[${index}].evidence[${evidenceIndex}].evidence_hash`,
-    );
-    requireText(
-      evidence.section_name,
-      `themes[${index}].evidence[${evidenceIndex}].section_name`,
-    );
 
-    if (
-      !Number.isInteger(evidence.paragraph_index)
-      || evidence.paragraph_index < 1
-    ) {
+    if (!visibleEvidenceRefs.has(evidence.evidence_ref)) {
       throw new BuilderValidationError(
-        `themes[${index}].evidence[${evidenceIndex}].paragraph_index must be a positive integer.`,
+        `themes[${index}].evidence[${evidenceIndex}].evidence_ref is not visible in Theme Input Boundary.`,
       );
     }
+
+    if (themeEvidenceRefs.has(evidence.evidence_ref)) {
+      throw new BuilderValidationError(
+        `themes[${index}].evidence must contain unique evidence_ref values.`,
+      );
+    }
+
+    themeEvidenceRefs.add(evidence.evidence_ref);
   }
 
   if (theme.evidence_count !== theme.evidence.length) {
@@ -232,16 +388,18 @@ function validateTheme(theme: Theme, index: number): void {
     );
   }
 
-  if (theme.directional_framing !== undefined) {
-    requireText(
-      theme.directional_framing,
-      `themes[${index}].directional_framing`,
+  if (theme.extraction_confidence === undefined) {
+    throw new BuilderValidationError(
+      `themes[${index}].extraction_confidence is required.`,
     );
   }
 
+  validateConfidence(
+    theme.extraction_confidence,
+    `themes[${index}].extraction_confidence`,
+  );
   rejectForbiddenLanguage(theme.title, `themes[${index}].title`);
   rejectForbiddenLanguage(theme.summary, `themes[${index}].summary`);
-  validateConfidence(theme.confidence, `themes[${index}].confidence`);
 }
 
 function validateConfidence(value: number, field: string): void {
@@ -256,9 +414,23 @@ function requireText(value: unknown, field: string): asserts value is string {
   }
 }
 
+function requireExactText(
+  value: unknown,
+  expected: string,
+  field: string,
+): void {
+  requireText(value, field);
+
+  if (value !== expected) {
+    throw new BuilderValidationError(
+      `${field} must equal ${expected}.`,
+    );
+  }
+}
+
 function rejectForbiddenLanguage(value: string, field: string): void {
   if (forbiddenPatterns.some((pattern) => pattern.test(value))) {
-    throw new BuilderValidationError(`${field} contains forbidden interpretive language.`);
+    throw new BuilderValidationError(`${field} contains forbidden downstream reasoning language.`);
   }
 }
 
@@ -305,8 +477,6 @@ function parseThemeCandidate(
     ) as number[],
   };
 
-  validateThemeCandidate(candidate, index);
-
   return candidate;
 }
 
@@ -326,59 +496,6 @@ function assertExactKeys(
       + `Missing: ${missingKeys.join(", ") || "none"}.`,
     );
   }
-}
-
-export function resolveThemesDependencies(input: {
-  dependencies: Record<string, Artifact<unknown>>;
-  companyId: string;
-  periodId: string;
-}): ThemesDependencies {
-  if (input.dependencies.filing !== undefined) {
-    throw new BuilderValidationError(
-      "Themes must not consume a direct Filing Artifact dependency.",
-    );
-  }
-
-  const evidenceCatalog = requiredArtifact<EvidenceCatalogArtifactContent>(
-    input.dependencies.evidence_catalog,
-    "evidence_catalog",
-  );
-
-  if (
-    evidenceCatalog.identity.artifact_type !== "evidence_catalog"
-    || evidenceCatalog.identity.company_id !== input.companyId
-    || evidenceCatalog.identity.period_id !== input.periodId
-  ) {
-    throw new BuilderValidationError(
-      "Themes dependency identity does not match the build target.",
-    );
-  }
-
-  if (
-    evidenceCatalog.content.company_id !== input.companyId
-    || evidenceCatalog.content.period_id !== input.periodId
-  ) {
-    throw new BuilderValidationError(
-      "Themes dependency content does not reconcile.",
-    );
-  }
-
-  return {
-    evidence_catalog: evidenceCatalog,
-  };
-}
-
-function requiredArtifact<T>(
-  artifact: Artifact<unknown> | undefined,
-  name: string,
-): Artifact<T> {
-  if (!artifact) {
-    throw new BuilderValidationError(
-      `Missing required Themes dependency: ${name}.`,
-    );
-  }
-
-  return artifact as Artifact<T>;
 }
 
 function invalidCategoryError(

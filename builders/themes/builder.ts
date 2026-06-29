@@ -1,27 +1,28 @@
-import { promises as fs } from "node:fs";
 import type { PromptResolver } from "../../src/prompt-registry/prompt-resolver.js";
 import type { Builder } from "../../packages/builder-framework/src/builder.js";
 import type { BuilderContext } from "../../packages/builder-framework/src/builder-context.js";
 import { BuilderExecutionError, BuilderValidationError, builderErrorMessage } from "../../packages/builder-framework/src/builder-errors.js";
 import type { BuilderResult } from "../../packages/builder-framework/src/builder-result.js";
 import { callLLM, type LLMClient } from "../../packages/llm-framework/src/llm-client.js";
+import { createLogger } from "../../src/shared/logger.js";
 import {
   THEMES_BUILDER_TYPE,
   THEMES_MODEL_VERSION,
+  THEMES_REASONING_VERSION,
   type Theme,
   type ThemesArtifactContent,
 } from "./contract.js";
-import { calculateThemesConfidence, buildThemesEvaluationHooks } from "./evaluation.js";
 import {
-  renderThemesUserPrompt,
   THEMES_PROMPT_ID,
-  THEMES_PROMPT_VERSION,
+  type ThemesPromptRenderContext,
 } from "../../src/prompt-registry/themes-prompt.js";
 import {
+  buildPromptEvidence,
+  buildPromptEvidenceIndex,
   createThemeId,
   normalizeThemeKey,
   parseThemesLLMOutput,
-  resolveThemesDependencies,
+  validateNoThemesDependencies,
   validateThemeCandidate,
   validateThemesArtifactContent,
   validateThemesInput,
@@ -31,10 +32,11 @@ import type {
   ThemePromptEvidence,
   ThemesBuilderInput,
 } from "./types.js";
-import type { EvidenceCatalogEntry } from "../../contracts/artifacts/evidence-catalog-artifact-content.js";
+
+const logger = createLogger("themes-builder");
 
 export type ThemesBuilderOptions = {
-  promptResolver: Pick<PromptResolver, "resolve">;
+  promptResolver: Pick<PromptResolver, "render"> | Pick<PromptResolver, "resolve">;
   llmClient: LLMClient;
   modelVersion?: string;
 };
@@ -53,31 +55,46 @@ export class ThemesBuilder implements Builder<ThemesBuilderInput, ThemesArtifact
   async execute(
     context: BuilderContext<ThemesBuilderInput>,
   ): Promise<BuilderResult<ThemesArtifactContent>> {
-    const dependencies = resolveThemesDependencies({
-      dependencies: context.dependencies,
-      companyId: context.companyId,
-      periodId: context.periodId,
-    });
-    const evidenceCatalogContent = dependencies.evidence_catalog.content;
-    const evidenceCatalog = evidenceCatalogContent.entries;
-    const promptEvidence = buildThemePromptEvidence(evidenceCatalog);
+    validateNoThemesDependencies(context.dependencies);
+    validateThemesInput(context.input);
 
-    const prompt = this.options.promptResolver.resolve(
+    const themeInputBoundary = context.input.theme_input_boundary!;
+    const promptEvidence = buildPromptEvidence(
+      themeInputBoundary.visible_evidence,
+    );
+    const promptEvidenceByIndex = buildPromptEvidenceIndex({
+      visibleEvidence: themeInputBoundary.visible_evidence,
+      promptEvidence,
+    });
+    const renderedPrompt = renderPrompt(
+      this.options.promptResolver,
       THEMES_PROMPT_ID,
-      THEMES_PROMPT_VERSION,
+      {
+        inputVersion: themeInputBoundary.input_version,
+        evidence: promptEvidence,
+      },
     );
     const modelVersion = this.options.modelVersion ?? THEMES_MODEL_VERSION;
 
     context.recordPromptReference({
-      prompt_id: prompt.promptId,
-      prompt_version: prompt.version,
-      activation_id: prompt.activationId ?? "not_active",
+      prompt_id: renderedPrompt.prompt_id,
+      prompt_version: renderedPrompt.prompt_version,
+      activation_id: renderedPrompt.activation_id ?? "not_active",
     });
     context.recordModelReference({
       provider: "platform-llm",
       model_name: modelVersion,
       model_version: modelVersion,
       temperature: 0,
+    });
+
+    logger.info("Executing Themes LLM builder", {
+      execution_id: context.executionId,
+      company_id: context.companyId,
+      period_id: context.periodId,
+      prompt_id: renderedPrompt.prompt_id,
+      prompt_version: renderedPrompt.prompt_version,
+      visible_evidence_count: promptEvidence.length,
     });
 
     let outputText: string;
@@ -89,14 +106,11 @@ export class ThemesBuilder implements Builder<ThemesBuilderInput, ThemesArtifact
         messages: [
           {
             role: "system",
-            content: prompt.content,
+            content: renderedPrompt.system_prompt,
           },
           {
             role: "user",
-            content: renderThemesUserPrompt({
-              filingType: context.input.filing_type,
-              evidence: promptEvidence,
-            }),
+            content: renderedPrompt.user_prompt,
           },
         ],
       });
@@ -107,109 +121,151 @@ export class ThemesBuilder implements Builder<ThemesBuilderInput, ThemesArtifact
     }
 
     const parsed = parseThemesLLMOutput(outputText);
-
-    await fs.mkdir("tmp", { recursive: true });
-    await fs.writeFile(
-      "tmp/themes-raw.json",
-      JSON.stringify(parsed, null, 2),
-    );
-    console.log("[themes] raw response written to tmp/themes-raw.json");
-
-    const { themes, duplicateCount } = buildThemes(
-      evidenceCatalogContent.filing_id,
-      parsed.themes,
-      evidenceCatalog,
+    const themes = buildThemes({
+      filingId: themeInputBoundary.filing_id,
+      candidates: parsed.themes,
       promptEvidence,
-    );
-    const confidence = calculateThemesConfidence(themes, duplicateCount);
+      promptEvidenceByIndex,
+      promptId: renderedPrompt.prompt_id,
+      promptVersion: renderedPrompt.prompt_version,
+      reasoningVersion: THEMES_REASONING_VERSION,
+    });
     const content: ThemesArtifactContent = {
-      company_id: evidenceCatalogContent.company_id,
-      period_id: evidenceCatalogContent.period_id,
-      filing_id: evidenceCatalogContent.filing_id,
-      filing_type: context.input.filing_type,
+      company_id: context.companyId,
+      period_id: context.periodId,
+      filing_id: themeInputBoundary.filing_id,
       themes,
-      confidence,
-      evaluation_hooks: buildThemesEvaluationHooks(
-        themes,
-        duplicateCount,
-        prompt.version,
-        modelVersion,
-        evidenceCatalog,
-      ),
+      prompt_id: renderedPrompt.prompt_id,
+      prompt_version: renderedPrompt.prompt_version,
+      reasoning_version: THEMES_REASONING_VERSION,
+      render_hash: renderedPrompt.render_hash,
+      model_name: modelVersion,
+      model_version: modelVersion,
     };
 
-    validateThemesArtifactContent(content, evidenceCatalog);
+    validateThemesArtifactContent({
+      content,
+      themeInputBoundary,
+      promptId: renderedPrompt.prompt_id,
+      promptVersion: renderedPrompt.prompt_version,
+      reasoningVersion: THEMES_REASONING_VERSION,
+      renderHash: renderedPrompt.render_hash,
+      modelName: modelVersion,
+      modelVersion,
+    });
+
+    logger.info("Themes artifact content constructed", {
+      execution_id: context.executionId,
+      company_id: context.companyId,
+      period_id: context.periodId,
+      theme_count: themes.length,
+    });
 
     return {
       content,
-      confidence: confidence.overall,
+      confidence: calculateOverallConfidence(themes),
     };
   }
 }
 
-function buildThemes(
-  filingId: string,
-  candidates: ThemeCandidate[],
-  evidenceCatalog: EvidenceCatalogEntry[],
-  promptEvidence: ThemePromptEvidence[],
-): { themes: Theme[]; duplicateCount: number } {
+function buildThemes(input: {
+  filingId: string;
+  candidates: ThemeCandidate[];
+  promptEvidence: ThemePromptEvidence[];
+  promptEvidenceByIndex: Map<number, { evidence_ref: string }>;
+  promptId: string;
+  promptVersion: string;
+  reasoningVersion: string;
+}): Theme[] {
   const seen = new Set<string>();
   const themes: Theme[] = [];
-  let duplicateCount = 0;
 
-  for (const [index, candidate] of candidates.entries()) {
-    validateThemeCandidate(candidate, index, promptEvidence);
+  for (const [index, candidate] of input.candidates.entries()) {
+    validateThemeCandidate(candidate, index, input.promptEvidence);
 
     const key = normalizeThemeKey(candidate.title, candidate.summary);
 
     if (seen.has(key)) {
-      duplicateCount += 1;
-      continue;
+      throw new BuilderValidationError(
+        `themes[${index}] duplicates another Theme narrative.`,
+      );
     }
 
     seen.add(key);
+
+    const evidence = candidate.paragraph_indexes.map((paragraphIndex) => {
+      const visibleEvidence = input.promptEvidenceByIndex.get(paragraphIndex);
+
+      if (!visibleEvidence) {
+        throw new BuilderValidationError(
+          `Theme paragraph_index is not present in the supplied Theme Input Boundary evidence: ${paragraphIndex}`,
+        );
+      }
+
+      return {
+        evidence_ref: visibleEvidence.evidence_ref,
+      };
+    });
+    const evidenceRefs = evidence.map(({ evidence_ref: evidenceRef }) =>
+      evidenceRef);
+
+    if (new Set(evidenceRefs).size !== evidenceRefs.length) {
+      throw new BuilderValidationError(
+        `themes[${index}].evidence must contain unique evidence_ref values.`,
+      );
+    }
+
     themes.push({
-      theme_id: createThemeId(filingId, candidate.title, candidate.summary),
+      theme_id: createThemeId(
+        input.filingId,
+        candidate.title,
+        candidate.summary,
+        evidenceRefs,
+      ),
       title: candidate.title.trim(),
       summary: candidate.summary.trim(),
       category: candidate.category,
-      evidence: candidate.paragraph_indexes.map((paragraphIndex) => {
-        const promptEvidenceIndex = promptEvidence.findIndex(
-          ({ paragraph_index }) => paragraph_index === paragraphIndex,
-        );
-        const canonical = evidenceCatalog[promptEvidenceIndex];
-
-        if (!canonical) {
-          throw new BuilderValidationError(
-            `Theme paragraph_index is not present in the supplied filing paragraphs: ${paragraphIndex}`,
-          );
-        }
-
-        return {
-          evidence_ref: canonical.evidence_ref,
-          evidence_hash: canonical.evidence_hash,
-          section_name: canonical.section_name,
-          paragraph_index: canonical.paragraph_index,
-        };
-      }),
-      evidence_count: candidate.paragraph_indexes.length,
-      confidence: confidenceFromCandidate(candidate),
+      evidence,
+      evidence_count: evidence.length,
+      extraction_confidence: confidenceFromCandidate(candidate),
+      prompt_id: input.promptId,
+      prompt_version: input.promptVersion,
+      reasoning_version: input.reasoningVersion,
     });
   }
 
-  return { themes, duplicateCount };
+  return themes;
 }
 
 function confidenceFromCandidate(candidate: ThemeCandidate): number {
   return candidate.paragraph_indexes.length > 0 ? 1 : 0;
 }
 
-function buildThemePromptEvidence(
-  evidenceCatalog: EvidenceCatalogEntry[],
-): ThemePromptEvidence[] {
-  return evidenceCatalog.map((entry, index) => ({
-    paragraph_index: index + 1,
-    section_name: entry.section_name,
-    paragraph_text: entry.paragraph_text,
-  }));
+function calculateOverallConfidence(themes: Theme[]): number {
+  if (themes.length === 0) {
+    return 0;
+  }
+
+  return Math.round(
+    (themes.reduce((sum, theme) =>
+      sum + (theme.extraction_confidence ?? 0), 0)
+      / themes.length) * 1000,
+  ) / 1000;
+}
+
+function renderPrompt(
+  promptResolver: ThemesBuilderOptions["promptResolver"],
+  promptId: string,
+  context: ThemesPromptRenderContext,
+) {
+  if (!("render" in promptResolver)) {
+    throw new BuilderExecutionError(
+      "Prompt Registry rendering capability is required for Themes Builder.",
+    );
+  }
+
+  return promptResolver.render<ThemesPromptRenderContext>(
+    promptId,
+    context,
+  );
 }

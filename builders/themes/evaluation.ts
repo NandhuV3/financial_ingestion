@@ -30,7 +30,7 @@ export function buildThemesEvaluationHooks(
   const totalEvidence = themes.reduce((sum, theme) => sum + theme.evidence.length, 0);
   const averageConfidence = themes.length === 0
     ? 0
-    : themes.reduce((sum, theme) => sum + theme.confidence, 0) / themes.length;
+    : themes.reduce((sum, theme) => sum + themeConfidence(theme), 0) / themes.length;
 
   return {
     prompt_version: promptVersion,
@@ -38,9 +38,9 @@ export function buildThemesEvaluationHooks(
     theme_count: themes.length,
     average_confidence: round(averageConfidence),
     confidence_distribution: {
-      low: themes.filter((theme) => theme.confidence < 0.5).length,
-      medium: themes.filter((theme) => theme.confidence >= 0.5 && theme.confidence < 0.8).length,
-      high: themes.filter((theme) => theme.confidence >= 0.8).length,
+      low: themes.filter((theme) => themeConfidence(theme) < 0.5).length,
+      medium: themes.filter((theme) => themeConfidence(theme) >= 0.5 && themeConfidence(theme) < 0.8).length,
+      high: themes.filter((theme) => themeConfidence(theme) >= 0.8).length,
     },
     evidence_density: themes.length === 0 ? 0 : round(totalEvidence / themes.length),
     duplicate_count: duplicateCount,
@@ -57,4 +57,8 @@ export function buildThemesEvaluationHooks(
 
 function round(value: number): number {
   return Math.round(value * 1000) / 1000;
+}
+
+function themeConfidence(theme: Theme): number {
+  return theme.extraction_confidence ?? theme.confidence ?? 0;
 }

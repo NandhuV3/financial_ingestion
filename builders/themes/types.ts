@@ -1,7 +1,6 @@
 import type {
-  EvidenceCatalogArtifactContent,
-} from "../../contracts/artifacts/evidence-catalog-artifact-content.js";
-import type { Artifact } from "../../contracts/artifacts/artifact.js";
+  ThemeInputBoundaryContent,
+} from "../../contracts/execution/theme-input-boundary-content.js";
 import type {
   ThemePromptEvidence,
 } from "../../src/prompt-registry/themes-prompt.js";
@@ -12,7 +11,8 @@ export type { ThemePromptEvidence };
 export type FilingType = "10-K" | "10-Q" | "Transcript";
 
 export type ThemesBuilderInput = {
-  filing_type: FilingType;
+  theme_input_boundary?: ThemeInputBoundaryContent;
+  filing_type?: FilingType;
 };
 
 export type ThemeCandidate = {
@@ -24,8 +24,4 @@ export type ThemeCandidate = {
 
 export type ThemesLLMOutput = {
   themes: ThemeCandidate[];
-};
-
-export type ThemesDependencies = {
-  evidence_catalog: Artifact<EvidenceCatalogArtifactContent>;
 };

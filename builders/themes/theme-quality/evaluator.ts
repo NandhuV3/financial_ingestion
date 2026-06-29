@@ -26,7 +26,10 @@ export function evaluateThemeQuality(
   );
   const usedSections = new Set(
     input.themes.flatMap((theme) =>
-      theme.evidence.map(({ section_name }) => section_name)),
+      theme.evidence
+        .map(({ section_name: sectionName }) => sectionName)
+        .filter((sectionName): sectionName is string =>
+          sectionName !== undefined)),
   );
 
   return {
@@ -73,6 +76,10 @@ function sectionDistribution(
 
   for (const theme of themes) {
     for (const { section_name: sectionName } of theme.evidence) {
+      if (sectionName === undefined) {
+        continue;
+      }
+
       distribution.set(
         sectionName,
         (distribution.get(sectionName) ?? 0) + 1,

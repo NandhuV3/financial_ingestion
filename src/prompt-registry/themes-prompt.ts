@@ -18,7 +18,8 @@ export type ThemePromptEvidence = {
 };
 
 export type ThemesPromptRenderContext = {
-  filingType: string;
+  filingType?: string;
+  inputVersion?: string;
   evidence: ThemePromptEvidence[];
 };
 
@@ -73,7 +74,9 @@ The supplied input is already visibility constrained.
 
 Reason only over the supplied Theme Input.
 
-Filing Type: ${input.filingType}
+${input.filingType
+    ? `Filing Type: ${input.filingType}`
+    : `Theme Input Version: ${input.inputVersion ?? "not_provided"}`}
 
 Return JSON only with this exact shape:
 {
