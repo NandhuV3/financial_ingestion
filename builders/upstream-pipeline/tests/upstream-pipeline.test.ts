@@ -10,6 +10,12 @@ import type {
 } from "../../../contracts/artifacts/evidence-identity-artifact-content.js";
 import type { FilingArtifactContent } from "../../../contracts/artifacts/filing-artifact-content.js";
 import { ArtifactStatus } from "../../../contracts/artifacts/artifact-status.js";
+import type {
+  TopicAssignmentArtifactContent,
+} from "../../../contracts/artifacts/topic-assignment-artifact-content.js";
+import type {
+  TopicRegistryArtifactContent,
+} from "../../../contracts/artifacts/topic-registry-artifact-content.js";
 import type { ArtifactRepository } from "../../../packages/artifact-framework/src/artifact-repository.js";
 import { calculateArtifactHash } from "../../../packages/artifact-framework/src/artifact-service.js";
 import type { ArtifactLookup } from "../../../packages/artifact-framework/src/artifact-types.js";
@@ -38,7 +44,7 @@ import { registerUpstreamBuilders } from "../register-builders.js";
 import { runUpstreamPipeline } from "../run-upstream-pipeline.js";
 
 describe("upstream pipeline", () => {
-  it("removes stale Sprint 001 demo artifacts before a new execution", async (context) => {
+  it("removes stale Sprint 002 demo artifacts before a new execution", async (context) => {
     const outputDirectory = await mkdtemp(join(tmpdir(), "upstream-dumps-"));
     context.after(async () => rm(outputDirectory, { recursive: true, force: true }));
     const artifactDumps = createArtifactDumpObserver(outputDirectory);
@@ -47,12 +53,14 @@ describe("upstream pipeline", () => {
     await artifactDumps.observer("filing", staleFiling);
     await artifactDumps.observer("evidence_identity", staleFiling);
     await artifactDumps.observer("themes", staleFiling);
+    await artifactDumps.observer("topic_assignment", staleFiling);
     await resetArtifactDumps(outputDirectory);
 
     for (const filename of [
       "00-filing.json",
       "01-evidence-identity.json",
       "02-themes.json",
+      "03-topic-assignment.json",
     ]) {
       await assert.rejects(
         () => readFile(join(outputDirectory, filename), "utf8"),
@@ -61,7 +69,7 @@ describe("upstream pipeline", () => {
     }
   });
 
-  it("executes Sprint 001 through Themes and stops before downstream builders", async (context) => {
+  it("executes Sprint 002 through Topic Assignment and stops before downstream builders", async (context) => {
     const repository = new InMemoryArtifactRepository();
     const llmClient = new UpstreamLLMClient();
     const promptResolver = new UpstreamPromptResolver();
@@ -78,10 +86,29 @@ describe("upstream pipeline", () => {
       themesModelVersion: "themes-demo-model-v1",
       structuredIntelligenceModelVersion: "structured-demo-model-v1",
     });
+    const topicRegistry =
+      await runtime.artifactService.createArtifact<TopicRegistryArtifactContent>({
+        artifact_type: "topic_registry",
+        company_id: null,
+        period_id: null,
+        content: topicRegistryContent(),
+        lineage: {
+          upstream_dependencies: [],
+          generation_context: {
+            builder_type: "topic-registry-test-loader",
+          },
+        },
+        schema_version: "topic-registry-artifact-v1",
+        pipeline_version: "topic-registry-pipeline-v1",
+        input_hash: "topic-registry-input-hash",
+        generation_duration_ms: 0,
+        generated_at: "2026-06-19T00:00:00.000Z",
+      });
 
-    const themes = await runUpstreamPipeline({
+    const topicAssignment = await runUpstreamPipeline({
       runtime,
       normalizedFiling: normalizedFilingInput(),
+      topicRegistry,
       generatedAt: "2026-06-19T00:00:00.000Z",
       onArtifact: async (stage, artifact) => {
         artifactStages.push(stage);
@@ -96,6 +123,7 @@ describe("upstream pipeline", () => {
       "filing",
       "evidence_identity",
       "themes",
+      "topic_assignment",
     ]);
     assert.deepEqual(transientStages, [
       "themes_quality",
@@ -119,18 +147,31 @@ describe("upstream pipeline", () => {
       company_id: "MSFT",
       period_id: "2026-Q2",
     });
+    const persistedTopicAssignment =
+      await repository.getCurrent<TopicAssignmentArtifactContent>({
+        artifact_type: "topic_assignment",
+        company_id: "MSFT",
+        period_id: "2026-Q2",
+      });
 
-    assert.equal(themes.identity.artifact_type, "themes");
-    assert.equal(themes.content.company_id, "MSFT");
-    assert.equal(themes.content.period_id, "2026-Q2");
-    assert.equal(themes.content.filing_id, "msft-2026-q2-10q");
-    assert.equal(themes.content.themes.length, 1);
+    assert.equal(topicAssignment.identity.artifact_type, "topic_assignment");
+    assert.equal(topicAssignment.content.company_id, "MSFT");
+    assert.equal(topicAssignment.content.period_id, "2026-Q2");
+    assert.equal(topicAssignment.content.filing_id, "msft-2026-q2-10q");
+    assert.equal(topicAssignment.content.assignments.length, 1);
+    assert.equal(topicAssignment.content.assignments[0]?.topic_id, "topic:cloud");
+    assert.equal(topicAssignment.content.registry_version, 1);
+    assert.equal(persistedThemes?.identity.artifact_type, "themes");
+    assert.equal(persistedThemes?.content.company_id, "MSFT");
+    assert.equal(persistedThemes?.content.period_id, "2026-Q2");
+    assert.equal(persistedThemes?.content.filing_id, "msft-2026-q2-10q");
+    assert.equal(persistedThemes?.content.themes.length, 1);
     const expectedEvidenceRef = evidenceIdentity?.content.entries[1]?.evidence_ref;
     assert.ok(expectedEvidenceRef);
-    assert.deepEqual(themes.content.themes[0]?.evidence, [{
+    assert.deepEqual(persistedThemes?.content.themes[0]?.evidence, [{
       evidence_ref: expectedEvidenceRef,
     }]);
-    assert.deepEqual(themes.lineage.upstream_dependencies, [
+    assert.deepEqual(persistedThemes?.lineage.upstream_dependencies, [
       {
         artifact_id: evidenceIdentity?.identity.artifact_id,
         artifact_type: "evidence_identity",
@@ -139,18 +180,35 @@ describe("upstream pipeline", () => {
         input_hash: evidenceIdentity?.metadata.input_hash,
       },
     ]);
-    assert.equal(themes.lineage.prompt_reference?.prompt_id, THEMES_PROMPT_ID);
-    assert.equal(themes.lineage.prompt_reference?.activation_id, null);
-    assert.equal(themes.lineage.model_reference?.model_version, "themes-demo-model-v1");
+    assert.deepEqual(topicAssignment.lineage.upstream_dependencies, [
+      {
+        artifact_id: persistedThemes?.identity.artifact_id,
+        artifact_type: "themes",
+        version: persistedThemes?.identity.version,
+        artifact_hash: persistedThemes?.metadata.artifact_hash,
+        input_hash: persistedThemes?.metadata.input_hash,
+      },
+      {
+        artifact_id: topicRegistry.identity.artifact_id,
+        artifact_type: "topic_registry",
+        version: topicRegistry.identity.version,
+        artifact_hash: topicRegistry.metadata.artifact_hash,
+        input_hash: topicRegistry.metadata.input_hash,
+      },
+    ]);
+    assert.equal(persistedThemes?.lineage.prompt_reference?.prompt_id, THEMES_PROMPT_ID);
+    assert.equal(persistedThemes?.lineage.prompt_reference?.activation_id, null);
+    assert.equal(persistedThemes?.lineage.model_reference?.model_version, "themes-demo-model-v1");
+    assert.equal(topicAssignment.lineage.model_reference?.model_name, "text-embedding-3-small");
 
     assert.notEqual(filing, null);
     assert.notEqual(evidenceIdentity, null);
     assert.notEqual(persistedThemes, null);
+    assert.notEqual(persistedTopicAssignment, null);
     assert.equal((evidenceIdentity?.content.entries.length ?? 0) > 1, true);
 
     for (const artifactType of [
       "evidence_catalog",
-      "topic_assignment",
       "topic_evolution",
       "structured_intelligence",
       "company_knowledge_candidate",
@@ -165,7 +223,7 @@ describe("upstream pipeline", () => {
           period_id: "2026-Q2",
         }),
         null,
-        `${artifactType} should not be persisted by Sprint 001 orchestration`,
+        `${artifactType} should not be persisted by Sprint 002 orchestration`,
       );
     }
 
@@ -180,6 +238,7 @@ describe("upstream pipeline", () => {
       ["00-filing.json", "filing"],
       ["01-evidence-identity.json", "evidence_identity"],
       ["02-themes.json", "themes"],
+      ["03-topic-assignment.json", "topic_assignment"],
     ] as const;
 
     for (const [filename, artifactType] of expectedDumps) {
@@ -192,7 +251,6 @@ describe("upstream pipeline", () => {
     }
 
     for (const filename of [
-      "03-topic-assignment.json",
       "04-topic-evolution.json",
       "05-structured-intelligence.json",
       "06-company-knowledge-candidate.json",
@@ -226,6 +284,27 @@ function normalizedFilingInput(): FilingArtifactBuilderInput {
       "Competition and infrastructure constraints may affect cloud execution.",
     ].join("\n\n"),
     raw_html_hash: "raw-html-hash",
+  };
+}
+
+function topicRegistryContent(): TopicRegistryArtifactContent {
+  return {
+    registry_version: 1,
+    topics: [
+      {
+        topic_id: "topic:cloud",
+        canonical_name: "Cloud",
+        definition: "Cloud platform demand and enterprise adoption.",
+        aliases: ["Azure", "Cloud platform"],
+        lifecycle_state: "active",
+        created_registry_version: 1,
+        updated_registry_version: 1,
+        child_topic_ids: [],
+        examples: ["Cloud platform demand"],
+        created_at: "2026-06-19T00:00:00.000Z",
+        updated_at: "2026-06-19T00:00:00.000Z",
+      },
+    ],
   };
 }
 

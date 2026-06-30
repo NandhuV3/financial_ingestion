@@ -4,6 +4,12 @@ import type {
 } from "../../contracts/artifacts/evidence-identity-artifact-content.js";
 import type { FilingArtifactContent } from "../../contracts/artifacts/filing-artifact-content.js";
 import type {
+  TopicAssignmentArtifactContent,
+} from "../../contracts/artifacts/topic-assignment-artifact-content.js";
+import type {
+  TopicRegistryArtifactContent,
+} from "../../contracts/artifacts/topic-registry-artifact-content.js";
+import type {
   ThemeGroundingContent,
 } from "../../contracts/execution/theme-grounding-content.js";
 import type {
@@ -56,11 +62,18 @@ import {
 import type {
   ThemesBuilderInput,
 } from "../themes/types.js";
+import {
+  TOPIC_ASSIGNMENT_BUILDER_TYPE,
+} from "../topic-assignment-builder/contract.js";
+import type {
+  TopicAssignmentBuilderInput,
+} from "../topic-assignment-builder/types.js";
 import type { UpstreamPipelineRuntime } from "./register-builders.js";
 
 export type RunUpstreamPipelineInput = {
   runtime: UpstreamPipelineRuntime;
   normalizedFiling: FilingArtifactBuilderInput;
+  topicRegistry: Artifact<TopicRegistryArtifactContent>;
   generatedAt?: string;
   onArtifact?: UpstreamPipelineArtifactObserver;
   onTransientOutput?: UpstreamPipelineTransientObserver;
@@ -70,6 +83,7 @@ export const UPSTREAM_PIPELINE_STAGES = [
   "filing",
   "evidence_identity",
   "themes",
+  "topic_assignment",
 ] as const;
 
 export type UpstreamPipelineStage = typeof UPSTREAM_PIPELINE_STAGES[number];
@@ -101,7 +115,7 @@ export type UpstreamPipelineTransientObserver = (
 
 export async function runUpstreamPipeline(
   input: RunUpstreamPipelineInput,
-): Promise<Artifact<ThemesArtifactContent>> {
+): Promise<Artifact<TopicAssignmentArtifactContent>> {
   validateNormalizedFiling(input.normalizedFiling);
 
   const companyId = input.normalizedFiling.company_id;
@@ -220,7 +234,34 @@ export async function runUpstreamPipeline(
   });
   await emitArtifact(input, "themes", themes);
 
-  return themes;
+  const topicAssignmentInput: TopicAssignmentBuilderInput = {
+    company_id: companyId,
+    period_id: periodId,
+    filing_id: themes.content.filing_id,
+  };
+  const topicAssignment = await input.runtime.executor.executeBuilder<
+    TopicAssignmentBuilderInput,
+    TopicAssignmentArtifactContent
+  >({
+    builderType: TOPIC_ASSIGNMENT_BUILDER_TYPE,
+    companyId,
+    periodId,
+    executionId: executionId(companyId, periodId, "topic-assignment"),
+    input: topicAssignmentInput,
+    inputHash: calculateArtifactHash({
+      themes: themes.metadata.artifact_hash,
+      topic_registry: input.topicRegistry.metadata.artifact_hash,
+      input: topicAssignmentInput,
+    }),
+    dependencies: {
+      themes,
+      topic_registry: input.topicRegistry,
+    },
+    generatedAt: input.generatedAt,
+  });
+  await emitArtifact(input, "topic_assignment", topicAssignment);
+
+  return topicAssignment;
 }
 
 function validateNormalizedFiling(input: FilingArtifactBuilderInput): void {

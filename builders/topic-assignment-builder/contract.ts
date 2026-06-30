@@ -49,13 +49,3 @@ export const ASSIGNMENT_METHODS = [
 ] as const;
 
 export type AssignmentMethod = typeof ASSIGNMENT_METHODS[number];
-
-export const TOPIC_REGISTRY_ENTRY_STATUSES = [
-  "active",
-  "deprecated",
-  "merged",
-  "rejected",
-] as const;
-
-export type TopicRegistryEntryStatus =
-  typeof TOPIC_REGISTRY_ENTRY_STATUSES[number];

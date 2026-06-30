@@ -1,5 +1,11 @@
 import type { Artifact } from "../../contracts/artifacts/artifact.js";
 import { ArtifactStatus } from "../../contracts/artifacts/artifact-status.js";
+import type {
+  TopicAssignmentArtifactContent,
+} from "../../contracts/artifacts/topic-assignment-artifact-content.js";
+import type {
+  TopicRegistryArtifactContent,
+} from "../../contracts/artifacts/topic-registry-artifact-content.js";
 import {
   BuilderDependencyError,
   BuilderValidationError,
@@ -10,14 +16,8 @@ import { calculateTopicAssignmentConfidence } from "./confidence.js";
 import {
   ASSIGNMENT_METHODS,
   MAX_ASSIGNMENTS_PER_THEME,
-  TOPIC_REGISTRY_ENTRY_STATUSES,
-  TOPIC_ASSIGNMENT_EMBEDDING_MODEL,
 } from "./contract.js";
-import type {
-  TopicAssignmentArtifactContent,
-  TopicAssignmentBuilderInput,
-  TopicRegistryArtifactContent,
-} from "./types.js";
+import type { TopicAssignmentBuilderInput } from "./types.js";
 
 export function validateTopicAssignmentBuilderInput(
   input: TopicAssignmentBuilderInput,
@@ -25,6 +25,22 @@ export function validateTopicAssignmentBuilderInput(
   requireText(input.company_id, "company_id");
   requireText(input.period_id, "period_id");
   requireText(input.filing_id, "filing_id");
+}
+
+export function validateTopicAssignmentDependencies(
+  dependencies: Record<string, unknown>,
+): void {
+  const dependencyNames = Object.keys(dependencies).sort();
+  const expected = ["themes", "topic_registry"];
+
+  if (
+    dependencyNames.length !== expected.length
+    || dependencyNames.some((name, index) => name !== expected[index])
+  ) {
+    throw new BuilderDependencyError(
+      `Topic Assignment requires exactly these dependencies: ${expected.join(", ")}.`,
+    );
+  }
 }
 
 export function requireThemesDependency(
@@ -74,6 +90,7 @@ export function requireThemesDependency(
     requireText(theme.theme_id, `themes.themes[${index}].theme_id`);
     requireText(theme.title, `themes.themes[${index}].title`);
     requireText(theme.summary, `themes.themes[${index}].summary`);
+    requireText(theme.category, `themes.themes[${index}].category`);
 
     if (
       !Number.isInteger(theme.evidence_count)
@@ -123,27 +140,18 @@ export function requireTopicRegistryDependency(
     );
   }
 
-  if (
-    registry.metadata.status !== ArtifactStatus.ACTIVE
-    || registry.content.registry_status !== "active"
-  ) {
+  if (registry.metadata.status !== ArtifactStatus.ACTIVE) {
     throw new BuilderDependencyError(
       "Topic Registry artifact must be active.",
     );
   }
 
-  requireText(registry.content.registry_version, "topic_registry.registry_version");
-  requireText(
-    registry.content.similarity_model_version,
-    "topic_registry.similarity_model_version",
-  );
-
   if (
-    registry.content.similarity_model_version
-    !== TOPIC_ASSIGNMENT_EMBEDDING_MODEL
+    !Number.isInteger(registry.content.registry_version)
+    || registry.content.registry_version < 1
   ) {
     throw new BuilderDependencyError(
-      "Topic Registry similarity model must match the Topic Assignment model.",
+      "Topic Registry registry_version must be a positive integer.",
     );
   }
 
@@ -154,10 +162,14 @@ export function requireTopicRegistryDependency(
   }
 
   const ids = new Set<string>();
+  const canonicalNames = new Set<string>();
 
   for (const [index, topic] of registry.content.topics.entries()) {
     requireText(topic.topic_id, `topic_registry.topics[${index}].topic_id`);
-    requireText(topic.topic_name, `topic_registry.topics[${index}].topic_name`);
+    requireText(
+      topic.canonical_name,
+      `topic_registry.topics[${index}].canonical_name`,
+    );
     requireText(topic.definition, `topic_registry.topics[${index}].definition`);
 
     if (
@@ -170,9 +182,18 @@ export function requireTopicRegistryDependency(
       );
     }
 
-    if (!TOPIC_REGISTRY_ENTRY_STATUSES.includes(topic.status)) {
+    if (
+      ![
+        "proposed",
+        "provisional",
+        "active",
+        "deprecated",
+        "merged",
+        "retired",
+      ].includes(topic.lifecycle_state)
+    ) {
       throw new BuilderDependencyError(
-        `topic_registry.topics[${index}].status is invalid.`,
+        `topic_registry.topics[${index}].lifecycle_state is invalid.`,
       );
     }
 
@@ -182,10 +203,32 @@ export function requireTopicRegistryDependency(
       );
     }
 
-    validateEmbedding(
-      topic.embedding,
-      `topic_registry.topics[${index}].embedding`,
+    validateStringArray(
+      topic.child_topic_ids,
+      `topic_registry.topics[${index}].child_topic_ids`,
     );
+    validatePositiveIntegerDependency(
+      topic.created_registry_version,
+      `topic_registry.topics[${index}].created_registry_version`,
+    );
+    validatePositiveIntegerDependency(
+      topic.updated_registry_version,
+      `topic_registry.topics[${index}].updated_registry_version`,
+    );
+
+    if (topic.created_registry_version > topic.updated_registry_version) {
+      throw new BuilderDependencyError(
+        `topic_registry.topics[${index}] created_registry_version must be less than or equal to updated_registry_version.`,
+      );
+    }
+
+    if (canonicalNames.has(normalizeText(topic.canonical_name))) {
+      throw new BuilderDependencyError(
+        `Topic Registry contains duplicate canonical_name: ${topic.canonical_name}.`,
+      );
+    }
+
+    canonicalNames.add(normalizeText(topic.canonical_name));
     ids.add(topic.topic_id);
   }
 
@@ -197,23 +240,24 @@ export function validateTopicAssignmentArtifactContent(
   themesArtifact: Artifact<ThemesArtifactContent>,
   registryArtifact: Artifact<TopicRegistryArtifactContent>,
 ): void {
-  if (content.artifact_type !== "topic_assignment") {
-    throw new BuilderValidationError(
-      "Topic Assignment content artifact_type must be topic_assignment.",
-    );
-  }
-
-  requireText(content.company, "topic_assignment.company");
-  requireText(content.period, "topic_assignment.period");
+  requireText(content.company_id, "topic_assignment.company_id");
+  requireText(content.period_id, "topic_assignment.period_id");
   requireText(content.filing_id, "topic_assignment.filing_id");
+  validatePositiveInteger(content.registry_version, "topic_assignment.registry_version");
 
   if (
-    content.company !== themesArtifact.content.company_id
-    || content.period !== themesArtifact.content.period_id
+    content.company_id !== themesArtifact.content.company_id
+    || content.period_id !== themesArtifact.content.period_id
     || content.filing_id !== themesArtifact.content.filing_id
   ) {
     throw new BuilderValidationError(
       "Topic Assignment content identity must reconcile with Themes.",
+    );
+  }
+
+  if (content.registry_version !== registryArtifact.content.registry_version) {
+    throw new BuilderValidationError(
+      "Topic Assignment registry_version must reconcile with Topic Registry.",
     );
   }
 
@@ -223,11 +267,11 @@ export function validateTopicAssignmentArtifactContent(
   const themeIds = new Set(themesById.keys());
   const activeTopicIds = new Set(
     registryArtifact.content.topics
-      .filter(({ status }) => status === "active")
+      .filter(({ lifecycle_state }) => lifecycle_state === "active")
       .map(({ topic_id }) => topic_id),
   );
   const assignmentIds = new Set<string>();
-  const assignmentsByTheme = new Map<string, number>();
+  const assignmentsByTheme = new Map<string, Set<string>>();
 
   for (const [index, assignment] of content.assignments.entries()) {
     requireText(assignment.assignment_id, `assignments[${index}].assignment_id`);
@@ -296,15 +340,21 @@ export function validateTopicAssignmentArtifactContent(
     }
 
     assignmentIds.add(assignment.assignment_id);
-    assignmentsByTheme.set(
-      assignment.theme_id,
-      (assignmentsByTheme.get(assignment.theme_id) ?? 0) + 1,
-    );
+    const topicIds = assignmentsByTheme.get(assignment.theme_id) ?? new Set<string>();
+
+    if (topicIds.has(assignment.topic_id)) {
+      throw new BuilderValidationError(
+        `assignments[${index}] duplicates a Theme-to-Topic assignment.`,
+      );
+    }
+
+    topicIds.add(assignment.topic_id);
+    assignmentsByTheme.set(assignment.theme_id, topicIds);
   }
 
   if (
-    [...assignmentsByTheme.values()].some((count) =>
-      count > MAX_ASSIGNMENTS_PER_THEME)
+    [...assignmentsByTheme.values()].some((topicIds) =>
+      topicIds.size > MAX_ASSIGNMENTS_PER_THEME)
   ) {
     throw new BuilderValidationError(
       `A theme may not have more than ${MAX_ASSIGNMENTS_PER_THEME} assignments.`,
@@ -422,15 +472,27 @@ function validateConfidence(value: number, field: string): void {
   }
 }
 
-function validateEmbedding(value: number[], field: string): void {
+function validateStringArray(value: string[], field: string): void {
   if (
     !Array.isArray(value)
-    || value.length === 0
-    || value.some((entry) => !Number.isFinite(entry))
+    || value.some((entry) =>
+      typeof entry !== "string" || entry.trim() === "")
   ) {
     throw new BuilderDependencyError(
-      `${field} must be a non-empty finite numeric vector.`,
+      `${field} must contain only non-empty strings.`,
     );
+  }
+}
+
+function validatePositiveIntegerDependency(value: number, field: string): void {
+  if (!Number.isInteger(value) || value < 1) {
+    throw new BuilderDependencyError(`${field} must be a positive integer.`);
+  }
+}
+
+function validatePositiveInteger(value: number, field: string): void {
+  if (!Number.isInteger(value) || value < 1) {
+    throw new BuilderValidationError(`${field} must be a positive integer.`);
   }
 }
 
@@ -438,4 +500,8 @@ function requireText(value: unknown, field: string): asserts value is string {
   if (typeof value !== "string" || value.trim() === "") {
     throw new BuilderValidationError(`${field} must be a non-empty string.`);
   }
+}
+
+function normalizeText(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
 }

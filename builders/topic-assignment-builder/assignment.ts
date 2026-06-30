@@ -8,11 +8,12 @@ import {
   SIMILARITY_DECIMAL_PLACES,
 } from "./contract.js";
 import type {
-  CandidateTopic,
+  TopicAssignmentCandidateTopic,
   ThemeSemanticEmbedding,
   TopicAssignment,
   TopicMatchCandidate,
   TopicRegistryEntry,
+  TopicSemanticEmbedding,
   UnassignedTheme,
 } from "./types.js";
 
@@ -20,6 +21,7 @@ export function buildTopicAssignments(
   themes: Theme[],
   activeTopics: TopicRegistryEntry[],
   themeEmbeddings: ThemeSemanticEmbedding[],
+  topicEmbeddings: TopicSemanticEmbedding[],
 ): {
   assignments: TopicAssignment[];
   unassignedThemes: UnassignedTheme[];
@@ -33,6 +35,9 @@ export function buildTopicAssignments(
   const embeddingsByTheme = new Map(
     themeEmbeddings.map(({ theme_id, embedding }) => [theme_id, embedding]),
   );
+  const embeddingsByTopic = new Map(
+    topicEmbeddings.map(({ topic_id, embedding }) => [topic_id, embedding]),
+  );
 
   for (const theme of orderedThemes) {
     const themeEmbedding = embeddingsByTheme.get(theme.theme_id);
@@ -42,7 +47,15 @@ export function buildTopicAssignments(
     }
 
     const candidates = orderedTopics
-      .map((topic) => matchThemeToTopic(theme, themeEmbedding, topic))
+      .map((topic) => {
+        const topicEmbedding = embeddingsByTopic.get(topic.topic_id);
+
+        if (topicEmbedding === undefined) {
+          throw new Error(`Missing semantic embedding for topic ${topic.topic_id}.`);
+        }
+
+        return matchThemeToTopic(theme, themeEmbedding, topic, topicEmbedding);
+      })
       .sort(compareCandidates);
     const automatic = candidates
       .filter(({ similarity_score }) =>
@@ -102,10 +115,11 @@ function matchThemeToTopic(
   theme: Theme,
   themeEmbedding: number[],
   topic: TopicRegistryEntry,
+  topicEmbedding: number[],
 ): TopicMatchCandidate {
   const normalizedTitle = normalizeTopicText(theme.title);
   const exactValues = [
-    topic.topic_name,
+    topic.canonical_name,
     ...topic.aliases,
   ].map(normalizeTopicText);
 
@@ -120,7 +134,7 @@ function matchThemeToTopic(
   return {
     topic_id: topic.topic_id,
     assignment_method: "semantic_match",
-    similarity_score: cosineSimilarity(themeEmbedding, topic.embedding),
+    similarity_score: cosineSimilarity(themeEmbedding, topicEmbedding),
   };
 }
 
@@ -184,7 +198,7 @@ function compareAssignments(
   );
 }
 
-function toCandidateTopic(candidate: TopicMatchCandidate): CandidateTopic {
+function toCandidateTopic(candidate: TopicMatchCandidate): TopicAssignmentCandidateTopic {
   return {
     topic_id: candidate.topic_id,
     similarity_score: candidate.similarity_score,

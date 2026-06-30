@@ -10,6 +10,7 @@ const ARTIFACT_DUMP_FILENAMES: Record<UpstreamPipelineStage, string> = {
   filing: "00-filing.json",
   evidence_identity: "01-evidence-identity.json",
   themes: "02-themes.json",
+  topic_assignment: "03-topic-assignment.json",
 };
 
 export function createArtifactDumpObserver(

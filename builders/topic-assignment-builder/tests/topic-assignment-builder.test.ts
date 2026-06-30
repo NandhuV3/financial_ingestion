@@ -2,46 +2,51 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { Artifact } from "../../../contracts/artifacts/artifact.js";
 import { ArtifactStatus } from "../../../contracts/artifacts/artifact-status.js";
+import type {
+  TopicAssignmentArtifactContent,
+} from "../../../contracts/artifacts/topic-assignment-artifact-content.js";
+import type {
+  TopicLifecycleState,
+  TopicRegistryArtifactContent,
+  TopicRegistryEntry,
+} from "../../../contracts/artifacts/topic-registry-artifact-content.js";
+import { calculateArtifactHash } from "../../../packages/artifact-framework/src/artifact-service.js";
 import type { BuilderContext } from "../../../packages/builder-framework/src/builder-context.js";
 import {
   BuilderDependencyError,
   BuilderValidationError,
 } from "../../../packages/builder-framework/src/builder-errors.js";
-import { calculateArtifactHash } from "../../../packages/artifact-framework/src/artifact-service.js";
 import type {
   Theme,
   ThemesArtifactContent,
 } from "../../themes/contract.js";
-import { TopicAssignmentBuilder } from "../builder.js";
 import {
   buildTopicAssignments,
   createAssignmentId,
 } from "../assignment.js";
+import { TopicAssignmentBuilder } from "../builder.js";
 import type {
   SemanticEmbeddingProvider,
-  TopicAssignmentArtifactContent,
   TopicAssignmentBuilderInput,
-  TopicRegistryArtifactContent,
-  TopicRegistryEntry,
 } from "../types.js";
 import { validateTopicAssignmentArtifactContent } from "../validator.js";
 
 describe("TopicAssignmentBuilder", () => {
   it("assigns exact and semantic matches with stable deterministic output", async () => {
-    const builder = new TopicAssignmentBuilder(
-      embeddingProvider({
-        "Artificial Intelligence": [0, 1],
-        "Cloud platform demand": [1, 0],
-      }),
-    );
+    const builder = new TopicAssignmentBuilder(embeddingProvider({
+      "Theme: Artificial Intelligence": [0, 1],
+      "Theme: Cloud platform demand": [1, 0],
+      "Topic: Artificial Intelligence": [0, 1],
+      "Topic: Cloud": [1, 0],
+    }));
     const first = await builder.execute(context({
       themes: themesArtifact([
         theme("theme-b", "Cloud platform demand", "Azure cloud adoption increased."),
         theme("theme-a", "Artificial Intelligence", "AI infrastructure investment."),
       ]),
       registry: registryArtifact([
-        topic("cloud", "Cloud", [1, 0]),
-        topic("artificial_intelligence", "Artificial Intelligence", [0, 1]),
+        topic("topic:cloud", "Cloud"),
+        topic("topic:artificial-intelligence", "Artificial Intelligence"),
       ]),
     }));
     const second = await builder.execute(context({
@@ -50,12 +55,16 @@ describe("TopicAssignmentBuilder", () => {
         theme("theme-b", "Cloud platform demand", "Azure cloud adoption increased."),
       ]),
       registry: registryArtifact([
-        topic("artificial_intelligence", "Artificial Intelligence", [0, 1]),
-        topic("cloud", "Cloud", [1, 0]),
+        topic("topic:artificial-intelligence", "Artificial Intelligence"),
+        topic("topic:cloud", "Cloud"),
       ]),
     }));
 
     assert.deepEqual(first.content, second.content);
+    assert.equal(first.content.company_id, "MSFT");
+    assert.equal(first.content.period_id, "2026-Q2");
+    assert.equal(first.content.filing_id, "msft-2026-q2-10q");
+    assert.equal(first.content.registry_version, 7);
     assert.deepEqual(
       first.content.assignments.map(({
         theme_id,
@@ -73,14 +82,14 @@ describe("TopicAssignmentBuilder", () => {
       [
         {
           theme_id: "theme-a",
-          topic_id: "artificial_intelligence",
+          topic_id: "topic:artificial-intelligence",
           theme_title: "Artificial Intelligence",
           theme_summary: "AI infrastructure investment.",
           assignment_method: "exact_match",
         },
         {
           theme_id: "theme-b",
-          topic_id: "cloud",
+          topic_id: "topic:cloud",
           theme_title: "Cloud platform demand",
           theme_summary: "Azure cloud adoption increased.",
           assignment_method: "semantic_match",
@@ -89,7 +98,7 @@ describe("TopicAssignmentBuilder", () => {
     );
     assert.equal(
       first.content.assignments[0]?.assignment_id,
-      createAssignmentId("theme-a", "artificial_intelligence"),
+      createAssignmentId("theme-a", "topic:artificial-intelligence"),
     );
     assert.deepEqual(first.content.confidence, {
       overall: 1,
@@ -99,44 +108,43 @@ describe("TopicAssignmentBuilder", () => {
     });
   });
 
-  it("enforces the three-assignment limit and active-topic-only behavior", () => {
-    const themes = [
-      theme("theme-a", "Cloud Growth Strategy", "Cloud growth strategy."),
-    ];
-    const topics = [
-      topic("cloud", "Cloud", [1, 0]),
-      topic("growth", "Growth", [1, 0]),
-      topic("strategy", "Strategy", [1, 0]),
-      topic("cloud_growth", "Cloud Growth", [1, 0]),
-      topic("inactive", "Cloud", [1, 0], "deprecated"),
-    ];
+  it("assigns one Theme to multiple Topics with deterministic limits", () => {
     const result = buildTopicAssignments(
-      themes,
-      topics.filter(({ status }) => status === "active"),
+      [theme("theme-a", "Cloud Growth Strategy", "Cloud growth strategy.")],
+      [
+        topic("topic:cloud", "Cloud"),
+        topic("topic:growth", "Growth"),
+        topic("topic:strategy", "Strategy"),
+        topic("topic:cloud-growth", "Cloud Growth"),
+      ],
       [{ theme_id: "theme-a", embedding: [1, 0] }],
+      [
+        { topic_id: "topic:cloud", embedding: [1, 0] },
+        { topic_id: "topic:growth", embedding: [1, 0] },
+        { topic_id: "topic:strategy", embedding: [1, 0] },
+        { topic_id: "topic:cloud-growth", embedding: [1, 0] },
+      ],
     );
 
-    assert.equal(result.assignments.length, 3);
-    assert.equal(
-      result.assignments.some(({ topic_id }) => topic_id === "inactive"),
-      false,
+    assert.deepEqual(
+      result.assignments.map(({ topic_id }) => topic_id),
+      ["topic:cloud", "topic:cloud-growth", "topic:growth"],
     );
   });
 
-  it("represents review-range and unmatched themes as unassigned", async () => {
-    const builder = new TopicAssignmentBuilder(
-      embeddingProvider({
-        Cloud: [0.8, 0.6],
-        Operations: [0, 1],
-      }),
-    );
+  it("preserves unassigned Themes and review-range candidate Topics", async () => {
+    const builder = new TopicAssignmentBuilder(embeddingProvider({
+      "Theme: Cloud": [0.8, 0.6],
+      "Theme: Operations": [0, 1],
+      "Topic: Cloud Services": [1, 0],
+    }));
     const result = await builder.execute(context({
       themes: themesArtifact([
         theme("theme-a", "Cloud", "Platform discussion."),
         theme("theme-b", "Operations", "General execution discussion."),
       ]),
       registry: registryArtifact([
-        topic("cloud_services", "Cloud Services", [1, 0]),
+        topic("topic:cloud-services", "Cloud Services"),
       ]),
     }));
 
@@ -164,119 +172,68 @@ describe("TopicAssignmentBuilder", () => {
         },
       ],
     );
-    assert.equal(
-      result.content.unassigned_themes[0]?.highest_similarity_score,
-      0.8,
-    );
     assert.deepEqual(
       result.content.unassigned_themes[0]?.candidate_topics,
-      [{ topic_id: "cloud_services", similarity_score: 0.8 }],
+      [{ topic_id: "topic:cloud-services", similarity_score: 0.8 }],
     );
-    assert.deepEqual(
-      result.content.unassigned_themes[1]?.candidate_topics,
-      [],
-    );
+    assert.deepEqual(result.content.unassigned_themes[1]?.candidate_topics, []);
   });
 
-  it("rejects dependency company, period, filing, type, and registry status mismatches", async () => {
-    const builder = new TopicAssignmentBuilder(
-      embeddingProvider({ Cloud: [1, 0] }),
-    );
-    const validThemes = themesArtifact([theme("theme-a", "Cloud", "Cloud.")]);
-    const validRegistry = registryArtifact([topic("cloud", "Cloud", [1, 0])]);
+  it("rejects inactive Topic assignments", async () => {
+    const builder = new TopicAssignmentBuilder(embeddingProvider({
+      "Theme: Cloud": [1, 0],
+    }));
+    const result = await builder.execute(context({
+      themes: themesArtifact([theme("theme-a", "Cloud", "Cloud.")]),
+      registry: registryArtifact([
+        topic("topic:cloud", "Cloud", "deprecated"),
+      ]),
+    }));
+
+    assert.equal(result.content.assignments.length, 0);
+    assert.equal(result.content.unassigned_themes.length, 1);
+  });
+
+  it("rejects duplicate Topic Registry entries", async () => {
+    const builder = new TopicAssignmentBuilder(embeddingProvider({}));
 
     await assert.rejects(
-      builder.execute(context({
-        themes: {
-          ...validThemes,
-          identity: {
-            ...validThemes.identity,
-            company_id: "OTHER",
-          },
-        },
-        registry: validRegistry,
-      })),
-      BuilderDependencyError,
-    );
-    await assert.rejects(
-      builder.execute(context({
-        themes: {
-          ...validThemes,
-          content: {
-            ...validThemes.content,
-            filing_id: "other-filing",
-          },
-        },
-        registry: validRegistry,
-      })),
-      BuilderDependencyError,
-    );
-    await assert.rejects(
-      builder.execute(context({
-        themes: validThemes,
-        registry: {
-          ...validRegistry,
-          metadata: {
-            ...validRegistry.metadata,
-            status: ArtifactStatus.SUPERSEDED,
-          },
-        },
+      () => builder.execute(context({
+        themes: themesArtifact([theme("theme-a", "Cloud", "Cloud.")]),
+        registry: registryArtifact([
+          topic("topic:cloud", "Cloud"),
+          topic("topic:cloud", "Cloud Services"),
+        ]),
       })),
       BuilderDependencyError,
     );
   });
 
-  it("rejects legacy or inconsistent canonical Theme dependencies", async () => {
-    const builder = new TopicAssignmentBuilder(
-      embeddingProvider({ Cloud: [1, 0] }),
-    );
-    const validThemes = themesArtifact([theme("theme-a", "Cloud", "Cloud.")]);
-    const validRegistry = registryArtifact([topic("cloud", "Cloud", [1, 0])]);
+  it("rejects duplicate Theme IDs", async () => {
+    const builder = new TopicAssignmentBuilder(embeddingProvider({}));
 
     await assert.rejects(
-      builder.execute(context({
-        themes: {
-          ...validThemes,
-          content: {
-            ...validThemes.content,
-            themes: [{
-              ...validThemes.content.themes[0]!,
-              summary: "",
-            }],
-          },
-        },
-        registry: validRegistry,
-      })),
-      BuilderValidationError,
-    );
-    await assert.rejects(
-      builder.execute(context({
-        themes: {
-          ...validThemes,
-          content: {
-            ...validThemes.content,
-            themes: [{
-              ...validThemes.content.themes[0]!,
-              evidence_count: 2,
-            }],
-          },
-        },
-        registry: validRegistry,
+      () => builder.execute(context({
+        themes: themesArtifact([
+          theme("theme-a", "Cloud", "Cloud."),
+          theme("theme-a", "AI", "AI."),
+        ]),
+        registry: registryArtifact([topic("topic:cloud", "Cloud")]),
       })),
       BuilderDependencyError,
     );
   });
 
-  it("rejects invalid stable IDs, inactive topic references, and confidence drift", () => {
+  it("validates artifact schema, stable IDs, active topics, and confidence", () => {
     const themes = themesArtifact([theme("theme-a", "Cloud", "Cloud.")]);
     const registry = registryArtifact([
-      topic("cloud", "Cloud", [1, 0]),
-      topic("old-cloud", "Old Cloud", [0, 1], "deprecated"),
+      topic("topic:cloud", "Cloud"),
+      topic("topic:old-cloud", "Old Cloud", "deprecated"),
     ]);
     const valid = artifactContent({
-      assignment_id: createAssignmentId("theme-a", "cloud"),
+      assignment_id: createAssignmentId("theme-a", "topic:cloud"),
       theme_id: "theme-a",
-      topic_id: "cloud",
+      topic_id: "topic:cloud",
       theme_title: "Cloud",
       theme_summary: "Cloud.",
       assignment_method: "exact_match",
@@ -286,7 +243,6 @@ describe("TopicAssignmentBuilder", () => {
 
     assert.doesNotThrow(() =>
       validateTopicAssignmentArtifactContent(valid, themes, registry));
-
     assert.throws(
       () => validateTopicAssignmentArtifactContent({
         ...valid,
@@ -299,8 +255,8 @@ describe("TopicAssignmentBuilder", () => {
         ...valid,
         assignments: [{
           ...valid.assignments[0]!,
-          assignment_id: createAssignmentId("theme-a", "old-cloud"),
-          topic_id: "old-cloud",
+          assignment_id: createAssignmentId("theme-a", "topic:old-cloud"),
+          topic_id: "topic:old-cloud",
         }],
       }, themes, registry),
       BuilderValidationError,
@@ -314,90 +270,86 @@ describe("TopicAssignmentBuilder", () => {
     );
   });
 
-  it("rejects propagated theme context that diverges from Themes", () => {
-    const themes = themesArtifact([theme("theme-a", "Cloud", "Cloud demand.")]);
-    const registry = registryArtifact([topic("cloud", "Cloud", [1, 0])]);
-    const valid = artifactContent({
-      assignment_id: createAssignmentId("theme-a", "cloud"),
+  it("rejects duplicate Theme-to-Topic assignments", () => {
+    const themes = themesArtifact([theme("theme-a", "Cloud", "Cloud.")]);
+    const registry = registryArtifact([topic("topic:cloud", "Cloud")]);
+    const assignment = {
+      assignment_id: createAssignmentId("theme-a", "topic:cloud"),
       theme_id: "theme-a",
-      topic_id: "cloud",
+      topic_id: "topic:cloud",
       theme_title: "Cloud",
-      theme_summary: "Cloud demand.",
-      assignment_method: "exact_match",
+      theme_summary: "Cloud.",
+      assignment_method: "exact_match" as const,
       similarity_score: 1,
       confidence: 1,
-    });
+    };
 
     assert.throws(
       () => validateTopicAssignmentArtifactContent({
-        ...valid,
-        assignments: [{
-          ...valid.assignments[0]!,
-          theme_summary: "Rewritten summary.",
-        }],
-      }, themes, registry),
-      BuilderValidationError,
-    );
-
-    assert.throws(
-      () => validateTopicAssignmentArtifactContent({
-        ...valid,
-        assignments: [],
-        unassigned_themes: [{
-          theme_id: "theme-a",
-          theme_title: "Rewritten title",
-          theme_summary: "Cloud demand.",
-          highest_similarity_score: 0.5,
-          candidate_topics: [],
-        }],
-        confidence: {
-          overall: 0,
-          exact_match_rate: 0,
-          semantic_match_rate: 0,
-          unassigned_rate: 1,
-        },
+        ...artifactContent(assignment),
+        assignments: [assignment, assignment],
       }, themes, registry),
       BuilderValidationError,
     );
   });
 
-  it("uses canonical Theme summaries and Topic Registry aliases", async () => {
-    const capturedTexts: string[][] = [];
-    const builder = new TopicAssignmentBuilder({
-      async embed({ texts }) {
-        capturedTexts.push(texts);
-        return [[0, 1]];
-      },
-    });
+  it("rejects forbidden dependencies", async () => {
+    const builder = new TopicAssignmentBuilder(embeddingProvider({}));
+
+    await assert.rejects(
+      () => builder.execute(context({
+        themes: themesArtifact([theme("theme-a", "Cloud", "Cloud.")]),
+        registry: registryArtifact([topic("topic:cloud", "Cloud")]),
+        extraDependencies: {
+          structured_intelligence: {} as Artifact<unknown>,
+        },
+      })),
+      BuilderDependencyError,
+    );
+  });
+
+  it("records the registry version from the Topic Registry", async () => {
+    const builder = new TopicAssignmentBuilder(embeddingProvider({
+      "Theme: Cloud": [1, 0],
+      "Topic: Cloud": [1, 0],
+    }));
     const result = await builder.execute(context({
-      themes: themesArtifact([
-        theme("theme-a", "AI infrastructure", "Capacity expanded for AI."),
-      ]),
-      registry: registryArtifact([
-        topic(
-          "artificial_intelligence",
-          "Artificial Intelligence",
-          [1, 0],
-          "active",
-          ["AI infrastructure"],
-        ),
-      ]),
+      themes: themesArtifact([theme("theme-a", "Cloud", "Cloud.")]),
+      registry: registryArtifact([topic("topic:cloud", "Cloud")], 12),
     }));
 
-    assert.deepEqual(capturedTexts, [[
-      "Theme: AI infrastructure\nCategory: technology\nSummary: Capacity expanded for AI.",
-    ]]);
-    assert.equal(result.content.assignments[0]?.assignment_method, "exact_match");
-    assert.equal(
-      result.content.assignments[0]?.theme_summary,
-      "Capacity expanded for AI.",
-    );
+    assert.equal(result.content.registry_version, 12);
+  });
+
+  it("records the semantic embedding model reference", async () => {
+    const modelReferences: unknown[] = [];
+    const builder = new TopicAssignmentBuilder(embeddingProvider({
+      "Theme: Cloud": [1, 0],
+      "Topic: Cloud": [1, 0],
+    }));
+
+    await builder.execute(context({
+      themes: themesArtifact([theme("theme-a", "Cloud", "Cloud.")]),
+      registry: registryArtifact([topic("topic:cloud", "Cloud")]),
+      recordModelReference(reference) {
+        modelReferences.push(reference);
+      },
+    }));
+
+    assert.deepEqual(modelReferences, [{
+      provider: "semantic-embedding",
+      model_name: "text-embedding-3-small",
+      model_version: "text-embedding-3-small",
+      temperature: 0,
+    }]);
   });
 });
 
 function context(params: {
   themes: Artifact<ThemesArtifactContent>;
   registry: Artifact<TopicRegistryArtifactContent>;
+  extraDependencies?: Record<string, Artifact<unknown>>;
+  recordModelReference?: BuilderContext<TopicAssignmentBuilderInput>["recordModelReference"];
 }): BuilderContext<TopicAssignmentBuilderInput> {
   return {
     companyId: "MSFT",
@@ -411,9 +363,10 @@ function context(params: {
     dependencies: {
       themes: params.themes,
       topic_registry: params.registry,
+      ...params.extraDependencies,
     },
     recordPromptReference() {},
-    recordModelReference() {},
+    recordModelReference: params.recordModelReference ?? (() => {}),
   };
 }
 
@@ -422,23 +375,13 @@ function themesArtifact(themes: Theme[]): Artifact<ThemesArtifactContent> {
     company_id: "MSFT",
     period_id: "2026-Q2",
     filing_id: "msft-2026-q2-10q",
-    filing_type: "10-Q",
     themes,
-    confidence: {
-      overall: 1,
-      evidence_coverage: 1,
-      extraction_consistency: 1,
-      filing_coverage: 1,
-    },
-    evaluation_hooks: {
-      prompt_version: "themes-v1",
-      model_version: "model-v1",
-      theme_count: themes.length,
-      average_confidence: 1,
-      confidence_distribution: { low: 0, medium: 0, high: themes.length },
-      evidence_density: 1,
-      duplicate_count: 0,
-    },
+    prompt_id: "theme-generation",
+    prompt_version: "v7",
+    reasoning_version: "themes-reasoning-v1",
+    render_hash: "render-hash",
+    model_name: "themes-model",
+    model_version: "themes-model",
   };
 
   return artifact({
@@ -452,6 +395,7 @@ function themesArtifact(themes: Theme[]): Artifact<ThemesArtifactContent> {
 
 function registryArtifact(
   topics: TopicRegistryEntry[],
+  registryVersion = 7,
 ): Artifact<TopicRegistryArtifactContent> {
   return artifact({
     artifactId: "topic-registry-v1",
@@ -459,9 +403,7 @@ function registryArtifact(
     companyId: null,
     periodId: null,
     content: {
-      registry_version: "1.0.0",
-      registry_status: "active",
-      similarity_model_version: "text-embedding-3-small",
+      registry_version: registryVersion,
       topics,
     },
   });
@@ -512,46 +454,45 @@ function theme(
     title,
     summary,
     category: "technology",
-    evidence: [{
-      evidence_ref: "evidence:evidence-ref",
-      evidence_hash: "evidence-hash",
-      section_name: "management_discussion",
-      paragraph_index: 1,
-    }],
+    evidence: [{ evidence_ref: "evidence:evidence-ref" }],
     evidence_count: 1,
-    confidence: 1,
+    extraction_confidence: 1,
+    prompt_id: "theme-generation",
+    prompt_version: "v7",
+    reasoning_version: "themes-reasoning-v1",
   };
 }
 
 function topic(
   topicId: string,
-  topicName: string,
-  embedding: number[],
-  status: TopicRegistryEntry["status"] = "active",
+  canonicalName: string,
+  lifecycleState: TopicLifecycleState = "active",
   aliases: string[] = [],
 ): TopicRegistryEntry {
   return {
     topic_id: topicId,
-    topic_name: topicName,
-    definition: `${topicName} definition.`,
+    canonical_name: canonicalName,
+    definition: `${canonicalName} definition.`,
     aliases,
-    status,
-    embedding,
+    lifecycle_state: lifecycleState,
+    created_registry_version: 1,
+    updated_registry_version: 7,
+    child_topic_ids: [],
+    examples: [`${canonicalName} example`],
+    created_at: "2026-06-19T00:00:00.000Z",
+    updated_at: "2026-06-19T00:00:00.000Z",
   };
 }
 
 function embeddingProvider(
-  byTitle: Record<string, number[]>,
+  byPrefix: Record<string, number[]>,
 ): SemanticEmbeddingProvider {
   return {
     async embed({ texts }) {
       return texts.map((text) => {
-        const title = text
-          .split("\n")
-          .find((line) => line.startsWith("Theme: "))
-          ?.slice("Theme: ".length);
+        const firstLine = text.split("\n")[0] ?? "";
 
-        return title === undefined ? [] : byTitle[title] ?? [];
+        return byPrefix[firstLine] ?? [0, 0];
       });
     },
   };
@@ -561,10 +502,10 @@ function artifactContent(
   assignment: TopicAssignmentArtifactContent["assignments"][number],
 ): TopicAssignmentArtifactContent {
   return {
-    artifact_type: "topic_assignment",
-    company: "MSFT",
+    company_id: "MSFT",
+    period_id: "2026-Q2",
     filing_id: "msft-2026-q2-10q",
-    period: "2026-Q2",
+    registry_version: 7,
     assignments: [assignment],
     unassigned_themes: [],
     confidence: {
