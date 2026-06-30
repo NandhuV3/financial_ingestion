@@ -21,6 +21,7 @@ export type TopicAssignment = {
 export type TopicAssignmentCandidateTopic = {
   topic_id: string;
   similarity_score: number;
+  rejection_reason: string;
 };
 
 export type UnassignedTheme = {

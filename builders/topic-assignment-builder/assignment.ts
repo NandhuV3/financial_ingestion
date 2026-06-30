@@ -69,8 +69,6 @@ export function buildTopicAssignments(
         theme_summary: theme.summary,
         highest_similarity_score: candidates[0]?.similarity_score ?? 0,
         candidate_topics: candidates
-          .filter(({ similarity_score }) =>
-            similarity_score >= HUMAN_REVIEW_THRESHOLD)
           .slice(0, MAX_ASSIGNMENTS_PER_THEME)
           .map(toCandidateTopic),
       });
@@ -202,5 +200,14 @@ function toCandidateTopic(candidate: TopicMatchCandidate): TopicAssignmentCandid
   return {
     topic_id: candidate.topic_id,
     similarity_score: candidate.similarity_score,
+    rejection_reason: rejectionReason(candidate.similarity_score),
   };
+}
+
+function rejectionReason(similarityScore: number): string {
+  if (similarityScore < HUMAN_REVIEW_THRESHOLD) {
+    return "below_human_review_threshold";
+  }
+
+  return "below_automatic_assignment_threshold";
 }

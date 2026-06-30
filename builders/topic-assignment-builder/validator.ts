@@ -410,6 +410,11 @@ export function validateTopicAssignmentArtifactContent(
         candidate.similarity_score,
         `unassigned_themes[${index}].candidate_topics[].similarity_score`,
       );
+
+      requireText(
+        candidate.rejection_reason,
+        `unassigned_themes[${index}].candidate_topics[].rejection_reason`,
+      );
     }
 
     unassignedThemeIds.add(unassigned.theme_id);

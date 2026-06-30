@@ -174,9 +174,20 @@ describe("TopicAssignmentBuilder", () => {
     );
     assert.deepEqual(
       result.content.unassigned_themes[0]?.candidate_topics,
-      [{ topic_id: "topic:cloud-services", similarity_score: 0.8 }],
+      [{
+        topic_id: "topic:cloud-services",
+        similarity_score: 0.8,
+        rejection_reason: "below_automatic_assignment_threshold",
+      }],
     );
-    assert.deepEqual(result.content.unassigned_themes[1]?.candidate_topics, []);
+    assert.deepEqual(
+      result.content.unassigned_themes[1]?.candidate_topics,
+      [{
+        topic_id: "topic:cloud-services",
+        similarity_score: 0,
+        rejection_reason: "below_human_review_threshold",
+      }],
+    );
   });
 
   it("rejects inactive Topic assignments", async () => {
