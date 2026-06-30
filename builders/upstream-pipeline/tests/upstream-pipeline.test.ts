@@ -4,9 +4,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 import type { Artifact } from "../../../contracts/artifacts/artifact.js";
+import type { ArtifactType } from "../../../contracts/artifacts/artifact-type.js";
+import type {
+  EvidenceIdentityContent,
+} from "../../../contracts/artifacts/evidence-identity-artifact-content.js";
 import type { FilingArtifactContent } from "../../../contracts/artifacts/filing-artifact-content.js";
 import { ArtifactStatus } from "../../../contracts/artifacts/artifact-status.js";
-import type { ArtifactType } from "../../../contracts/artifacts/artifact-type.js";
 import type { ArtifactRepository } from "../../../packages/artifact-framework/src/artifact-repository.js";
 import { calculateArtifactHash } from "../../../packages/artifact-framework/src/artifact-service.js";
 import type { ArtifactLookup } from "../../../packages/artifact-framework/src/artifact-types.js";
@@ -15,19 +18,17 @@ import type {
   LLMRequest,
   LLMResponse,
 } from "../../../packages/llm-framework/src/llm-client.js";
-import type { ResolvedPrompt } from "../../../src/prompt-registry/prompt.types.js";
-import type { CompanyKnowledgeArtifactContent } from "../../company-knowledge-builder/types.js";
-import type { BusinessSignalsArtifactContent } from "../../business-signals-builder/types.js";
-import { buildEvidenceCatalogEntries } from "../../evidence-catalog-builder/catalog-builder.js";
-import type { EvidenceCatalogArtifactContent } from "../../../contracts/artifacts/evidence-catalog-artifact-content.js";
+import type {
+  RenderedPrompt,
+  ResolvedPrompt,
+} from "../../../src/prompt-registry/prompt.types.js";
+import type {
+  ThemesPromptRenderContext,
+} from "../../../src/prompt-registry/themes-prompt.js";
+import type {
+  FilingArtifactBuilderInput,
+} from "../../filing-artifact-builder/types.js";
 import type { ThemesArtifactContent } from "../../themes/contract.js";
-import type { TopicRegistryArtifactContent } from "../../topic-assignment-builder/types.js";
-import type { TopicAssignmentArtifactContent } from "../../topic-assignment-builder/types.js";
-import type { TopicEvolutionArtifactContent } from "../../topic-evolution-builder/types.js";
-import {
-  STRUCTURED_INTELLIGENCE_PROMPT_ID,
-} from "../../structured-intelligence/contract.js";
-import type { StructuredIntelligenceArtifactContent } from "../../structured-intelligence/contract.js";
 import { THEMES_PROMPT_ID } from "../../themes/prompt.js";
 import {
   createArtifactDumpObserver,
@@ -37,72 +38,118 @@ import { registerUpstreamBuilders } from "../register-builders.js";
 import { runUpstreamPipeline } from "../run-upstream-pipeline.js";
 
 describe("upstream pipeline", () => {
-  it("removes stale demo artifacts before a new execution", async (context) => {
+  it("removes stale Sprint 001 demo artifacts before a new execution", async (context) => {
     const outputDirectory = await mkdtemp(join(tmpdir(), "upstream-dumps-"));
     context.after(async () => rm(outputDirectory, { recursive: true, force: true }));
     const artifactDumps = createArtifactDumpObserver(outputDirectory);
     const staleFiling = filingArtifact();
 
     await artifactDumps.observer("filing", staleFiling);
+    await artifactDumps.observer("evidence_identity", staleFiling);
     await artifactDumps.observer("themes", staleFiling);
     await resetArtifactDumps(outputDirectory);
 
-    await assert.rejects(
-      () => readFile(join(outputDirectory, "00-filing.json"), "utf8"),
-      { code: "ENOENT" },
-    );
-    await assert.rejects(
-      () => readFile(join(outputDirectory, "02-themes.json"), "utf8"),
-      { code: "ENOENT" },
-    );
+    for (const filename of [
+      "00-filing.json",
+      "01-evidence-identity.json",
+      "02-themes.json",
+    ]) {
+      await assert.rejects(
+        () => readFile(join(outputDirectory, filename), "utf8"),
+        { code: "ENOENT" },
+      );
+    }
   });
 
-  it("executes and dumps filing through approved Company Knowledge and Business Signals", async (context) => {
+  it("executes Sprint 001 through Themes and stops before downstream builders", async (context) => {
     const repository = new InMemoryArtifactRepository();
     const llmClient = new UpstreamLLMClient();
+    const promptResolver = new UpstreamPromptResolver();
     const outputDirectory = await mkdtemp(join(tmpdir(), "upstream-pipeline-"));
     context.after(async () => rm(outputDirectory, { recursive: true, force: true }));
     const artifactDumps = createArtifactDumpObserver(outputDirectory);
+    const artifactStages: string[] = [];
+    const transientStages: string[] = [];
     const runtime = registerUpstreamBuilders({
       repository,
-      promptResolver: new UpstreamPromptResolver(),
+      promptResolver,
       llmClient,
       semanticEmbeddingProvider: llmClient,
       themesModelVersion: "themes-demo-model-v1",
       structuredIntelligenceModelVersion: "structured-demo-model-v1",
     });
-    const filing = filingArtifact();
-    const topicRegistry = topicRegistryArtifact();
-    const historicalTopicAssignment = historicalTopicAssignmentArtifact();
-    await repository.create(filing);
-    await repository.create(topicRegistry);
-    await repository.create(historicalTopicAssignment);
 
-    const result = await runUpstreamPipeline({
+    const themes = await runUpstreamPipeline({
       runtime,
-      filingArtifact: filing,
-      topicRegistryArtifact: topicRegistry,
-      historicalTopicAssignmentArtifacts: [historicalTopicAssignment],
-      companyId: "MSFT",
-      periodId: "2026-Q2",
+      normalizedFiling: normalizedFilingInput(),
       generatedAt: "2026-06-19T00:00:00.000Z",
-      onArtifact: artifactDumps.observer,
+      onArtifact: async (stage, artifact) => {
+        artifactStages.push(stage);
+        await artifactDumps.observer(stage, artifact);
+      },
+      onTransientOutput(stage) {
+        transientStages.push(stage);
+      },
     });
 
-    assert.equal(result.content.company_id, "MSFT");
-    assert.equal(result.content.period_id, "2026-Q2");
-    assert.equal(result.content.depth_indicator.overall, "base");
-    assert.equal(result.content.signals.length > 0, true);
-    assert.equal(
-      result.content.signals.every((signal) =>
-        signal.source_artifact_refs.some((source) =>
-          source.artifact_type === "company_knowledge")),
-      true,
-    );
+    assert.deepEqual(artifactStages, [
+      "filing",
+      "evidence_identity",
+      "themes",
+    ]);
+    assert.deepEqual(transientStages, [
+      "themes_quality",
+      "theme_grounding",
+      "theme_input_boundary",
+    ]);
+
+    const filing = await repository.getCurrent<FilingArtifactContent>({
+      artifact_type: "filing",
+      company_id: "MSFT",
+      period_id: "2026-Q2",
+    });
+    const evidenceIdentity =
+      await repository.getCurrent<EvidenceIdentityContent>({
+        artifact_type: "evidence_identity",
+        company_id: "MSFT",
+        period_id: "2026-Q2",
+      });
+    const persistedThemes = await repository.getCurrent<ThemesArtifactContent>({
+      artifact_type: "themes",
+      company_id: "MSFT",
+      period_id: "2026-Q2",
+    });
+
+    assert.equal(themes.identity.artifact_type, "themes");
+    assert.equal(themes.content.company_id, "MSFT");
+    assert.equal(themes.content.period_id, "2026-Q2");
+    assert.equal(themes.content.filing_id, "msft-2026-q2-10q");
+    assert.equal(themes.content.themes.length, 1);
+    const expectedEvidenceRef = evidenceIdentity?.content.entries[1]?.evidence_ref;
+    assert.ok(expectedEvidenceRef);
+    assert.deepEqual(themes.content.themes[0]?.evidence, [{
+      evidence_ref: expectedEvidenceRef,
+    }]);
+    assert.deepEqual(themes.lineage.upstream_dependencies, [
+      {
+        artifact_id: evidenceIdentity?.identity.artifact_id,
+        artifact_type: "evidence_identity",
+        version: evidenceIdentity?.identity.version,
+        artifact_hash: evidenceIdentity?.metadata.artifact_hash,
+        input_hash: evidenceIdentity?.metadata.input_hash,
+      },
+    ]);
+    assert.equal(themes.lineage.prompt_reference?.prompt_id, THEMES_PROMPT_ID);
+    assert.equal(themes.lineage.prompt_reference?.activation_id, null);
+    assert.equal(themes.lineage.model_reference?.model_version, "themes-demo-model-v1");
+
+    assert.notEqual(filing, null);
+    assert.notEqual(evidenceIdentity, null);
+    assert.notEqual(persistedThemes, null);
+    assert.equal((evidenceIdentity?.content.entries.length ?? 0) > 1, true);
 
     for (const artifactType of [
       "evidence_catalog",
-      "themes",
       "topic_assignment",
       "topic_evolution",
       "structured_intelligence",
@@ -111,145 +158,28 @@ describe("upstream pipeline", () => {
       "company_knowledge",
       "business_signals",
     ] as const) {
-      assert.notEqual(
+      assert.equal(
         await repository.getCurrent({
           artifact_type: artifactType,
           company_id: "MSFT",
           period_id: "2026-Q2",
         }),
         null,
-        `${artifactType} was not persisted`,
+        `${artifactType} should not be persisted by Sprint 001 orchestration`,
       );
     }
 
-    const approvedKnowledge =
-      await repository.getCurrent<CompanyKnowledgeArtifactContent>({
-      artifact_type: "company_knowledge",
-      company_id: "MSFT",
-      period_id: "2026-Q2",
-    });
-    const businessSignals =
-      await repository.getCurrent<BusinessSignalsArtifactContent>({
-      artifact_type: "business_signals",
-      company_id: "MSFT",
-      period_id: "2026-Q2",
-    });
-    const topicAssignment =
-      await repository.getCurrent<TopicAssignmentArtifactContent>({
-        artifact_type: "topic_assignment",
-        company_id: "MSFT",
-        period_id: "2026-Q2",
-      });
-    const topicEvolution =
-      await repository.getCurrent<TopicEvolutionArtifactContent>({
-        artifact_type: "topic_evolution",
-        company_id: "MSFT",
-        period_id: "2026-Q2",
-      });
-    const evidenceCatalog =
-      await repository.getCurrent<EvidenceCatalogArtifactContent>({
-        artifact_type: "evidence_catalog",
-        company_id: "MSFT",
-        period_id: "2026-Q2",
-      });
-    const themes =
-      await repository.getCurrent<ThemesArtifactContent>({
-        artifact_type: "themes",
-        company_id: "MSFT",
-        period_id: "2026-Q2",
-      });
-    const structuredIntelligence =
-      await repository.getCurrent<StructuredIntelligenceArtifactContent>({
-        artifact_type: "structured_intelligence",
-        company_id: "MSFT",
-        period_id: "2026-Q2",
-      });
-
-    assert.equal(approvedKnowledge?.content.company_knowledge_version, 1);
-    assert.equal((evidenceCatalog?.content.entries.length ?? 0) > 1, true);
-    const catalogReferences = new Set(
-      evidenceCatalog?.content.entries.map(({ evidence_ref }) => evidence_ref),
-    );
-    assert.equal(
-      themes?.content.themes.every((theme) =>
-        theme.evidence.every(({ evidence_ref }) =>
-          catalogReferences.has(evidence_ref))),
-      true,
-    );
-    assert.equal(
-      (
-        structuredIntelligence?.content.understanding.business_model
-          ?.evidence_refs ?? []
-      ).every((evidenceRef) => catalogReferences.has(evidenceRef)),
-      true,
-    );
-    assert.equal(
-      businessSignals?.lineage.upstream_dependencies[0]?.artifact_id,
-      approvedKnowledge?.identity.artifact_id,
-    );
-    assert.equal(
-      topicAssignment?.lineage.model_reference?.model_version,
-      "text-embedding-3-small",
-    );
-    assert.equal(
-      topicAssignment?.content.assignments[0]?.theme_title,
-      "Cloud platform demand",
-    );
-    assert.equal(
-      topicAssignment?.content.assignments[0]?.theme_summary,
-      "Management discussed Azure demand and enterprise adoption.",
-    );
-    assert.deepEqual(
-      topicAssignment?.lineage.upstream_dependencies
-        .map(({ artifact_type }) => artifact_type)
-        .sort(),
-      ["themes", "topic_registry"],
-    );
-    assert.equal(
-      topicAssignment?.lineage.upstream_dependencies.every(
-        ({ artifact_hash, input_hash }) =>
-          artifact_hash.length > 0 && input_hash.length > 0,
-      ),
-      true,
-    );
-    assert.equal(topicEvolution?.content.status, "complete");
-    assert.equal(
-      topicEvolution?.content.topic_evolutions[0]?.evolution_state,
-      "PERSISTENT",
-    );
-    assert.equal(
-      topicEvolution?.content.topic_evolutions[0]?.confidence,
-      0.9,
-    );
-    assert.deepEqual(
-      topicEvolution?.content.topic_evolutions[0]?.evidence.periods_analyzed,
-      ["2026-Q1", "2026-Q2"],
-    );
-    assert.deepEqual(
-      topicEvolution?.lineage.upstream_dependencies
-        .map(({ artifact_id }) => artifact_id)
-        .sort(),
-      [
-        historicalTopicAssignment.identity.artifact_id,
-        topicAssignment?.identity.artifact_id,
-      ].sort(),
-    );
-    assert.equal(llmClient.requests.length, 2);
-    assert.equal(
-      llmClient.requests.every((request) => request.temperature === 0),
-      true,
-    );
+    assert.equal(llmClient.requests.length, 1);
+    assert.equal(llmClient.requests[0]?.temperature, 0);
+    assert.equal(llmClient.requests[0]?.messages[0]?.content, THEMES_PROMPT_ID);
+    assert.equal(promptResolver.renderCalls.length, 1);
+    assert.equal(promptResolver.renderCalls[0]?.promptId, THEMES_PROMPT_ID);
+    assert.equal(promptResolver.renderCalls[0]?.context.evidence.length, 5);
 
     const expectedDumps = [
-      ["01-evidence-catalog.json", "evidence_catalog"],
+      ["00-filing.json", "filing"],
+      ["01-evidence-identity.json", "evidence_identity"],
       ["02-themes.json", "themes"],
-      ["03-topic-assignment.json", "topic_assignment"],
-      ["04-topic-evolution.json", "topic_evolution"],
-      ["05-structured-intelligence.json", "structured_intelligence"],
-      ["06-company-knowledge-candidate.json", "company_knowledge_candidate"],
-      ["07-governance-decision.json", "governance_decision"],
-      ["08-company-knowledge.json", "company_knowledge"],
-      ["09-business-signals.json", "business_signals"],
     ] as const;
 
     for (const [filename, artifactType] of expectedDumps) {
@@ -260,248 +190,42 @@ describe("upstream pipeline", () => {
       assert.equal(dumped.identity.company_id, "MSFT");
       assert.equal(dumped.identity.period_id, "2026-Q2");
     }
+
+    for (const filename of [
+      "03-topic-assignment.json",
+      "04-topic-evolution.json",
+      "05-structured-intelligence.json",
+      "06-company-knowledge-candidate.json",
+      "07-governance-decision.json",
+      "08-company-knowledge.json",
+      "09-business-signals.json",
+    ]) {
+      await assert.rejects(
+        () => readFile(join(outputDirectory, filename), "utf8"),
+        { code: "ENOENT" },
+      );
+    }
   });
 });
 
-function historicalTopicAssignmentArtifact(): Artifact<TopicAssignmentArtifactContent> {
-  const content: TopicAssignmentArtifactContent = {
-    artifact_type: "topic_assignment",
-    company: "MSFT",
-    filing_id: "msft-2026-q1-10q",
-    period: "2026-Q1",
-    assignments: [{
-      assignment_id: "historical-cloud-assignment",
-      theme_id: "historical-cloud-theme",
-      topic_id: "cloud",
-      theme_title: "Cloud platform demand",
-      theme_summary: "Management discussed Azure demand.",
-      assignment_method: "semantic_match",
-      similarity_score: 0.8,
-      confidence: 0.8,
-    }],
-    unassigned_themes: [],
-    confidence: {
-      overall: 1,
-      exact_match_rate: 0,
-      semantic_match_rate: 1,
-      unassigned_rate: 0,
-    },
-  };
-
+function normalizedFilingInput(): FilingArtifactBuilderInput {
   return {
-    identity: {
-      artifact_id: "topic-assignment-msft-2026-q1",
-      artifact_type: "topic_assignment",
-      company_id: "MSFT",
-      period_id: "2026-Q1",
-      version: 1,
-    },
-    metadata: {
-      version: 1,
-      schema_version: "topic-assignment-artifact-v1",
-      pipeline_version: "topic-assignment-pipeline-v1",
-      generated_at: "2026-03-19T00:00:00.000Z",
-      artifact_hash: calculateArtifactHash(content),
-      input_hash: "historical-topic-assignment-input",
-      generation_duration_ms: 0,
-      status: ArtifactStatus.ACTIVE,
-    },
-    lineage: {
-      upstream_dependencies: [],
-      generation_context: {
-        builder_type: "topic-assignment-builder",
-      },
-    },
-    content,
-  };
-}
-
-function topicRegistryArtifact(): Artifact<TopicRegistryArtifactContent> {
-  const content: TopicRegistryArtifactContent = {
-    registry_version: "1.0.0",
-    registry_status: "active",
-    similarity_model_version: "text-embedding-3-small",
-    topics: [
-      {
-        topic_id: "cloud",
-        topic_name: "Cloud",
-        definition: "Cloud infrastructure, platforms, and services.",
-        aliases: ["Cloud Growth"],
-        status: "active",
-        embedding: [1, 0],
-      },
-    ],
-  };
-
-  return {
-    identity: {
-      artifact_id: "topic-registry-v1",
-      artifact_type: "topic_registry",
-      company_id: null,
-      period_id: null,
-      version: 1,
-    },
-    metadata: {
-      version: 1,
-      schema_version: "topic-registry-artifact-v1",
-      pipeline_version: "topic-registry-loader-v1",
-      generated_at: "2026-06-19T00:00:00.000Z",
-      artifact_hash: calculateArtifactHash(content),
-      input_hash: "topic-registry-input-hash",
-      generation_duration_ms: 0,
-      status: ArtifactStatus.ACTIVE,
-    },
-    lineage: {
-      upstream_dependencies: [],
-      generation_context: {
-        builder_type: "topic-registry-loader",
-      },
-    },
-    content,
-  };
-}
-
-class UpstreamPromptResolver {
-  resolve(promptId: string): ResolvedPrompt {
-    return {
-      promptId,
-      version: `${promptId}-v1`,
-      content: promptId,
-      hash: calculateArtifactHash(promptId),
-      source: "filesystem",
-      activationId: null,
-    };
-  }
-}
-
-class UpstreamLLMClient implements LLMClient {
-  readonly requests: LLMRequest[] = [];
-
-  async callLLM(request: LLMRequest): Promise<LLMResponse> {
-    this.requests.push(request);
-    const systemPrompt = request.messages.find(({ role }) =>
-      role === "system")?.content;
-
-    if (systemPrompt === THEMES_PROMPT_ID) {
-      return {
-        output_text: JSON.stringify({
-          themes: [
-            {
-              title: "Cloud platform demand",
-              summary: "Management discussed Azure demand and enterprise adoption.",
-              category: "technology",
-              paragraph_indexes: [2],
-            },
-          ],
-        }),
-      };
-    }
-
-    if (systemPrompt === STRUCTURED_INTELLIGENCE_PROMPT_ID) {
-      return {
-        output_text: JSON.stringify({
-          understanding: structuredUnderstanding(),
-        }),
-      };
-    }
-
-    throw new Error(`Unexpected prompt: ${systemPrompt ?? "missing"}`);
-  }
-
-  async embed(input: {
-    model: string;
-    texts: string[];
-  }): Promise<number[][]> {
-    assert.equal(input.model, "text-embedding-3-small");
-
-    return input.texts.map(() => [1, 0]);
-  }
-}
-
-function structuredUnderstanding() {
-  const evidenceRef = evidenceEntries()[1]?.evidence_ref;
-  assert.ok(evidenceRef);
-  const evidence = [evidenceRef];
-
-  return {
-    business_model: {
-      summary: "Microsoft provides cloud infrastructure and productivity software.",
-      value_creation: "Enterprise customers use integrated software and Azure services.",
-      confidence: 0.9,
-      evidence_refs: evidence,
-    },
-    products: [
-      {
-        product_name: "Azure",
-        description: "Cloud infrastructure and platform services.",
-        importance: "high",
-        confidence: 0.9,
-        evidence_refs: evidence,
-      },
-    ],
-    customers: [
-      {
-        customer_segment: "Enterprise customers",
-        description: "Organizations using Microsoft cloud and productivity products.",
-        confidence: 0.9,
-        evidence_refs: evidence,
-      },
-    ],
-    revenue_model: {
-      summary: "Subscriptions, licenses, and cloud usage generate revenue.",
-      recurring_components: ["subscriptions"],
-      transactional_components: ["licenses"],
-      confidence: 0.9,
-      evidence_refs: evidence,
-    },
-    revenue_drivers: [
-      {
-        driver: "Azure consumption",
-        explanation: "Enterprise cloud workload growth was identified as a usage revenue driver.",
-        confidence: 0.9,
-        evidence_refs: evidence,
-      },
-    ],
-    competitive_positioning: [
-      {
-        position: "Integrated enterprise platform",
-        supporting_reasoning: "Cloud and productivity products share a broad enterprise footprint.",
-        confidence: 0.9,
-        evidence_refs: evidence,
-      },
-    ],
-    strategic_priorities: [
-      {
-        priority: "Cloud capacity",
-        rationale: "Management discussed infrastructure investment and Azure demand.",
-        confidence: 0.9,
-        evidence_refs: evidence,
-      },
-    ],
-    management_focus: [
-      {
-        focus_area: "Enterprise cloud adoption",
-        explanation: "Management is expanding cloud usage across customer workloads.",
-        confidence: 0.9,
-        evidence_refs: evidence,
-      },
-    ],
-    risks: [
-      {
-        risk: "Infrastructure capacity",
-        explanation: "Cloud growth depends on available data center capacity.",
-        confidence: 0.9,
-        evidence_refs: evidence,
-      },
-    ],
-    dependencies: [
-      {
-        dependency: "Data center capacity",
-        explanation: "Azure services require continued infrastructure availability.",
-        confidence: 0.9,
-        evidence_refs: evidence,
-      },
-    ],
+    company_id: "MSFT",
+    period_id: "2026-Q2",
+    filing_id: "msft-2026-q2-10q",
+    filing_type: "10-Q",
+    filing_period: "2026-Q2",
+    accession_number: "0000789019-26-000001",
+    management_discussion: [
+      "ITEM 2. MANAGEMENT'S DISCUSSION AND ANALYSIS",
+      "Microsoft discussed Azure demand and enterprise customer adoption.",
+      "The integrated enterprise platform depends on data center capacity.",
+    ].join("\n\n"),
+    risk_factors: [
+      "ITEM 1A. RISK FACTORS",
+      "Competition and infrastructure constraints may affect cloud execution.",
+    ].join("\n\n"),
+    raw_html_hash: "raw-html-hash",
   };
 }
 
@@ -509,8 +233,8 @@ function filingArtifact(): Artifact<FilingArtifactContent> {
   const content: FilingArtifactContent = {
     filing_id: "msft-2026-q2-10q",
     filing_type: "10-Q",
-    filing_content: demoFilingContent(),
-    filing_hash: "filing-hash-1",
+    filing_content: "stale filing content",
+    filing_hash: "stale-filing-hash",
     filing_period: "2026-Q2",
   };
 
@@ -542,18 +266,78 @@ function filingArtifact(): Artifact<FilingArtifactContent> {
   };
 }
 
-function demoFilingContent(): string {
-  return [
-    "ITEM 2. MANAGEMENT'S DISCUSSION AND ANALYSIS",
-    "Microsoft discussed Azure demand and enterprise customer adoption.",
-    "The integrated enterprise platform depends on data center capacity.",
-    "ITEM 1A. RISK FACTORS",
-    "Competition and infrastructure constraints may affect cloud execution.",
-  ].join("\n\n");
+class UpstreamPromptResolver {
+  readonly renderCalls: Array<{
+    promptId: string;
+    context: ThemesPromptRenderContext;
+    version?: string;
+  }> = [];
+
+  resolve(promptId: string): ResolvedPrompt {
+    return {
+      promptId,
+      version: `${promptId}-v1`,
+      content: promptId,
+      hash: calculateArtifactHash(promptId),
+      source: "filesystem",
+      activationId: null,
+    };
+  }
+
+  render<TContext>(
+    promptId: string,
+    context: TContext,
+    version?: string,
+  ): RenderedPrompt {
+    const themeContext = context as ThemesPromptRenderContext;
+    this.renderCalls.push({ promptId, context: themeContext, version });
+
+    return {
+      prompt_id: promptId,
+      prompt_version: `${promptId}-v1`,
+      activation_id: null,
+      system_prompt: promptId,
+      user_prompt: JSON.stringify(themeContext),
+      render_hash: calculateArtifactHash(themeContext),
+      source: "filesystem",
+    };
+  }
 }
 
-function evidenceEntries() {
-  return buildEvidenceCatalogEntries(filingArtifact().content);
+class UpstreamLLMClient implements LLMClient {
+  readonly requests: LLMRequest[] = [];
+
+  async callLLM(request: LLMRequest): Promise<LLMResponse> {
+    this.requests.push(request);
+    const systemPrompt = request.messages.find(({ role }) =>
+      role === "system")?.content;
+
+    if (systemPrompt === THEMES_PROMPT_ID) {
+      return {
+        output_text: JSON.stringify({
+          themes: [
+            {
+              title: "Cloud platform demand",
+              summary: "Management discussed Azure demand and enterprise adoption.",
+              category: "technology",
+              paragraph_indexes: [2],
+            },
+          ],
+        }),
+      };
+    }
+
+    throw new Error(`Unexpected prompt: ${systemPrompt ?? "missing"}`);
+  }
+
+  async embed(input: {
+    model: string;
+    texts: string[];
+  }): Promise<number[][]> {
+    assert.equal(input.model, "text-embedding-3-small");
+
+    return input.texts.map(() => [1, 0]);
+  }
 }
 
 class InMemoryArtifactRepository implements ArtifactRepository {

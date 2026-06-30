@@ -8,15 +8,8 @@ import type {
 
 const ARTIFACT_DUMP_FILENAMES: Record<UpstreamPipelineStage, string> = {
   filing: "00-filing.json",
-  evidence_catalog: "01-evidence-catalog.json",
+  evidence_identity: "01-evidence-identity.json",
   themes: "02-themes.json",
-  topic_assignment: "03-topic-assignment.json",
-  topic_evolution: "04-topic-evolution.json",
-  structured_intelligence: "05-structured-intelligence.json",
-  company_knowledge_candidate: "06-company-knowledge-candidate.json",
-  governance_decision: "07-governance-decision.json",
-  company_knowledge: "08-company-knowledge.json",
-  business_signals: "09-business-signals.json",
 };
 
 export function createArtifactDumpObserver(

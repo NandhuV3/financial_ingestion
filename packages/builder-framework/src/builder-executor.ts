@@ -25,6 +25,7 @@ export type ExecuteBuilderParams<TInput> = {
   input: TInput;
   inputHash: string;
   dependencies?: BuilderDependencies;
+  lineageDependencies?: BuilderDependencies;
   generatedAt?: string;
   evaluation?: ArtifactEvaluation;
   governance?: ArtifactGovernance;
@@ -105,7 +106,13 @@ export class BuilderExecutor {
         company_id: params.companyId,
         period_id: params.periodId,
         content: result.content,
-        lineage: buildLineage(params.builderType, params.executionId, dependencies, promptReference, modelReference),
+        lineage: buildLineage(
+          params.builderType,
+          params.executionId,
+          params.lineageDependencies ?? dependencies,
+          promptReference,
+          modelReference,
+        ),
         schema_version: definition.schema_version,
         pipeline_version: definition.pipeline_version,
         input_hash: params.inputHash,

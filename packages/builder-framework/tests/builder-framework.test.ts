@@ -107,6 +107,41 @@ describe("builder framework", () => {
     assert.equal(observer.successes[0]?.artifactId, artifact.identity.artifact_id);
   });
 
+  it("records lineage-only dependencies without passing them into builder context", async () => {
+    const repository = new TestArtifactRepository();
+    const registry = new BuilderRegistry();
+    const executor = new BuilderExecutor(registry, new ArtifactService(repository));
+    const builder = new DependencyRecordingBuilder();
+    const lineageDependency = dependencyArtifact();
+
+    registry.registerBuilder(definition("themes-builder", "themes"), () => builder);
+
+    const artifact = await executor.executeBuilder<{ filing: string }, { themes: string[] }>({
+      builderType: "themes-builder",
+      companyId: "MSFT",
+      periodId: "2026-Q2",
+      executionId: "execution-1",
+      input: { filing: "filing text" },
+      inputHash: "input-hash-1",
+      dependencies: {},
+      lineageDependencies: {
+        evidence_identity: lineageDependency,
+      },
+      generatedAt: "2026-06-15T00:00:00.000Z",
+    });
+
+    assert.deepEqual(builder.dependencyNames, []);
+    assert.deepEqual(artifact.lineage.upstream_dependencies, [
+      {
+        artifact_id: lineageDependency.identity.artifact_id,
+        artifact_type: lineageDependency.identity.artifact_type,
+        version: lineageDependency.identity.version,
+        artifact_hash: lineageDependency.metadata.artifact_hash,
+        input_hash: lineageDependency.metadata.input_hash,
+      },
+    ]);
+  });
+
   it("increments artifact versions through the artifact service", async () => {
     const repository = new TestArtifactRepository();
     const registry = new BuilderRegistry();
@@ -288,6 +323,22 @@ class TestBuilder implements Builder<{ filing: string }, { themes: string[] }> {
       },
       confidence: 0.9,
     };
+  }
+}
+
+class DependencyRecordingBuilder extends TestBuilder {
+  dependencyNames: string[] = [];
+
+  constructor() {
+    super("themes-builder");
+  }
+
+  override async execute(
+    context: BuilderContext<{ filing: string }>,
+  ): Promise<BuilderResult<{ themes: string[] }>> {
+    this.dependencyNames = Object.keys(context.dependencies);
+
+    return super.execute(context);
   }
 }
 

@@ -4,7 +4,7 @@ import { extractBoundaries } from "../extraction/extract-boundaries.js";
 import { deduplicateSections } from "../processing/deduplicate-sections.js";
 import { deduplicateOverlap } from "../processing/deduplicate-overlap.js";
 import { normalizeSections } from "../processing/normalize-sections.js";
-import { chunkSections } from "../processing/chunk-sections.js";
+// import { chunkSections } from "../processing/chunk-sections.js";
 
 async function runCompanyPipeline(ticker: string): Promise<void> {
   const company = getCompanyConfig(ticker);
@@ -21,7 +21,7 @@ async function runCompanyPipeline(ticker: string): Promise<void> {
   await deduplicateSections(company, ingestionResult.filingDate);
   await deduplicateOverlap(company, ingestionResult.filingDate);
   await normalizeSections(company, ingestionResult.filingDate);
-  await chunkSections(company, ingestionResult.filingDate);
+  // await chunkSections(company, ingestionResult.filingDate);
 
   console.log(`Pipeline complete for ${company.company} (${company.ticker})`);
 }

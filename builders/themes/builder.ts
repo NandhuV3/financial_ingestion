@@ -79,7 +79,7 @@ export class ThemesBuilder implements Builder<ThemesBuilderInput, ThemesArtifact
     context.recordPromptReference({
       prompt_id: renderedPrompt.prompt_id,
       prompt_version: renderedPrompt.prompt_version,
-      activation_id: renderedPrompt.activation_id ?? "not_active",
+      activation_id: renderedPrompt.activation_id,
     });
     context.recordModelReference({
       provider: "platform-llm",

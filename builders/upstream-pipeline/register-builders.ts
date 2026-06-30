@@ -19,6 +19,13 @@ import {
   EVIDENCE_CATALOG_PIPELINE_VERSION,
   EVIDENCE_CATALOG_SCHEMA_VERSION,
 } from "../evidence-catalog-builder/contract.js";
+import { EvidenceIdentityBuilder } from "../evidence-identity-builder/builder.js";
+import {
+  EVIDENCE_IDENTITY_BUILDER_TYPE,
+  EVIDENCE_IDENTITY_BUILDER_VERSION,
+  EVIDENCE_IDENTITY_PIPELINE_VERSION,
+  EVIDENCE_IDENTITY_SCHEMA_VERSION,
+} from "../evidence-identity-builder/contract.js";
 import { FilingArtifactBuilder } from "../filing-artifact-builder/builder.js";
 import {
   FILING_ARTIFACT_BUILDER_TYPE,
@@ -78,7 +85,7 @@ import {
 
 export type UpstreamPipelineRuntimeOptions = {
   repository: ArtifactRepository;
-  promptResolver: Pick<PromptResolver, "resolve">;
+  promptResolver: Pick<PromptResolver, "resolve" | "render">;
   llmClient: LLMClient;
   semanticEmbeddingProvider: SemanticEmbeddingProvider;
   themesModelVersion?: string;
@@ -115,6 +122,14 @@ export function registerUpstreamBuilders(
     schema_version: EVIDENCE_CATALOG_SCHEMA_VERSION,
     pipeline_version: EVIDENCE_CATALOG_PIPELINE_VERSION,
   }, () => new EvidenceCatalogBuilder());
+
+  registry.registerBuilder({
+    builder_type: EVIDENCE_IDENTITY_BUILDER_TYPE,
+    artifact_type: "evidence_identity",
+    version: EVIDENCE_IDENTITY_BUILDER_VERSION,
+    schema_version: EVIDENCE_IDENTITY_SCHEMA_VERSION,
+    pipeline_version: EVIDENCE_IDENTITY_PIPELINE_VERSION,
+  }, () => new EvidenceIdentityBuilder());
 
   registry.registerBuilder({
     builder_type: THEMES_BUILDER_TYPE,

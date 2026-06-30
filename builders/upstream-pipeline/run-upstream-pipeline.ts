@@ -1,364 +1,274 @@
 import type { Artifact } from "../../contracts/artifacts/artifact.js";
-import type { EvidenceCatalogArtifactContent } from "../../contracts/artifacts/evidence-catalog-artifact-content.js";
+import type {
+  EvidenceIdentityContent,
+} from "../../contracts/artifacts/evidence-identity-artifact-content.js";
 import type { FilingArtifactContent } from "../../contracts/artifacts/filing-artifact-content.js";
+import type {
+  ThemeGroundingContent,
+} from "../../contracts/execution/theme-grounding-content.js";
+import type {
+  ThemeInputBoundaryContent,
+} from "../../contracts/execution/theme-input-boundary-content.js";
+import type {
+  ThemesExecutionReadinessContent,
+} from "../../contracts/execution/themes-execution-readiness-content.js";
 import { calculateArtifactHash } from "../../packages/artifact-framework/src/artifact-service.js";
+import type { BuilderContext } from "../../packages/builder-framework/src/builder-context.js";
 import { BuilderExecutionError } from "../../packages/builder-framework/src/builder-errors.js";
-import type { BuilderResult } from "../../packages/builder-framework/src/builder-result.js";
-import { PROMOTION_RULES_VERSION } from "../../governance/company-knowledge-governance/promotion-rules.js";
 import {
-  BUSINESS_SIGNALS_BUILDER_TYPE,
-} from "../business-signals-builder/contract.js";
+  EVIDENCE_IDENTITY_BUILDER_TYPE,
+} from "../evidence-identity-builder/contract.js";
 import type {
-  BusinessSignalsArtifactContent,
-  BusinessSignalsBuilderInput,
-} from "../business-signals-builder/types.js";
+  EvidenceIdentityBuilderInput,
+} from "../evidence-identity-builder/types.js";
 import {
-  COMPANY_KNOWLEDGE_BUILDER_TYPE,
-  type CompanyKnowledgeCandidateContent,
-} from "../company-knowledge-builder/contract.js";
+  FILING_ARTIFACT_BUILDER_TYPE,
+} from "../filing-artifact-builder/contract.js";
+import type {
+  FilingArtifactBuilderInput,
+} from "../filing-artifact-builder/types.js";
+import { ThemeGroundingBuilder } from "../theme-grounding-builder/builder.js";
 import {
-  EVIDENCE_CATALOG_BUILDER_TYPE,
-} from "../evidence-catalog-builder/contract.js";
+  THEME_GROUNDING_BUILDER_TYPE,
+} from "../theme-grounding-builder/contract.js";
 import type {
-  EvidenceCatalogBuilderInput,
-} from "../evidence-catalog-builder/types.js";
-import type {
-  CompanyKnowledgeArtifactContent,
-  CompanyKnowledgeBuilderInput,
-} from "../company-knowledge-builder/types.js";
+  ThemeGroundingBuilderInput,
+} from "../theme-grounding-builder/types.js";
+import { ThemeInputBoundaryBuilder } from "../theme-input-boundary-builder/builder.js";
 import {
-  STRUCTURED_INTELLIGENCE_BUILDER_TYPE,
-  type StructuredIntelligenceArtifactContent,
-} from "../structured-intelligence/contract.js";
+  THEME_INPUT_BOUNDARY_BUILDER_TYPE,
+} from "../theme-input-boundary-builder/contract.js";
 import type {
-  StructuredIntelligenceBuilderInput,
-} from "../structured-intelligence/types.js";
+  ThemeInputBoundaryBuilderInput,
+} from "../theme-input-boundary-builder/types.js";
+import { ThemesQualityBuilder } from "../themes-quality-builder/builder.js";
+import {
+  THEMES_QUALITY_BUILDER_TYPE,
+} from "../themes-quality-builder/contract.js";
+import type {
+  ThemesQualityBuilderInput,
+  ThemesQualityExecutionRecord,
+} from "../themes-quality-builder/types.js";
 import {
   THEMES_BUILDER_TYPE,
   type ThemesArtifactContent,
 } from "../themes/contract.js";
 import type {
-  FilingType,
   ThemesBuilderInput,
 } from "../themes/types.js";
-import {
-  TOPIC_ASSIGNMENT_BUILDER_TYPE,
-} from "../topic-assignment-builder/contract.js";
-import type {
-  TopicAssignmentArtifactContent,
-  TopicAssignmentBuilderInput,
-  TopicRegistryArtifactContent,
-} from "../topic-assignment-builder/types.js";
-import {
-  historicalTopicAssignmentDependencyKey,
-  TOPIC_EVOLUTION_BUILDER_TYPE,
-} from "../topic-evolution-builder/contract.js";
-import type {
-  TopicEvolutionArtifactContent,
-  TopicEvolutionBuilderInput,
-} from "../topic-evolution-builder/types.js";
 import type { UpstreamPipelineRuntime } from "./register-builders.js";
 
 export type RunUpstreamPipelineInput = {
   runtime: UpstreamPipelineRuntime;
-  filingArtifact: Artifact<FilingArtifactContent>;
-  topicRegistryArtifact: Artifact<TopicRegistryArtifactContent>;
-  historicalTopicAssignmentArtifacts?: Artifact<TopicAssignmentArtifactContent>[];
-  companyId: string;
-  periodId: string;
+  normalizedFiling: FilingArtifactBuilderInput;
   generatedAt?: string;
   onArtifact?: UpstreamPipelineArtifactObserver;
+  onTransientOutput?: UpstreamPipelineTransientObserver;
 };
 
 export const UPSTREAM_PIPELINE_STAGES = [
   "filing",
-  "evidence_catalog",
+  "evidence_identity",
   "themes",
-  "topic_assignment",
-  "topic_evolution",
-  "structured_intelligence",
-  "company_knowledge_candidate",
-  "governance_decision",
-  "company_knowledge",
-  "business_signals",
 ] as const;
 
 export type UpstreamPipelineStage = typeof UPSTREAM_PIPELINE_STAGES[number];
+
+export const UPSTREAM_PIPELINE_TRANSIENT_STAGES = [
+  "themes_quality",
+  "theme_grounding",
+  "theme_input_boundary",
+] as const;
+
+export type UpstreamPipelineTransientStage =
+  typeof UPSTREAM_PIPELINE_TRANSIENT_STAGES[number];
 
 export type UpstreamPipelineArtifactObserver = (
   stage: UpstreamPipelineStage,
   artifact: Artifact<unknown>,
 ) => void | Promise<void>;
 
+export type UpstreamPipelineTransientOutput =
+  | ThemesQualityExecutionRecord
+  | ThemesExecutionReadinessContent
+  | ThemeGroundingContent
+  | ThemeInputBoundaryContent;
+
+export type UpstreamPipelineTransientObserver = (
+  stage: UpstreamPipelineTransientStage,
+  output: UpstreamPipelineTransientOutput,
+) => void | Promise<void>;
+
 export async function runUpstreamPipeline(
   input: RunUpstreamPipelineInput,
-): Promise<BuilderResult<BusinessSignalsArtifactContent>> {
-  validateFilingIdentity(input);
+): Promise<Artifact<ThemesArtifactContent>> {
+  validateNormalizedFiling(input.normalizedFiling);
 
-  const evidenceCatalogInput: EvidenceCatalogBuilderInput = {
-    filing_artifact: input.filingArtifact.content,
-  };
-  const evidenceCatalog = await input.runtime.executor.executeBuilder<
-    EvidenceCatalogBuilderInput,
-    EvidenceCatalogArtifactContent
+  const companyId = input.normalizedFiling.company_id;
+  const periodId = input.normalizedFiling.period_id;
+
+  const filingArtifact = await input.runtime.executor.executeBuilder<
+    FilingArtifactBuilderInput,
+    FilingArtifactContent
   >({
-    builderType: EVIDENCE_CATALOG_BUILDER_TYPE,
-    companyId: input.companyId,
-    periodId: input.periodId,
-    executionId: executionId(input, "evidence-catalog"),
-    input: evidenceCatalogInput,
-    inputHash: calculateArtifactHash(evidenceCatalogInput),
+    builderType: FILING_ARTIFACT_BUILDER_TYPE,
+    companyId,
+    periodId,
+    executionId: executionId(companyId, periodId, "filing-artifact"),
+    input: input.normalizedFiling,
+    inputHash: calculateArtifactHash(input.normalizedFiling),
+    generatedAt: input.generatedAt,
+  });
+  await emitArtifact(input, "filing", filingArtifact);
+
+  const evidenceIdentityInput: EvidenceIdentityBuilderInput = {
+    filing_artifact: filingArtifact.content,
+  };
+  const evidenceIdentity = await input.runtime.executor.executeBuilder<
+    EvidenceIdentityBuilderInput,
+    EvidenceIdentityContent
+  >({
+    builderType: EVIDENCE_IDENTITY_BUILDER_TYPE,
+    companyId,
+    periodId,
+    executionId: executionId(companyId, periodId, "evidence-identity"),
+    input: evidenceIdentityInput,
+    inputHash: calculateArtifactHash({
+      filing: filingArtifact.metadata.artifact_hash,
+      input: evidenceIdentityInput,
+    }),
     dependencies: {
-      filing: input.filingArtifact,
+      filing: filingArtifact,
     },
     generatedAt: input.generatedAt,
   });
-  await emitArtifact(input, "evidence_catalog", evidenceCatalog);
+  await emitArtifact(input, "evidence_identity", evidenceIdentity);
+
+  const themesQualityBuilder = new ThemesQualityBuilder();
+  const themesQualityInput: ThemesQualityBuilderInput = {
+    evidence_identity: evidenceIdentity.content,
+  };
+  const themesQualityOutput = await themesQualityBuilder.executeWithRecord(
+    builderContext({
+      companyId,
+      periodId,
+      executionId: executionId(companyId, periodId, "themes-quality"),
+      input: themesQualityInput,
+      dependencies: {
+        evidence_identity: evidenceIdentity,
+      },
+    }),
+  );
+  await emitTransient(
+    input,
+    "themes_quality",
+    themesQualityOutput.execution_record,
+  );
+
+  const themeGroundingBuilder = new ThemeGroundingBuilder();
+  const themeGroundingInput: ThemeGroundingBuilderInput = {
+    themes_execution_readiness: themesQualityOutput.builder_result.content,
+  };
+  const themeGrounding = await themeGroundingBuilder.execute(
+    builderContext({
+      companyId,
+      periodId,
+      executionId: executionId(companyId, periodId, "theme-grounding"),
+      input: themeGroundingInput,
+      dependencies: {},
+    }),
+  );
+  await emitTransient(input, "theme_grounding", themeGrounding.content);
+
+  const themeInputBoundaryBuilder = new ThemeInputBoundaryBuilder();
+  const themeInputBoundaryInput: ThemeInputBoundaryBuilderInput = {
+    theme_grounding: themeGrounding.content,
+  };
+  const themeInputBoundary = await themeInputBoundaryBuilder.execute(
+    builderContext({
+      companyId,
+      periodId,
+      executionId: executionId(companyId, periodId, "theme-input-boundary"),
+      input: themeInputBoundaryInput,
+      dependencies: {},
+    }),
+  );
+  await emitTransient(
+    input,
+    "theme_input_boundary",
+    themeInputBoundary.content,
+  );
 
   const themesInput: ThemesBuilderInput = {
-    filing_type: filingType(input.filingArtifact.content.filing_type),
+    theme_input_boundary: themeInputBoundary.content,
   };
   const themes = await input.runtime.executor.executeBuilder<
     ThemesBuilderInput,
     ThemesArtifactContent
   >({
     builderType: THEMES_BUILDER_TYPE,
-    companyId: input.companyId,
-    periodId: input.periodId,
-    executionId: executionId(input, "themes"),
+    companyId,
+    periodId,
+    executionId: executionId(companyId, periodId, "themes"),
     input: themesInput,
-    inputHash: calculateArtifactHash({
-      input: themesInput,
-      evidence_catalog: evidenceCatalog.metadata.artifact_hash,
-    }),
-    dependencies: {
-      evidence_catalog: evidenceCatalog,
+    inputHash: calculateArtifactHash(themesInput),
+    dependencies: {},
+    lineageDependencies: {
+      evidence_identity: evidenceIdentity,
     },
     generatedAt: input.generatedAt,
   });
   await emitArtifact(input, "themes", themes);
 
-  const topicAssignmentInput: TopicAssignmentBuilderInput = {
-    company_id: input.companyId,
-    period_id: input.periodId,
-    filing_id: input.filingArtifact.content.filing_id,
-  };
-  const topicAssignment = await input.runtime.executor.executeBuilder<
-    TopicAssignmentBuilderInput,
-    TopicAssignmentArtifactContent
-  >({
-    builderType: TOPIC_ASSIGNMENT_BUILDER_TYPE,
-    companyId: input.companyId,
-    periodId: input.periodId,
-    executionId: executionId(input, "topic-assignment"),
-    input: topicAssignmentInput,
-    inputHash: calculateArtifactHash({
-      themes: themes.metadata.artifact_hash,
-      topic_registry: input.topicRegistryArtifact.metadata.artifact_hash,
-    }),
-    dependencies: {
-      themes,
-      topic_registry: input.topicRegistryArtifact,
-    },
-    generatedAt: input.generatedAt,
-  });
-  await emitArtifact(input, "topic_assignment", topicAssignment);
-
-  const historicalTopicAssignments = [
-    ...(input.historicalTopicAssignmentArtifacts ?? []),
-  ];
-  const topicEvolutionInput: TopicEvolutionBuilderInput = {
-    company_id: input.companyId,
-    period_id: input.periodId,
-    historical_periods: historicalTopicAssignments.map(
-      ({ content }) => content.period,
-    ),
-  };
-  const topicEvolution = await input.runtime.executor.executeBuilder<
-    TopicEvolutionBuilderInput,
-    TopicEvolutionArtifactContent
-  >({
-    builderType: TOPIC_EVOLUTION_BUILDER_TYPE,
-    companyId: input.companyId,
-    periodId: input.periodId,
-    executionId: executionId(input, "topic-evolution"),
-    input: topicEvolutionInput,
-    inputHash: calculateArtifactHash({
-      current_topic_assignments: topicAssignment.metadata.artifact_hash,
-      historical_topic_assignments: historicalTopicAssignments.map(
-        ({ metadata }) => metadata.artifact_hash,
-      ),
-    }),
-    dependencies: {
-      current_topic_assignments: topicAssignment,
-      ...Object.fromEntries(historicalTopicAssignments.map((artifact) => [
-        historicalTopicAssignmentDependencyKey(artifact.content.period),
-        artifact,
-      ])),
-    },
-    generatedAt: input.generatedAt,
-  });
-  await emitArtifact(input, "topic_evolution", topicEvolution);
-
-  const structuredInput: StructuredIntelligenceBuilderInput = {
-    company_id: input.companyId,
-    period_id: input.periodId,
-    filing_id: input.filingArtifact.content.filing_id,
-  };
-  const structuredIntelligence = await input.runtime.executor.executeBuilder<
-    StructuredIntelligenceBuilderInput,
-    StructuredIntelligenceArtifactContent
-  >({
-    builderType: STRUCTURED_INTELLIGENCE_BUILDER_TYPE,
-    companyId: input.companyId,
-    periodId: input.periodId,
-    executionId: executionId(input, "structured-intelligence"),
-    input: structuredInput,
-    inputHash: calculateArtifactHash({
-      filing: input.filingArtifact.metadata.artifact_hash,
-      themes: themes.metadata.artifact_hash,
-    }),
-    dependencies: {
-      filing: input.filingArtifact,
-      themes,
-    },
-    generatedAt: input.generatedAt,
-  });
-  await emitArtifact(input, "structured_intelligence", structuredIntelligence);
-
-  const currentCompanyKnowledge =
-    await input.runtime.artifactService.getCurrentArtifact<CompanyKnowledgeArtifactContent>({
-      artifact_type: "company_knowledge",
-      company_id: input.companyId,
-      period_id: input.periodId,
-    });
-  const candidateInput: CompanyKnowledgeBuilderInput = {
-    company_id: input.companyId,
-    period_id: input.periodId,
-    filing_id: input.filingArtifact.content.filing_id,
-  };
-  const companyKnowledgeCandidate = await input.runtime.executor.executeBuilder<
-    CompanyKnowledgeBuilderInput,
-    CompanyKnowledgeCandidateContent
-  >({
-    builderType: COMPANY_KNOWLEDGE_BUILDER_TYPE,
-    companyId: input.companyId,
-    periodId: input.periodId,
-    executionId: executionId(input, "company-knowledge-candidate"),
-    input: candidateInput,
-    inputHash: calculateArtifactHash({
-      structured_intelligence: structuredIntelligence.metadata.artifact_hash,
-      current_company_knowledge:
-        currentCompanyKnowledge?.metadata.artifact_hash ?? null,
-    }),
-    dependencies: {
-      structured_intelligence: structuredIntelligence,
-      ...(currentCompanyKnowledge === null
-        ? {}
-        : { company_knowledge: currentCompanyKnowledge }),
-    },
-    generatedAt: input.generatedAt,
-  });
-  await emitArtifact(
-    input,
-    "company_knowledge_candidate",
-    companyKnowledgeCandidate,
-  );
-
-  const governanceResult = await input.runtime.governanceEngine.execute({
-    company_id: input.companyId,
-    period_id: input.periodId,
-    candidate_artifact: companyKnowledgeCandidate,
-    current_company_knowledge: currentCompanyKnowledge,
-    promotion_rules_version: PROMOTION_RULES_VERSION,
-    reviewer: null,
-    manual_override: null,
-    generated_at: input.generatedAt,
-  });
-  await emitArtifact(
-    input,
-    "governance_decision",
-    governanceResult.governance_decision,
-  );
-
-  if (governanceResult.company_knowledge === null) {
-    throw new BuilderExecutionError(
-      "Company Knowledge governance did not produce an approved artifact.",
-    );
-  }
-  await emitArtifact(
-    input,
-    "company_knowledge",
-    governanceResult.company_knowledge,
-  );
-
-  const businessSignalsInput: BusinessSignalsBuilderInput = {
-    company_id: input.companyId,
-    period_id: input.periodId,
-  };
-  const businessSignals = await input.runtime.executor.executeBuilder<
-    BusinessSignalsBuilderInput,
-    BusinessSignalsArtifactContent
-  >({
-    builderType: BUSINESS_SIGNALS_BUILDER_TYPE,
-    companyId: input.companyId,
-    periodId: input.periodId,
-    executionId: executionId(input, "business-signals"),
-    input: businessSignalsInput,
-    inputHash: calculateArtifactHash({
-      company_knowledge:
-        governanceResult.company_knowledge.metadata.artifact_hash,
-    }),
-    dependencies: {
-      company_knowledge: governanceResult.company_knowledge,
-    },
-    generatedAt: input.generatedAt,
-  });
-  await emitArtifact(input, "business_signals", businessSignals);
-
-  return {
-    content: businessSignals.content,
-  };
+  return themes;
 }
 
-function validateFilingIdentity(input: RunUpstreamPipelineInput): void {
-  if (input.filingArtifact.identity.artifact_type !== "filing") {
-    throw new BuilderExecutionError(
-      "Upstream pipeline requires a filing artifact.",
-    );
-  }
-
+function validateNormalizedFiling(input: FilingArtifactBuilderInput): void {
   if (
-    input.filingArtifact.identity.company_id !== input.companyId
-    || input.filingArtifact.identity.period_id !== input.periodId
+    input.company_id.trim() === ""
+    || input.period_id.trim() === ""
+    || input.filing_id.trim() === ""
   ) {
     throw new BuilderExecutionError(
-      "Filing artifact company and period must match the pipeline target.",
+      "Upstream pipeline requires normalized filing identity.",
     );
   }
 
-  if (input.filingArtifact.content.filing_period !== input.periodId) {
+  if (input.filing_period !== input.period_id) {
     throw new BuilderExecutionError(
-      "Filing content period must match the pipeline target.",
+      "Normalized filing period must match the pipeline period.",
     );
   }
 }
 
-function filingType(value: string): FilingType {
-  if (value === "10-K" || value === "10-Q" || value === "Transcript") {
-    return value;
-  }
-
-  throw new BuilderExecutionError(
-    `Unsupported Themes filing type: ${value}.`,
-  );
+function builderContext<TInput>(input: {
+  companyId: string;
+  periodId: string;
+  executionId: string;
+  input: TInput;
+  dependencies: BuilderContext<TInput>["dependencies"];
+}): BuilderContext<TInput> {
+  return {
+    companyId: input.companyId,
+    periodId: input.periodId,
+    executionId: input.executionId,
+    input: input.input,
+    dependencies: input.dependencies,
+    recordPromptReference() {
+      return undefined;
+    },
+    recordModelReference() {
+      return undefined;
+    },
+  };
 }
 
 function executionId(
-  input: RunUpstreamPipelineInput,
+  companyId: string,
+  periodId: string,
   stage: string,
 ): string {
-  return `${input.companyId}:${input.periodId}:${stage}`;
+  return `${companyId}:${periodId}:${stage}`;
 }
 
 async function emitArtifact(
@@ -367,4 +277,12 @@ async function emitArtifact(
   artifact: Artifact<unknown>,
 ): Promise<void> {
   await input.onArtifact?.(stage, artifact);
+}
+
+async function emitTransient(
+  input: RunUpstreamPipelineInput,
+  stage: UpstreamPipelineTransientStage,
+  output: UpstreamPipelineTransientOutput,
+): Promise<void> {
+  await input.onTransientOutput?.(stage, output);
 }

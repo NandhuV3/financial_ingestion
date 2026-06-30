@@ -11,7 +11,7 @@ export type DependencyReference = {
 export type PromptReference = {
   prompt_id: string;
   prompt_version: string;
-  activation_id: string;
+  activation_id: string | null;
 };
 
 export type ModelReference = {
@@ -32,4 +32,3 @@ export type ArtifactLineage = {
   model_reference?: ModelReference;
   generation_context: GenerationContext;
 };
-

@@ -218,6 +218,13 @@ Themes do not identify topics.
 
 Themes identify coherent business discussions.
 
+Every Theme must represent exactly one coherent business narrative.
+
+Theme titles must describe a business behavior or business development, not a
+measured outcome.
+
+Broad umbrella titles must not absorb multiple independent narratives.
+
 Example
 
 Good
@@ -238,7 +245,30 @@ Bad
 
 ---
 
-# 12. Canonical Evidence Rule
+# 12. Metric Suppression Rule
+
+Metrics may support a Theme.
+
+Metrics must not become the Theme.
+
+This applies to both:
+
+- Theme title
+- Theme summary
+
+The prompt must not emit Themes whose title or summary is primarily a metric
+restatement.
+
+Validation question:
+
+> If all numbers were removed, would a coherent business narrative still remain?
+
+If the answer is no, the Theme is probably a measured outcome rather than a
+business narrative.
+
+---
+
+# 13. Canonical Evidence Rule
 
 Evidence exists to support Themes.
 
@@ -253,13 +283,25 @@ Evidence may not be added merely because it appears nearby.
 
 Evidence selection must be intentional.
 
+Evidence allocation is a global responsibility across the complete Theme set.
+
+The same evidence may support multiple Themes only when it independently
+supports each Theme.
+
+Broad paragraphs must not automatically appear in multiple unrelated Themes.
+
 ---
 
-# 13. Theme Independence
+# 14. Theme Independence
 
 Every Theme must represent exactly one business narrative.
 
 Themes must not combine unrelated developments.
+
+Unrelated business developments must be split into separate Themes even when
+they are discussed nearby in the filing.
+
+The prompt must not emit kitchen sink Themes.
 
 Examples
 
@@ -279,7 +321,7 @@ Those are separate narratives.
 
 ---
 
-# 14. Theme Uniqueness
+# 15. Theme Uniqueness
 
 The prompt must not emit duplicate Themes.
 
@@ -291,7 +333,7 @@ A Theme must represent a unique business narrative.
 
 ---
 
-# 15. Theme Granularity
+# 16. Theme Granularity
 
 Themes should be
 
@@ -312,9 +354,42 @@ is the required progression.
 
 Themes must never become Structured Intelligence.
 
+Themes must not become broad umbrella narratives that combine unrelated
+business developments.
+
+Each Theme must remain granular enough that its evidence supports one coherent
+business narrative.
+
 ---
 
-# 16. Boilerplate Rule
+# 17. Theme Naming Rule
+
+Theme titles should use concrete business subjects.
+
+Titles should prefer specific filing-supported business substance over abstract
+category words.
+
+Titles primarily built from words such as:
+
+- operational
+- strategic
+- competitive
+- market
+
+are discouraged unless those words are clearly qualified by specific
+filing-supported business substance.
+
+Valid title form:
+
+> AI Infrastructure Capacity Expansion
+
+Invalid title form:
+
+> Strategic Operational Development
+
+---
+
+# 18. Boilerplate Rule
 
 Themes must ignore
 
@@ -328,9 +403,17 @@ Themes must ignore
 
 unless the filing introduces company-specific business substance.
 
+Generic competition, risk, and market language must be ignored unless the
+filing contains company-specific business substance.
+
+Company-substitution principle:
+
+> If the Theme would remain materially correct after replacing the company with
+> a same-industry competitor, it is probably generic and should not be emitted.
+
 ---
 
-# 17. Language Rules
+# 19. Language Rules
 
 Themes use
 
@@ -359,7 +442,7 @@ unless quoted directly from filing evidence.
 
 ---
 
-# 18. Ownership Boundary
+# 20. Ownership Boundary
 
 Themes own
 
@@ -385,7 +468,7 @@ Themes never answer downstream questions.
 
 ---
 
-# 19. Confidence Rule
+# 21. Confidence Rule
 
 Confidence reflects extraction confidence only.
 
@@ -406,7 +489,7 @@ or model certainty.
 
 ---
 
-# 20. Output Validation Rules
+# 22. Output Validation Rules
 
 A valid Theme must satisfy all checks.
 
@@ -430,7 +513,60 @@ Failure of any rule invalidates the Theme.
 
 ---
 
-# 21. Forbidden Questions
+# 23. Theme Set Validation
+
+Validation occurs at two levels.
+
+## Per Theme
+
+Each Theme must be validated for:
+
+- filing scope
+- narrative quality
+- evidence support
+- neutral language
+- ownership boundary
+
+## Entire Theme Set
+
+The complete Theme set must be validated for:
+
+- duplicate Themes
+- unnecessary evidence overlap
+- missing major narratives
+- consistent evidence allocation
+
+Theme set validation must not introduce downstream reasoning.
+
+It only verifies that the extracted filing-scoped narratives are coherent,
+non-duplicative, and supported by the approved visible evidence.
+
+---
+
+# 24. Mandatory Validation Questions
+
+Every future Themes prompt implementation must preserve these validation
+questions:
+
+- Is this a business behavior or merely a measured outcome?
+- Would this remain true for another company?
+- Does this Theme combine unrelated developments?
+- Is this paragraph independently supporting this Theme?
+- Does removing all numbers still leave a coherent narrative?
+- Does this title describe specific business substance?
+- Does this Theme use broad category language instead of filing-supported
+  narrative language?
+- Does this evidence paragraph support this Theme directly, or only appear
+  nearby?
+- Does the complete Theme set allocate evidence consistently?
+
+These questions are contractual guidance for prompt behavior.
+
+They do not expand Themes ownership.
+
+---
+
+# 25. Forbidden Questions
 
 The prompt must never answer questions such as
 
@@ -449,7 +585,7 @@ Those questions belong to downstream layers.
 
 ---
 
-# 22. Regression Requirements
+# 26. Regression Requirements
 
 Every future prompt version must preserve
 
@@ -465,7 +601,7 @@ They must never change responsibility.
 
 ---
 
-# 23. Relationship To Prompt Registry
+# 27. Relationship To Prompt Registry
 
 Prompt Registry governs
 
@@ -484,7 +620,7 @@ They are complementary.
 
 ---
 
-# 24. Final Principle
+# 28. Final Principle
 
 Themes is the platform's observation layer.
 
