@@ -354,6 +354,99 @@ describe("TopicAssignmentBuilder", () => {
       temperature: 0,
     }]);
   });
+
+  it("emits deterministic Topic Signals for every assigned, review, and unassigned Theme", async () => {
+    const builder = new TopicAssignmentBuilder(embeddingProvider({
+      "Theme: Exact Cloud": [0, 1],
+      "Theme: Multi Topic": [1, 0],
+      "Theme: Review Topic": [0.8, 0.6],
+      "Theme: Unassigned Topic": [0, 1],
+      "Topic: Cloud": [1, 0],
+      "Topic: Growth": [1, 0],
+      "Topic: Strategy": [1, 0],
+      "Topic: Platform": [1, 0],
+      "Topic: Review Candidate": [1, 0],
+    }));
+    const inputContext = context({
+      themes: themesArtifact([
+        theme("theme-d", "Unassigned Topic", "No strong registry fit."),
+        theme("theme-b", "Multi Topic", "Matches several reusable topics."),
+        theme("theme-a", "Exact Cloud", "Direct cloud topic."),
+        theme("theme-c", "Review Topic", "Close but below automatic assignment."),
+      ]),
+      registry: registryArtifact([
+        topic("topic:strategy", "Strategy"),
+        topic("topic:cloud", "Cloud", "active", ["Exact Cloud"]),
+        topic("topic:growth", "Growth"),
+        topic("topic:platform", "Platform"),
+        topic("topic:review-candidate", "Review Candidate"),
+      ]),
+    });
+    const first = await builder.executeWithTopicSignals(inputContext, {
+      generatedAt: "2026-06-19T00:00:00.000Z",
+    });
+    const second = await builder.executeWithTopicSignals(inputContext, {
+      generatedAt: "2026-06-19T00:00:00.000Z",
+    });
+
+    assert.deepEqual(first, second);
+    assert.equal(first.topic_signals.length, 4);
+    assert.equal(first.builder_result.content.assignments.length, 4);
+    assert.equal(first.builder_result.content.unassigned_themes.length, 2);
+
+    const signalsByTheme = new Map(
+      first.topic_signals.map((signal) => [signal.theme.theme_id, signal]),
+    );
+    const exactSignal = signalsByTheme.get("theme-a");
+    const multiSignal = signalsByTheme.get("theme-b");
+    const reviewSignal = signalsByTheme.get("theme-c");
+    const unassignedSignal = signalsByTheme.get("theme-d");
+
+    assert.equal(exactSignal?.final_result.assignment_status, "assigned");
+    assert.deepEqual(exactSignal?.final_result.final_assignments, [{
+      topic_id: "topic:cloud",
+      confidence: 1,
+      assignment_method: "exact_match",
+    }]);
+    assert.equal(
+      exactSignal?.evaluation.candidates.find(({ topic_id }) =>
+        topic_id === "topic:cloud")?.decision,
+      "accepted",
+    );
+
+    assert.equal(multiSignal?.final_result.assignment_status, "assigned");
+    assert.deepEqual(
+      multiSignal?.final_result.final_assignments.map(({ topic_id }) => topic_id),
+      ["topic:cloud", "topic:growth", "topic:platform"],
+    );
+    assert.equal(
+      multiSignal?.evaluation.candidates.find(({ topic_id }) =>
+        topic_id === "topic:strategy")?.decision,
+      "rejected",
+    );
+
+    assert.equal(reviewSignal?.final_result.assignment_status, "human_review");
+    assert.deepEqual(reviewSignal?.final_result.final_assignments, []);
+    assert.deepEqual(reviewSignal?.evaluation.candidates[0], {
+      topic_id: "topic:cloud",
+      similarity_score: 0.8,
+      assignment_method: "semantic_match",
+      decision: "rejected",
+    });
+
+    assert.equal(unassignedSignal?.final_result.assignment_status, "unassigned");
+    assert.deepEqual(unassignedSignal?.final_result.final_assignments, []);
+    assert.equal(unassignedSignal?.evaluation.candidates[0]?.decision, "rejected");
+    assert.equal(
+      unassignedSignal?.execution_metadata.embedding_model,
+      "text-embedding-3-small",
+    );
+    assert.equal(
+      unassignedSignal?.execution_metadata.generated_at,
+      "2026-06-19T00:00:00.000Z",
+    );
+    assert.equal(unassignedSignal?.registry_context.registry_version, 7);
+  });
 });
 
 function context(params: {

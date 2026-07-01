@@ -11,11 +11,11 @@
 
 # Purpose
 
-Topic Signals capture deterministic execution observations produced during Topic Assignment.
+Topic Signals capture the complete deterministic execution trace produced by Builder 012 while evaluating a Theme against the current Topic Registry.
 
-They describe how Builder 012 interpreted each Theme against the current Topic Registry.
+They preserve the evaluation process that produced the final Topic Assignment.
 
-Topic Signals are evidence.
+Topic Signals are execution evidence.
 
 They are **not** business knowledge.
 
@@ -27,16 +27,22 @@ They are **not** Platform Registry mutations.
 
 # Why Topic Signals Exist
 
-Topic Assignment has two responsibilities:
+Builder 012 has two independent responsibilities.
 
-1. Produce governed Topic Assignments for Company Intelligence.
-2. Produce execution observations for Platform Intelligence.
+1. Produce Topic Assignment for Company Intelligence.
+2. Produce execution evidence for Platform Intelligence.
 
-The Topic Assignment Artifact serves Company Intelligence.
+These outputs intentionally serve different consumers.
 
-Topic Signals serve Platform Intelligence.
+The Topic Assignment Artifact answers:
 
-This separation ensures Company Intelligence remains deterministic while Platform Intelligence continuously learns about ontology quality.
+> Which canonical Topics represent this Theme?
+
+The Topic Signal answers:
+
+> How did Builder 012 reach that decision?
+
+Platform Intelligence depends on execution evidence rather than business knowledge.
 
 ---
 
@@ -46,12 +52,12 @@ This separation ensures Company Intelligence remains deterministic while Platfor
 Themes
     │
     ▼
-Topic Assignment
-    ├──────────────────────┐
-    │                      │
-    ▼                      ▼
-Topic Assignment      Topic Signals
-Platform Artifact     Execution Record
+Builder 012
+    ├───────────────────────────┐
+    │                           │
+    ▼                           ▼
+Topic Assignment          Topic Signal
+Platform Artifact         Execution Record
 ```
 
 ---
@@ -74,7 +80,7 @@ Platform Governance
 Platform Registry
 ```
 
-Topic Signals are the entry point into Platform Intelligence.
+Topic Signals are the sole execution input into Platform Intelligence.
 
 ---
 
@@ -84,7 +90,7 @@ Topic Signals are:
 
 **Execution Records**
 
-They are:
+Properties:
 
 - deterministic
 - replayable
@@ -95,8 +101,8 @@ Topic Signals are NOT:
 
 - Platform Artifacts
 - Governance Artifacts
-- Operational Records
 - Platform Registries
+- Company Intelligence outputs
 
 ---
 
@@ -120,6 +126,7 @@ Current consumer:
 
 Future consumers may include:
 
+- Candidate Discovery
 - Registry Analytics
 - Ontology Quality Monitoring
 - Semantic Drift Detection
@@ -132,21 +139,26 @@ Company Intelligence must never consume Topic Signals.
 
 Topic Signals are derived only from Builder 012 execution.
 
-Inputs include:
+Builder inputs:
 
 - Themes Artifact
 - Topic Registry
-- Assignment Result
-- Assignment Confidence
-- Similarity Evaluation
+
+Builder outputs observed:
+
+- evaluation
+- final assignment
 
 Topic Signals must never reopen:
 
 - SEC filings
+- Filing Artifact
 - Evidence Identity
-- Themes
+- Theme Grounding
+- Theme Input Boundary
 - Topic Evolution
 - Structured Intelligence
+- Company Knowledge
 
 ---
 
@@ -154,7 +166,7 @@ Topic Signals must never reopen:
 
 Exactly one Topic Signal is produced for every Theme processed by Builder 012.
 
-Example:
+Example
 
 ```text
 5 Themes
@@ -168,53 +180,118 @@ Signal count must always equal Theme count.
 
 ---
 
-# Assignment States
+# Execution Trace
 
-Every Topic Signal represents one deterministic execution outcome.
+A Topic Signal preserves the complete deterministic evaluation performed for a Theme.
 
-Allowed states:
+The execution trace consists of four logical sections.
 
-- assigned
-- human_review
-- unassigned
+```text
+Execution Context
 
-No other execution states are permitted.
+↓
+
+Theme
+
+↓
+
+Evaluation
+
+↓
+
+Final Result
+```
 
 ---
 
 # Required Information
 
-Every Topic Signal must preserve enough information to explain the execution outcome.
+Every Topic Signal must preserve sufficient evidence to completely explain the Builder execution.
 
-This includes:
-
-Execution Context
+## Execution Context
 
 - company_id
 - period_id
 - filing_id
 - execution_id
 
-Theme Context
+## Theme
 
 - theme_id
 - theme_title
 
-Assignment Context
+## Evaluation
 
-- assigned_topic_id (nullable)
-- assignment_method
+The evaluation records every Topic candidate considered by Builder 012.
+
+Each candidate contains:
+
+- topic_id
 - similarity_score
-- assignment_status
+- assignment_method
+- decision
 
-Registry Context
+Decision values:
+
+- accepted
+- rejected
+
+The evaluation preserves the ranking produced during execution.
+
+No candidate ranking may be recomputed later.
+
+---
+
+## Final Result
+
+The final result records the Builder's deterministic decision.
+
+It contains:
+
+- assignment_status
+  - assigned
+  - human_review
+  - unassigned
+
+- final_assignments
+
+Each assignment contains:
+
+- topic_id
+- confidence
+- assignment_method
+
+A Theme may contain zero, one, or many final assignments.
+
+---
+
+## Registry Context
 
 - registry_version
 
-Execution Metadata
+---
+
+## Execution Metadata
 
 - embedding_model
 - generated_at
+
+---
+
+# Execution Evidence
+
+Topic Signals preserve execution evidence.
+
+This includes:
+
+- accepted candidates
+- rejected candidates
+- similarity measurements
+- assignment decisions
+
+Execution evidence must never be discarded.
+
+Platform Intelligence depends on historical execution evidence to evolve the Platform Registry.
 
 ---
 
@@ -223,15 +300,14 @@ Execution Metadata
 Topic Signals must never contain:
 
 - governance decisions
-- ontology mutations
 - Topic Candidates
-- Platform Registry updates
+- Platform Registry mutations
 - Company Knowledge
 - Business Signals
 - Quarter Understanding
 - Investor Intelligence
 
-Topic Signals describe observations only.
+Topic Signals preserve execution evidence only.
 
 ---
 
@@ -239,9 +315,11 @@ Topic Signals describe observations only.
 
 Topic Signals are immutable.
 
-Historical Topic Signals are never edited.
+Historical Topic Signals are never modified.
 
-Corrections produce new Topic Signals through replay.
+Replay produces new Topic Signals.
+
+Historical execution evidence remains unchanged.
 
 ---
 
@@ -256,27 +334,25 @@ Given identical:
 
 Builder 012 must emit identical Topic Signals.
 
-Replay must produce identical execution observations.
+Replay must reproduce identical execution evidence.
 
 ---
 
 # Relationship with Topic Assignment
 
-Topic Assignment answers:
+Topic Assignment records the Builder's business conclusion.
 
-> Which canonical Topic represents this Theme?
+Topic Signals record the Builder's execution trace.
 
-Topic Signal answers:
+These outputs intentionally contain different information.
 
-> What happened during Topic Assignment?
-
-These responsibilities are intentionally different.
+Neither replaces the other.
 
 ---
 
 # Relationship with Platform Registry
 
-Topic Signals never modify Platform Registries.
+Topic Signals never modify the Platform Registry.
 
 Instead:
 
@@ -297,10 +373,10 @@ Platform Governance
 
 ↓
 
-Topic Registry
+Platform Registry
 ```
 
-Execution remains read-only.
+Execution remains strictly read-only.
 
 ---
 
@@ -308,9 +384,11 @@ Execution remains read-only.
 
 Topic Signals never recommend governance actions.
 
-They preserve evidence only.
+They preserve execution evidence only.
 
-Governance independently evaluates recurring evidence collected across many Topic Signals.
+Governance evaluates accumulated evidence across many Topic Signals.
+
+Individual executions never evolve the Platform Registry.
 
 ---
 
@@ -323,13 +401,15 @@ Builder 012
 Topic Signal
         │
         ▼
-Signal Store
+Platform Signal Store
         │
         ▼
 Cross-Company Aggregation
 ```
 
-Topic Signals never bypass this lifecycle.
+The bootstrap implementation may persist Topic Signals as JSON execution outputs.
+
+Future implementations should persist Topic Signals in the Platform Signal Store without changing the Topic Signal contract.
 
 ---
 
@@ -341,7 +421,7 @@ Topic Signals must be:
 - replayable
 - immutable
 - explainable
-- evidence-backed
+- evidence-complete
 - execution-scoped
 
 Topic Signals must never:
@@ -349,15 +429,15 @@ Topic Signals must never:
 - create Topics
 - modify Topics
 - merge Topics
-- delete Topics
 - bypass Governance
+- discard evaluated execution evidence
 
 ---
 
 # Architecture Summary
 
-Topic Signals provide the deterministic bridge between Company Intelligence and Platform Intelligence.
+Topic Signals provide the deterministic execution evidence that connects Company Intelligence to Platform Intelligence.
 
-They preserve execution observations without altering Company Intelligence outputs.
+Unlike the Topic Assignment Artifact, which records the Builder's business conclusions, Topic Signals preserve the complete execution trace that produced those conclusions.
 
-By separating Topic Assignment from Platform Intelligence, the platform ensures that ontology evolution is driven by accumulated evidence rather than individual execution decisions, preserving determinism, replayability, and governed knowledge evolution.
+This separation allows Platform Intelligence to learn from historical execution evidence across companies while Company Intelligence continues to consume only governed Platform Knowledge, preserving determinism, replayability, explainability, and governed ontology evolution.

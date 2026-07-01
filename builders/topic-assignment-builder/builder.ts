@@ -5,7 +5,10 @@ import { BuilderValidationError } from "../../packages/builder-framework/src/bui
 import type {
   TopicAssignmentArtifactContent,
 } from "../../contracts/artifacts/topic-assignment-artifact-content.js";
-import { buildTopicAssignments } from "./assignment.js";
+import type {
+  TopicSignalExecutionRecord,
+} from "../../contracts/execution/topic-signal-execution-record.js";
+import { buildTopicAssignmentExecution } from "./assignment.js";
 import { calculateTopicAssignmentConfidence } from "./confidence.js";
 import { TOPIC_ASSIGNMENT_BUILDER_TYPE } from "./contract.js";
 import { TOPIC_ASSIGNMENT_EMBEDDING_MODEL } from "./contract.js";
@@ -41,6 +44,18 @@ export class TopicAssignmentBuilder implements Builder<
   async execute(
     context: BuilderContext<TopicAssignmentBuilderInput>,
   ): Promise<BuilderResult<TopicAssignmentArtifactContent>> {
+    return (await this.executeWithTopicSignals(context, {
+      generatedAt: new Date().toISOString(),
+    })).builder_result;
+  }
+
+  async executeWithTopicSignals(
+    context: BuilderContext<TopicAssignmentBuilderInput>,
+    options: { generatedAt: string },
+  ): Promise<{
+    builder_result: BuilderResult<TopicAssignmentArtifactContent>;
+    topic_signals: TopicSignalExecutionRecord[];
+  }> {
     validateTopicAssignmentDependencies(context.dependencies);
 
     const themesArtifact = requireThemesDependency(
@@ -88,18 +103,19 @@ export class TopicAssignmentBuilder implements Builder<
 
     const themeEmbeddings = embeddings.slice(0, orderedThemes.length);
     const topicEmbeddings = embeddings.slice(orderedThemes.length);
-    const { assignments, unassignedThemes } = buildTopicAssignments(
-      orderedThemes,
-      orderedTopics,
-      orderedThemes.map((theme, index) => ({
-        theme_id: theme.theme_id,
-        embedding: themeEmbeddings[index] ?? [],
-      })),
-      orderedTopics.map((topic, index) => ({
-        topic_id: topic.topic_id,
-        embedding: topicEmbeddings[index] ?? [],
-      })),
-    );
+    const { assignments, unassignedThemes, themeEvaluations } =
+      buildTopicAssignmentExecution(
+        orderedThemes,
+        orderedTopics,
+        orderedThemes.map((theme, index) => ({
+          theme_id: theme.theme_id,
+          embedding: themeEmbeddings[index] ?? [],
+        })),
+        orderedTopics.map((topic, index) => ({
+          topic_id: topic.topic_id,
+          embedding: topicEmbeddings[index] ?? [],
+        })),
+      );
     const confidence = calculateTopicAssignmentConfidence(
       assignments,
       themesArtifact.content.themes.length,
@@ -122,8 +138,36 @@ export class TopicAssignmentBuilder implements Builder<
     );
 
     return {
-      content,
-      confidence: confidence.overall,
+      builder_result: {
+        content,
+        confidence: confidence.overall,
+      },
+      topic_signals: themeEvaluations.map((evaluation) => ({
+        execution_context: {
+          company_id: context.input.company_id,
+          period_id: context.input.period_id,
+          filing_id: context.input.filing_id,
+          execution_id: context.executionId,
+        },
+        theme: {
+          theme_id: evaluation.theme_id,
+          theme_title: evaluation.theme_title,
+        },
+        evaluation: {
+          candidates: evaluation.candidates,
+        },
+        final_result: {
+          assignment_status: evaluation.assignment_status,
+          final_assignments: evaluation.final_assignments,
+        },
+        registry_context: {
+          registry_version: registryArtifact.content.registry_version,
+        },
+        execution_metadata: {
+          embedding_model: TOPIC_ASSIGNMENT_EMBEDDING_MODEL,
+          generated_at: options.generatedAt,
+        },
+      })),
     };
   }
 }

@@ -10,6 +10,11 @@ import type {
   TopicRegistryArtifactContent,
   TopicRegistryEntry,
 } from "../../contracts/artifacts/topic-registry-artifact-content.js";
+import type {
+  TopicSignalAssignmentStatus,
+  TopicSignalEvaluationCandidate,
+  TopicSignalFinalAssignment,
+} from "../../contracts/execution/topic-signal-execution-record.js";
 import type { ThemesArtifactContent } from "../themes/contract.js";
 
 export type {
@@ -64,4 +69,12 @@ export type ThemeSemanticEmbedding = {
 export type TopicSemanticEmbedding = {
   topic_id: string;
   embedding: number[];
+};
+
+export type TopicAssignmentThemeEvaluation = {
+  theme_id: string;
+  theme_title: string;
+  candidates: TopicSignalEvaluationCandidate[];
+  final_assignments: TopicSignalFinalAssignment[];
+  assignment_status: TopicSignalAssignmentStatus;
 };

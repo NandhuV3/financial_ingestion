@@ -9,6 +9,7 @@ import {
 } from "./contract.js";
 import type {
   TopicAssignmentCandidateTopic,
+  TopicAssignmentThemeEvaluation,
   ThemeSemanticEmbedding,
   TopicAssignment,
   TopicMatchCandidate,
@@ -26,8 +27,32 @@ export function buildTopicAssignments(
   assignments: TopicAssignment[];
   unassignedThemes: UnassignedTheme[];
 } {
+  const { assignments, unassignedThemes } = buildTopicAssignmentExecution(
+    themes,
+    activeTopics,
+    themeEmbeddings,
+    topicEmbeddings,
+  );
+
+  return {
+    assignments,
+    unassignedThemes,
+  };
+}
+
+export function buildTopicAssignmentExecution(
+  themes: Theme[],
+  activeTopics: TopicRegistryEntry[],
+  themeEmbeddings: ThemeSemanticEmbedding[],
+  topicEmbeddings: TopicSemanticEmbedding[],
+): {
+  assignments: TopicAssignment[];
+  unassignedThemes: UnassignedTheme[];
+  themeEvaluations: TopicAssignmentThemeEvaluation[];
+} {
   const assignments: TopicAssignment[] = [];
   const unassignedThemes: UnassignedTheme[] = [];
+  const themeEvaluations: TopicAssignmentThemeEvaluation[] = [];
   const orderedThemes = [...themes].sort((left, right) =>
     left.theme_id.localeCompare(right.theme_id));
   const orderedTopics = [...activeTopics].sort((left, right) =>
@@ -61,6 +86,25 @@ export function buildTopicAssignments(
       .filter(({ similarity_score }) =>
         similarity_score >= AUTOMATIC_ASSIGNMENT_THRESHOLD)
       .slice(0, MAX_ASSIGNMENTS_PER_THEME);
+    const acceptedTopicIds = new Set(automatic.map(({ topic_id }) => topic_id));
+    const finalAssignments = automatic.map((candidate) => ({
+      topic_id: candidate.topic_id,
+      confidence: candidate.similarity_score,
+      assignment_method: candidate.assignment_method,
+    }));
+
+    themeEvaluations.push({
+      theme_id: theme.theme_id,
+      theme_title: theme.title,
+      candidates: candidates.map((candidate) => ({
+        topic_id: candidate.topic_id,
+        similarity_score: candidate.similarity_score,
+        assignment_method: candidate.assignment_method,
+        decision: acceptedTopicIds.has(candidate.topic_id) ? "accepted" : "rejected",
+      })),
+      final_assignments: finalAssignments,
+      assignment_status: assignmentStatus(automatic, candidates),
+    });
 
     if (automatic.length === 0) {
       unassignedThemes.push({
@@ -90,6 +134,8 @@ export function buildTopicAssignments(
   return {
     assignments: assignments.sort(compareAssignments),
     unassignedThemes: unassignedThemes.sort((left, right) =>
+      left.theme_id.localeCompare(right.theme_id)),
+    themeEvaluations: themeEvaluations.sort((left, right) =>
       left.theme_id.localeCompare(right.theme_id)),
   };
 }
@@ -210,4 +256,19 @@ function rejectionReason(similarityScore: number): string {
   }
 
   return "below_automatic_assignment_threshold";
+}
+
+function assignmentStatus(
+  automatic: TopicMatchCandidate[],
+  candidates: TopicMatchCandidate[],
+): TopicAssignmentThemeEvaluation["assignment_status"] {
+  if (automatic.length > 0) {
+    return "assigned";
+  }
+
+  if ((candidates[0]?.similarity_score ?? 0) >= HUMAN_REVIEW_THRESHOLD) {
+    return "human_review";
+  }
+
+  return "unassigned";
 }

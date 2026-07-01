@@ -1,6 +1,9 @@
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { Artifact } from "../../contracts/artifacts/artifact.js";
+import type {
+  DependencyReference,
+} from "../../contracts/artifacts/artifact-lineage.js";
 import type {
   TopicAssignmentArtifactContent,
 } from "../../contracts/artifacts/topic-assignment-artifact-content.js";
@@ -30,7 +33,11 @@ import { registerUpstreamBuilders } from "../upstream-pipeline/register-builders
 import { writeArtifactDump } from "../upstream-pipeline/artifact-dump.js";
 import {
   TOPIC_ASSIGNMENT_BUILDER_TYPE,
+  TOPIC_ASSIGNMENT_EMBEDDING_MODEL,
+  TOPIC_ASSIGNMENT_PIPELINE_VERSION,
+  TOPIC_ASSIGNMENT_SCHEMA_VERSION,
 } from "./contract.js";
+import { TopicAssignmentBuilder } from "./builder.js";
 import type { TopicAssignmentBuilderInput } from "./types.js";
 import type { ThemesArtifactContent } from "../themes/contract.js";
 
@@ -77,6 +84,7 @@ export async function runTopicAssignmentReplay(
     period_id: themes.content.period_id,
     filing_id: themes.content.filing_id,
   };
+  const generatedAt = new Date().toISOString();
 
   logger.info("Executing Topic Assignment replay.", {
     company_id: topicAssignmentInput.company_id,
@@ -85,34 +93,69 @@ export async function runTopicAssignmentReplay(
     topic_registry_path: args.topicRegistryPath,
   });
 
-  const topicAssignment = await runtime.executor.executeBuilder<
-    TopicAssignmentBuilderInput,
-    TopicAssignmentArtifactContent
-  >({
-    builderType: TOPIC_ASSIGNMENT_BUILDER_TYPE,
+  const executionId = [
+    topicAssignmentInput.company_id,
+    topicAssignmentInput.period_id,
+    "topic-assignment-replay",
+  ].join(":");
+  const inputHash = calculateArtifactHash({
+    themes: themes.metadata.artifact_hash,
+    topic_registry: topicRegistry.metadata.artifact_hash,
+    input: topicAssignmentInput,
+  });
+  const builder = new TopicAssignmentBuilder(embeddingClient);
+  const result = await builder.executeWithTopicSignals({
     companyId: topicAssignmentInput.company_id,
     periodId: topicAssignmentInput.period_id,
-    executionId: [
-      topicAssignmentInput.company_id,
-      topicAssignmentInput.period_id,
-      "topic-assignment-replay",
-    ].join(":"),
+    executionId,
     input: topicAssignmentInput,
-    inputHash: calculateArtifactHash({
-      themes: themes.metadata.artifact_hash,
-      topic_registry: topicRegistry.metadata.artifact_hash,
-      input: topicAssignmentInput,
-    }),
     dependencies: {
       themes,
       topic_registry: topicRegistry,
     },
-  });
+    recordPromptReference() {},
+    recordModelReference() {},
+  }, { generatedAt });
+  const topicAssignment =
+    await runtime.artifactService.createArtifact<TopicAssignmentArtifactContent>({
+      artifact_type: "topic_assignment",
+      company_id: topicAssignmentInput.company_id,
+      period_id: topicAssignmentInput.period_id,
+      content: result.builder_result.content,
+      lineage: {
+        upstream_dependencies: [
+          dependencyReference(themes),
+          dependencyReference(topicRegistry),
+        ].sort((left, right) =>
+          `${left.artifact_type}:${left.artifact_id}`.localeCompare(
+            `${right.artifact_type}:${right.artifact_id}`,
+          )),
+        generation_context: {
+          builder_type: TOPIC_ASSIGNMENT_BUILDER_TYPE,
+          execution_id: executionId,
+        },
+        model_reference: {
+          provider: "semantic-embedding",
+          model_name: TOPIC_ASSIGNMENT_EMBEDDING_MODEL,
+          model_version: TOPIC_ASSIGNMENT_EMBEDDING_MODEL,
+          temperature: 0,
+        },
+      },
+      schema_version: TOPIC_ASSIGNMENT_SCHEMA_VERSION,
+      pipeline_version: TOPIC_ASSIGNMENT_PIPELINE_VERSION,
+      input_hash: inputHash,
+      generation_duration_ms: 0,
+      generated_at: generatedAt,
+    });
 
   const outputPath = await writeArtifactDump(
     args.outputDirectory,
     "topic_assignment",
     topicAssignment,
+  );
+  const topicSignalsPath = await writeTopicSignals(
+    args.outputDirectory,
+    result.topic_signals,
   );
 
   logger.info("Topic Assignment replay completed.", {
@@ -121,6 +164,7 @@ export async function runTopicAssignmentReplay(
     assignment_count: topicAssignment.content.assignments.length,
     unassigned_count: topicAssignment.content.unassigned_themes.length,
     output_path: outputPath,
+    topic_signals_path: topicSignalsPath,
   });
 }
 
@@ -215,6 +259,32 @@ async function createTopicRegistryArtifact(
     input_hash: calculateArtifactHash(rawRegistry),
     generation_duration_ms: 0,
   });
+}
+
+async function writeTopicSignals(
+  outputDirectory: string,
+  topicSignals: unknown,
+): Promise<string> {
+  const outputPath = resolve(outputDirectory, "04-topic-signals.json");
+
+  await mkdir(resolve(outputDirectory), { recursive: true });
+  await writeFile(
+    outputPath,
+    `${JSON.stringify(topicSignals, null, 2)}\n`,
+    "utf8",
+  );
+
+  return outputPath;
+}
+
+function dependencyReference(artifact: Artifact<unknown>): DependencyReference {
+  return {
+    artifact_id: artifact.identity.artifact_id,
+    artifact_type: artifact.identity.artifact_type,
+    version: artifact.identity.version,
+    artifact_hash: artifact.metadata.artifact_hash,
+    input_hash: artifact.metadata.input_hash,
+  };
 }
 
 async function loadJsonArtifact<T>(path: string): Promise<Artifact<T>> {
