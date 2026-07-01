@@ -1,4 +1,5 @@
 import type { ArtifactType } from "./artifact-type.js";
+import type { ExecutionRecordReference } from "../framework/execution-record-reference.js";
 
 export type DependencyReference = {
   artifact_id: string;
@@ -28,6 +29,7 @@ export type GenerationContext = {
 
 export type ArtifactLineage = {
   upstream_dependencies: DependencyReference[];
+  execution_references?: ExecutionRecordReference[];
   prompt_reference?: PromptReference;
   model_reference?: ModelReference;
   generation_context: GenerationContext;

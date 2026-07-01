@@ -112,6 +112,7 @@ export class BuilderExecutor {
           params.lineageDependencies ?? dependencies,
           promptReference,
           modelReference,
+          result.execution_references,
         ),
         schema_version: definition.schema_version,
         pipeline_version: definition.pipeline_version,
@@ -163,6 +164,7 @@ function buildLineage(
   dependencies: BuilderDependencies,
   promptReference?: PromptReference,
   modelReference?: ModelReference,
+  executionReferences?: ArtifactLineage["execution_references"],
 ): ArtifactLineage {
   const lineage: ArtifactLineage = {
     upstream_dependencies: Object.values(dependencies)
@@ -187,6 +189,10 @@ function buildLineage(
 
   if (modelReference !== undefined) {
     lineage.model_reference = modelReference;
+  }
+
+  if (executionReferences !== undefined) {
+    lineage.execution_references = executionReferences;
   }
 
   return lineage;

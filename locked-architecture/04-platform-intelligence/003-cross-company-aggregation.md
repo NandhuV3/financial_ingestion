@@ -3,92 +3,170 @@
 **Status:** LOCKED  
 **Layer:** Platform Intelligence  
 **Owner:** Platform Intelligence Architecture  
-**Last Updated:** 2026-06-30
+**Classification:** Derived Platform Artifact Producer  
+**Last Updated:** 2026-07-01
 
 ---
 
 # Purpose
 
-Cross-Company Aggregation is responsible for discovering recurring patterns across Platform Signals emitted by Company Intelligence.
+Cross-Company Aggregation transforms immutable Topic Signals into deterministic aggregated evidence across companies, reporting periods, filings, and Topic Registry versions.
 
-It transforms isolated execution observations into statistically meaningful evidence.
+Its responsibility is to accumulate execution evidence.
 
-Cross-Company Aggregation does **not** create ontology.
+It does **not** interpret that evidence.
 
-It only determines whether multiple independent observations indicate that the platform's current knowledge may be incomplete.
+It does **not** evaluate ontology quality.
+
+It does **not** propose new Topics.
+
+It does **not** modify the Platform Registry.
 
 ---
 
 # Core Principle
 
-One company represents an observation.
+One Topic Signal represents an observation.
 
-Many companies represent evidence.
+Many independent Topic Signals represent evidence.
 
-Platform Intelligence evolves only from recurring evidence.
+Cross-Company Aggregation never changes observations.
+
+It only accumulates evidence from them.
 
 ---
 
 # Why Aggregation Exists
 
-Execution pipelines process companies independently.
+Builder 012 produces deterministic execution observations for individual Themes.
 
-A single filing cannot determine whether:
+Those observations answer:
 
-- a reusable business concept exists,
-- an ontology gap exists,
-- a new Topic should exist,
-- a registry should evolve.
+> What happened during this execution?
 
-Those questions require evidence collected across many companies and many reporting periods.
+Cross-Company Aggregation answers:
+
+> What recurring execution patterns exist across many independent executions?
+
+Only recurring evidence across companies and time should influence future Platform Registry evolution.
 
 ---
 
 # Position in Platform Intelligence
 
 ```text
-Platform Signals
+Builder 012
+        │
+        ▼
+Topic Signals
         │
         ▼
 Cross-Company Aggregation
         │
         ▼
+Aggregation Result
+        │
+        ▼
 Candidate Discovery
         │
         ▼
-Governance
+Platform Governance
+        │
+        ▼
+Platform Registry
 ```
 
-Aggregation exists before Candidate Discovery.
+Aggregation is the first Platform Intelligence component that operates across multiple executions.
+
+---
+
+# Ownership
+
+Cross-Company Aggregation owns exactly one responsibility:
+
+> Transform immutable Topic Signals into deterministic aggregated evidence.
+
+It owns aggregation.
+
+It does not own interpretation.
 
 ---
 
 # Inputs
 
-Cross-Company Aggregation consumes only immutable Platform Signals.
-
-Examples:
+Cross-Company Aggregation currently consumes only:
 
 - Topic Signals
+
+Future Platform Intelligence stages may introduce additional Platform Signal types, including:
+
 - Industry Signals
 - Taxonomy Signals
 - Registry Coverage Signals
 
-Aggregation never consumes Company Intelligence artifacts directly.
+Those signal types are outside the scope of this specification.
+
+Cross-Company Aggregation must never consume:
+
+- SEC Filings
+- Filing Artifact
+- Evidence Identity
+- Themes
+- Topic Assignment Artifact
+- Topic Registry
+- Topic Evolution
+- Structured Intelligence
+- Company Knowledge
+
+All required execution information already exists inside Topic Signals.
 
 ---
 
-# Outputs
+# Output Classification
 
-Aggregation produces Aggregation Results.
+Cross-Company Aggregation produces an **Aggregation Result**.
 
-Aggregation Results are analytical summaries describing recurring patterns.
+Aggregation Results are classified as:
 
-They are **not** governance decisions.
+**Derived Platform Artifacts**
 
-They are **not** ontology changes.
+Derived Platform Artifacts are:
 
-They are evidence packages for Candidate Discovery.
+- persisted
+- immutable
+- replayable
+- lineage-aware
+- independently consumable
+
+Derived Platform Artifacts do **not** require governance promotion.
+
+They represent deterministic accumulated evidence.
+
+They do not represent canonical platform knowledge.
+
+---
+
+# Why Aggregation Results Are Platform Artifacts
+
+Aggregation Results:
+
+- have independent consumers
+- participate in lineage
+- require versioning
+- must remain replayable
+- are independently auditable
+
+Although they contain evidence rather than governed knowledge, they satisfy the behavioral requirements of Platform Artifacts.
+
+Their distinction from governed Platform Artifacts is behavioral:
+
+```text
+Derived Platform Artifact
+
+↓
+
+requires_governance_promotion = false
+```
 
 ---
 
@@ -96,137 +174,104 @@ They are evidence packages for Candidate Discovery.
 
 Cross-Company Aggregation is responsible for:
 
-- collecting Platform Signals
-- grouping similar observations
-- identifying recurring patterns
+- collecting Topic Signals
+- grouping observations
+- counting observations
+- calculating deterministic statistics
 - measuring recurrence
-- measuring consistency
-- measuring cross-company coverage
-- measuring temporal persistence
+- measuring company diversity
+- measuring reporting-period diversity
+- measuring registry-version coverage
+- measuring assignment distributions
+- measuring candidate distributions
+- measuring similarity distributions
 
-Aggregation is **not** responsible for:
+Cross-Company Aggregation is NOT responsible for:
 
-- creating Candidates
-- creating Topics
-- modifying registries
-- governance decisions
+- semantic similarity evaluation
+- embedding generation
+- Topic Assignment
+- Candidate Discovery
+- Platform Governance
+- Platform Registry mutation
+- ontology evolution
+- business interpretation
+
+---
+
+# Allowed Operations
+
+Cross-Company Aggregation performs deterministic analytical operations only.
+
+Allowed operations:
+
+- group
+- filter
+- sort
+- count
+- sum
+- average
+- minimum
+- maximum
+- percentile
+- histogram
+- distribution
+
+Aggregation must never perform:
+
+- embedding generation
+- cosine similarity computation
+- semantic search
+- clustering
+- candidate generation
+- ontology inference
+- LLM reasoning
+
+Similarity values recorded inside Topic Signals may be aggregated.
+
+They must never be recomputed.
 
 ---
 
 # Evidence Requirements
 
-Recurring patterns must be supported by multiple independent observations.
+Recurring evidence requires multiple independent Topic Signals.
 
-Examples:
+Example:
 
 ```text
 Microsoft
-        │
-        ▼
+
+↓
+
 Topic Signal
 
 Apple
-        │
-        ▼
+
+↓
+
 Topic Signal
 
 Google
-        │
-        ▼
+
+↓
+
 Topic Signal
 
 Amazon
-        │
-        ▼
+
+↓
+
 Topic Signal
 ```
 
-Independent observations produce stronger evidence than repeated observations from a single company.
-
----
-
-# Cross-Company Principle
-
-Platform knowledge should emerge from reusable business concepts.
-
-It must never emerge from company-specific terminology.
-
-Example:
-
-Observed:
-
-- OpenAI Partnership
-- Anthropic Partnership
-- AI Collaboration
-- Foundation Model Alliance
-
-Aggregation may discover:
-
-```text
-Strategic AI Partnerships
-```
-
-Aggregation must never conclude:
-
-```text
-OpenAI
-```
-
-The platform evolves reusable concepts, not company names.
-
----
-
-# Temporal Principle
-
-Aggregation considers recurrence over time.
-
-A concept appearing once is weak evidence.
-
-A concept appearing repeatedly across multiple quarters strengthens confidence.
-
-Example:
-
-```text
-Microsoft
-2026-Q1
-
-↓
-
-Signal
-
-Microsoft
-2026-Q2
-
-↓
-
-Signal
-
-Apple
-2026-Q2
-
-↓
-
-Signal
-
-Google
-2026-Q2
-
-↓
-
-Signal
-```
-
-Together these provide stronger evidence than a single isolated observation.
+Independent observations provide stronger evidence than repeated observations from a single company.
 
 ---
 
 # Company Diversity Principle
 
-Platform Intelligence values diversity of evidence.
-
-Signals originating from multiple independent companies carry more weight than repeated signals from one company.
-
-Example:
+Evidence quality increases with diversity.
 
 Preferred:
 
@@ -246,74 +291,170 @@ Microsoft
 Microsoft
 ```
 
+Company diversity is a statistic.
+
+It is not a governance decision.
+
+---
+
+# Temporal Principle
+
+Recurring observations across reporting periods strengthen evidence.
+
+Example:
+
+```text
+Microsoft
+2026-Q1
+
+↓
+
+Topic Signal
+
+Microsoft
+2026-Q2
+
+↓
+
+Topic Signal
+
+Apple
+2026-Q2
+
+↓
+
+Topic Signal
+
+Google
+2026-Q2
+
+↓
+
+Topic Signal
+```
+
+Aggregation records recurrence.
+
+It does not determine whether recurrence justifies Platform Registry evolution.
+
 ---
 
 # Aggregation Dimensions
 
-Aggregation may analyze observations across:
+Aggregation may group observations across:
 
-- companies
-- industries
-- reporting periods
-- filing types
-- business sectors
-- existing ontology proximity
+- topic_id
+- registry_version
+- company_id
+- reporting period
+- filing_id
+- assignment status
+- assignment method
+- accepted candidates
+- rejected candidates
+- similarity score distributions
 
-The aggregation process remains deterministic.
+Aggregation must never compute new semantic relationships.
+
+---
+
+# Aggregation Configuration
+
+Aggregation behavior is controlled by versioned configuration.
+
+Examples include:
+
+- observation windows
+- aggregation policies
+- filtering policies
+- registry-version boundaries
+
+Aggregation configuration must never be hardcoded into implementation.
+
+Configuration forms part of replayability.
+
+Changing aggregation configuration produces a new Aggregation Result.
+
+Historical Aggregation Results remain unchanged.
+
+---
+
+# Artifact Lineage
+
+Every Aggregation Result records:
+
+- consumed Topic Signal set
+- aggregation version
+- aggregation configuration version
+
+This guarantees complete downstream auditability.
+
+Candidate Discovery and Platform Governance must always know exactly which Aggregation Result they consumed.
 
 ---
 
 # No Ontology Mutation
 
-Aggregation never modifies Platform Registries.
+Cross-Company Aggregation never modifies the Platform Registry.
 
-It only produces evidence.
+It never:
 
-Example:
+- creates Topics
+- merges Topics
+- renames Topics
+- deprecates Topics
+- promotes Candidates
 
-```text
-Signals
-
-↓
-
-Recurring Pattern
-
-↓
-
-Aggregation Result
-```
-
-Not:
-
-```text
-Signals
-
-↓
-
-New Topic
-```
-
----
-
-# Determinism
-
-Given identical Platform Signals:
-
-- identical groups must be produced.
-- identical statistics must be produced.
-- identical Aggregation Results must be produced.
-
-Aggregation algorithms must remain deterministic and replayable.
+It only accumulates evidence.
 
 ---
 
 # Relationship with Candidate Discovery
 
-Aggregation identifies recurring evidence.
+Cross-Company Aggregation has no knowledge of Candidate Discovery policies.
 
-Candidate Discovery evaluates whether that evidence justifies proposing new reusable platform knowledge.
+It does not:
 
-Aggregation never creates Candidates directly.
+- prioritize candidates
+- rank candidates
+- apply discovery thresholds
+- infer ontology gaps
+
+Its sole responsibility is producing deterministic aggregated evidence.
+
+Candidate Discovery independently determines whether that evidence justifies proposing ontology evolution.
+
+---
+
+# Determinism
+
+Given identical:
+
+- Topic Signals
+- Aggregation Configuration
+- Aggregation Version
+
+Cross-Company Aggregation must produce identical Aggregation Results.
+
+Replay must produce identical aggregated evidence.
+
+---
+
+# Replayability
+
+Historical Aggregation Results are immutable.
+
+Replaying with identical inputs produces identical outputs.
+
+Changing:
+
+- Topic Signals
+- Aggregation Configuration
+- Aggregation Version
+
+produces a new Aggregation Result.
+
+Historical Aggregation Results are never modified.
 
 ---
 
@@ -323,27 +464,28 @@ Cross-Company Aggregation must be:
 
 - deterministic
 - replayable
+- immutable
 - evidence-driven
 - company-independent
-- ontology-independent
+- registry-aware
+- lineage-aware
 - statistically grounded
 
-Aggregation must never:
+Cross-Company Aggregation must never:
 
-- invent concepts
-- create Topics
-- merge Topics
-- approve Topics
-- deprecate Topics
-
-Those responsibilities belong to later Platform Intelligence stages.
+- interpret evidence
+- infer ontology changes
+- create candidates
+- mutate registries
+- bypass governance
+- discard execution evidence
 
 ---
 
 # Architecture Summary
 
-Cross-Company Aggregation transforms isolated execution observations into reusable evidence.
+Cross-Company Aggregation is the deterministic bridge between execution evidence and ontology evolution.
 
-It provides the analytical bridge between Platform Signals and Candidate Discovery.
+It transforms many immutable Topic Signals into persisted, replayable, lineage-aware Aggregation Results without interpreting their meaning.
 
-By requiring recurring, cross-company evidence before proposing ontology evolution, the platform prevents transient company-specific observations from polluting reusable platform knowledge while allowing the ontology to improve continuously over time.
+By separating evidence accumulation from Candidate Discovery, Platform Governance, and Platform Registry evolution, the platform ensures that ontology growth is driven by recurring, statistically grounded execution evidence rather than individual company observations or implementation-specific behavior.

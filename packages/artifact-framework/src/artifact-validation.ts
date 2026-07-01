@@ -4,6 +4,7 @@ import type { ArtifactGovernance } from "../../../contracts/artifacts/artifact-g
 import type { ArtifactLineage } from "../../../contracts/artifacts/artifact-lineage.js";
 import { ArtifactStatus } from "../../../contracts/artifacts/artifact-status.js";
 import { ARTIFACT_TYPES } from "../../../contracts/artifacts/artifact-type.js";
+import { EXECUTION_RECORD_REFERENCE_SCHEMA_VERSION } from "../../../contracts/framework/execution-record-reference.js";
 
 export function validateArtifact(artifact: Artifact<unknown>): void {
   validateIdentity(artifact);
@@ -57,6 +58,24 @@ export function validateLineage(lineage: ArtifactLineage): void {
     requirePositiveInteger(dependency.version, "lineage.upstream_dependencies[].version");
     requireNonEmptyString(dependency.artifact_hash, "lineage.upstream_dependencies[].artifact_hash");
     requireNonEmptyString(dependency.input_hash, "lineage.upstream_dependencies[].input_hash");
+  }
+
+  if (lineage.execution_references !== undefined) {
+    if (!Array.isArray(lineage.execution_references)) {
+      throw new Error("lineage.execution_references must be an array.");
+    }
+
+    for (const reference of lineage.execution_references) {
+      if (reference.schema_version !== EXECUTION_RECORD_REFERENCE_SCHEMA_VERSION) {
+        throw new Error("lineage.execution_references[].schema_version is not supported.");
+      }
+
+      requireNonEmptyString(reference.record_type, "lineage.execution_references[].record_type");
+      requireNonEmptyString(reference.record_id, "lineage.execution_references[].record_id");
+      requireNonEmptyString(reference.record_hash, "lineage.execution_references[].record_hash");
+      requireNonEmptyString(reference.producer, "lineage.execution_references[].producer");
+      requireNonEmptyString(reference.execution_id, "lineage.execution_references[].execution_id");
+    }
   }
 
   requireNonEmptyString(lineage.generation_context.builder_type, "lineage.generation_context.builder_type");

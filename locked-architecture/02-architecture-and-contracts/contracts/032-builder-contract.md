@@ -420,60 +420,72 @@ Metadata generation is deterministic.
 
 # 16. Lineage Generation
 
-Every artifact records
+Builders provide the lineage inputs required to describe their execution.
 
-Upstream artifacts
+Artifact Framework assembles the final artifact lineage.
 
-↓
+Builders never construct artifact lineage directly.
 
-Builder
+Builder responsibilities include providing:
 
-↓
+- upstream artifact dependencies
+- execution references (when Execution Records are consumed)
+- prompt reference (LLM Builders only)
+- model reference (LLM Builders and deterministic builders that execute embedding models)
+- execution context
 
-Prompt (if applicable)
+Artifact Framework is responsible for:
 
-↓
-
-Model (if applicable)
-
-↓
-
-Execution context
-
-↓
-
-Hashes
+- assembling the complete lineage object
+- validating lineage structure
+- attaching lineage to the Platform Artifact
 
 Lineage generation is mandatory.
 
-No artifact may omit lineage.
+No persisted Platform Artifact may omit lineage.
 
 ---
 
 # 17. Artifact Writing
 
-Builders never write directly.
+Builders never write Platform Artifacts directly.
 
-Artifact Framework owns writing.
+Artifact Framework exclusively owns artifact construction and persistence.
 
-Builders submit validated artifacts.
+Builders submit a validated **Builder Result**.
 
-Artifact Framework performs
+The Builder Result contains the execution output produced by the builder.
+
+Artifact Framework transforms the Builder Result into the final persisted Platform Artifact.
 
 ```
-Archive Previous Version
-
+Builder
 ↓
-
-Write New Version
-
+Builder Result
 ↓
-
-Update Current Pointer
+Artifact Framework
+↓
+Artifact Construction
+↓
+Artifact Storage
 ```
 
-Builders never bypass this sequence.
+Builders never construct:
+- Platform Artifacts directly
+- artifact metadata directly
+- artifact lineage directly
 
+Artifact Framework exclusively owns:
+
+- artifact construction
+- metadata generation
+- lineage assembly
+- dependency recording
+- execution reference recording
+- artifact persistence
+- version management
+- archive management
+- current pointer updates
 ---
 
 # 18. Failure Behaviour
@@ -582,17 +594,34 @@ Builders only execute.
 
 # 24. Relationship To Artifact Framework
 
-Builders create artifacts.
+Builders produce **Builder Results**.
 
-Artifact Framework stores artifacts.
+Artifact Framework constructs and stores Platform Artifacts.
 
-Builders never perform
+Builders own:
 
+- business transformation
+- execution logic
+- input validation
+- output validation
+- Builder Result generation
+
+Artifact Framework owns:
+
+- Platform Artifact construction
+- metadata generation
+- lineage assembly
+- dependency recording
+- execution reference recording
+- artifact validation
 - version management
 - archive management
 - current pointer updates
+- artifact persistence
 
-Those belong exclusively to Artifact Framework.
+Builders never construct Platform Artifact objects directly.
+
+Builders never bypass Artifact Framework ownership.
 
 ---
 

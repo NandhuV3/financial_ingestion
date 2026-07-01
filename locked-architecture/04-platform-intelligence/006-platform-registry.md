@@ -3,7 +3,8 @@
 **Status:** LOCKED  
 **Layer:** Platform Intelligence  
 **Owner:** Platform Intelligence Architecture  
-**Last Updated:** 2026-06-30
+**Classification:** Governed Platform Artifact  
+**Last Updated:** 2026-07-01
 
 ---
 
@@ -13,7 +14,7 @@ A Platform Registry is the governed source of truth for reusable platform knowle
 
 Platform Registries contain canonical concepts that Company Intelligence consumes during execution.
 
-Unlike execution artifacts, Platform Registries evolve slowly through governance and are shared across all companies.
+Unlike execution artifacts and derived platform artifacts, Platform Registries evolve only through Platform Governance and are shared across all companies.
 
 Platform Registries are read-only during execution.
 
@@ -55,7 +56,7 @@ Without Platform Registries:
 
 - execution would invent concepts,
 - ontology would drift,
-- replayability would be impossible,
+- replayability would become impossible,
 - semantic consistency would degrade over time.
 
 ---
@@ -63,10 +64,17 @@ Without Platform Registries:
 # Position in Platform Intelligence
 
 ```text
-Platform Signals
+Builder 012
+        │
+        ▼
+Topic Signals
         │
         ▼
 Cross-Company Aggregation
+        │
+        ▼
+Aggregation Result
+(Derived Platform Artifact)
         │
         ▼
 Candidate Discovery
@@ -76,12 +84,75 @@ Platform Governance
         │
         ▼
 Platform Registry
+(Governed Platform Artifact)
         │
         ▼
 Company Intelligence
 ```
 
-Platform Registries are the final output of Platform Intelligence.
+Platform Registries are the final governed knowledge output of Platform Intelligence.
+
+---
+
+# Output Classification
+
+Platform Registries are classified as:
+
+**Governed Platform Artifacts**
+
+Governed Platform Artifacts:
+
+- contain canonical reusable platform knowledge
+- require governance promotion
+- are persisted
+- versioned
+- immutable after publication
+- replayable
+- lineage-aware
+- independently consumable
+
+Unlike Derived Platform Artifacts, Platform Registries become the authoritative source of platform knowledge.
+
+---
+
+# Derived vs Governed Platform Artifacts
+
+Platform Intelligence produces two categories of Platform Artifacts.
+
+## Derived Platform Artifacts
+
+Examples:
+
+- Aggregation Result
+
+Characteristics:
+
+- deterministic
+- accumulated execution evidence
+- replayable
+- lineage-aware
+- do not require governance promotion
+- do not modify platform knowledge
+
+---
+
+## Governed Platform Artifacts
+
+Examples:
+
+- Topic Registry
+- Industry Registry
+- Future Platform Registries
+
+Characteristics:
+
+- canonical platform knowledge
+- governance approved
+- reusable by execution
+- versioned
+- immutable after publication
+
+Platform Governance transforms evidence into governed knowledge.
 
 ---
 
@@ -95,11 +166,12 @@ Every Platform Registry must be:
 - immutable after publication
 - replayable
 - deterministic
+- lineage-aware
 - company-independent
 
 Platform Registries represent reusable knowledge.
 
-They never represent observations.
+They never represent execution observations.
 
 ---
 
@@ -110,6 +182,8 @@ Platform Registries are owned exclusively by Platform Intelligence.
 Execution pipelines are consumers.
 
 Execution pipelines are never owners.
+
+No execution pipeline may directly mutate a Platform Registry.
 
 ---
 
@@ -128,20 +202,25 @@ Execution pipelines cannot:
 Registry evolution always follows:
 
 ```text
-Signal
+Topic Signals
         │
         ▼
-Aggregation
+Cross-Company Aggregation
         │
         ▼
-Candidate
+Aggregation Result
         │
         ▼
-Governance
+Candidate Discovery
         │
         ▼
-Registry
+Platform Governance
+        │
+        ▼
+Platform Registry
 ```
+
+Every mutation is governed.
 
 ---
 
@@ -163,7 +242,7 @@ Governance Approval
 Registry v19
 ```
 
-Historical versions remain immutable.
+Historical Registry versions remain immutable.
 
 Historical execution must always remain replayable.
 
@@ -171,7 +250,7 @@ Historical execution must always remain replayable.
 
 # Registry Consumption
 
-Execution pipelines consume a single approved Registry version.
+Execution pipelines consume exactly one approved Registry version.
 
 Example:
 
@@ -185,7 +264,7 @@ Topic Registry v12
 
 Execution never mixes Registry versions.
 
-Every execution records the Registry version used.
+Every execution records the Registry version it consumed.
 
 ---
 
@@ -193,7 +272,7 @@ Every execution records the Registry version used.
 
 Published Registry versions are immutable.
 
-Corrections never overwrite previous versions.
+Corrections never overwrite historical versions.
 
 Instead:
 
@@ -202,14 +281,14 @@ Registry v4
 
 ↓
 
-Correction
+Governance Decision
 
 ↓
 
 Registry v5
 ```
 
-Historical versions remain available for replay.
+Historical Registry versions remain available for replay.
 
 ---
 
@@ -218,13 +297,14 @@ Historical versions remain available for replay.
 Platform Registries are independent of:
 
 - companies
-- quarters
+- reporting periods
 - filings
+- execution outcomes
 - individual observations
 
 Registry entries describe reusable business concepts.
 
-They do not describe company-specific events.
+They never describe company-specific events.
 
 ---
 
@@ -237,9 +317,9 @@ Platform Registries may govern:
 - Business Signal Taxonomies
 - Trust Taxonomies
 - Market Context Ontologies
-- Future reusable knowledge structures
+- Future reusable platform knowledge
 
-Each registry specializes the same governance architecture.
+Each registry follows the same governance architecture.
 
 ---
 
@@ -276,25 +356,34 @@ Relationships are never inferred during execution.
 # Registry Lifecycle
 
 ```text
-Platform Signals
-        │
-        ▼
-Aggregation
-        │
-        ▼
-Candidate
-        │
-        ▼
-Governance
-        │
-        ▼
-Registry Version
-        │
-        ▼
+Execution
+
+↓
+
+Topic Signals
+
+↓
+
+Aggregation Result
+
+↓
+
+Candidate Discovery
+
+↓
+
+Platform Governance
+
+↓
+
+Platform Registry Version
+
+↓
+
 Execution Consumption
 ```
 
-Only approved Registry versions are visible to execution.
+Only approved Registry versions are visible to Company Intelligence.
 
 ---
 
@@ -308,7 +397,7 @@ Registry entries may be:
 
 Retirement never removes historical versions.
 
-Historical execution must remain reproducible.
+Historical execution must always remain reproducible.
 
 ---
 
@@ -316,10 +405,10 @@ Historical execution must remain reproducible.
 
 Every Company Intelligence execution must be reproducible using:
 
-- execution artifacts,
-- execution model versions,
-- execution prompts,
-- Platform Registry version.
+- execution artifacts
+- execution model versions
+- execution prompts
+- Platform Registry version
 
 Replayability requires immutable Registry versions.
 
@@ -332,6 +421,7 @@ Platform Intelligence owns:
 - registry evolution
 - registry governance
 - registry versioning
+- canonical platform knowledge
 
 Company Intelligence owns:
 
@@ -343,15 +433,25 @@ Responsibilities must never overlap.
 
 ---
 
-# Future Bootstrap Strategy
+# Bootstrap Strategy
 
 Early platform versions may bootstrap Platform Registries from static source files (for example, `topics.json`).
 
-These bootstrap files are implementation details.
+Bootstrap files are implementation details.
 
-They are not the long-term architectural source of truth.
+They are not the architectural source of truth.
 
-As Platform Intelligence matures, bootstrap files are replaced by governed Platform Registries without changing Company Intelligence architecture.
+As Platform Intelligence matures:
+
+```text
+topics.json
+
+↓
+
+Governed Platform Registry
+```
+
+Execution architecture remains unchanged.
 
 ---
 
@@ -366,10 +466,12 @@ Platform Registries must be:
 - reusable
 - versioned
 - immutable after publication
+- lineage-aware
 
 Platform Registries must never:
 
 - mutate during execution
+- contain execution evidence
 - contain company-specific knowledge
 - contain filing-specific observations
 - bypass governance
@@ -381,6 +483,8 @@ Platform Registries must never:
 
 Platform Registries are the governed, versioned, and reusable knowledge foundation of the platform.
 
-They represent the final output of Platform Intelligence and the primary knowledge input for Company Intelligence.
+Cross-Company Aggregation transforms execution evidence into Derived Platform Artifacts.
 
-By separating registry evolution from execution, the platform ensures that reusable knowledge improves continuously while execution remains deterministic, explainable, and fully replayable.
+Platform Governance transforms those derived artifacts into Governed Platform Artifacts.
+
+Company Intelligence consumes only approved Platform Registry versions, ensuring that execution remains deterministic while platform knowledge evolves through evidence-driven governance.

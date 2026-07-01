@@ -3,6 +3,8 @@ import { describe, it } from "node:test";
 import type { Artifact } from "../../../contracts/artifacts/artifact.js";
 import type { ArtifactLineage } from "../../../contracts/artifacts/artifact-lineage.js";
 import { ArtifactStatus } from "../../../contracts/artifacts/artifact-status.js";
+import type { ExecutionRecordReference } from "../../../contracts/framework/execution-record-reference.js";
+import { EXECUTION_RECORD_REFERENCE_SCHEMA_VERSION } from "../../../contracts/framework/execution-record-reference.js";
 import type { ArtifactRepository } from "../src/artifact-repository.js";
 import { ArtifactPostgresRepository, type PostgresQueryClient } from "../src/artifact-postgres-repository.js";
 import { ArtifactService, calculateArtifactHash } from "../src/artifact-service.js";
@@ -158,6 +160,133 @@ describe("artifact framework", () => {
     assert.deepEqual(reloaded?.content.themes, ["cloud growth"]);
   });
 
+  it("preserves execution record references separately from artifact dependencies", async () => {
+    const repository = new TestArtifactRepository();
+    const service = new ArtifactService(repository);
+    const executionReferences: ExecutionRecordReference[] = [
+      {
+        schema_version: EXECUTION_RECORD_REFERENCE_SCHEMA_VERSION,
+        record_type: "topic_signal",
+        record_id: "topic-signal:2",
+        record_hash: "signal-hash-2",
+        producer: "topic-assignment-builder",
+        execution_id: "execution-2",
+      },
+      {
+        schema_version: EXECUTION_RECORD_REFERENCE_SCHEMA_VERSION,
+        record_type: "topic_signal",
+        record_id: "topic-signal:1",
+        record_hash: "signal-hash-1",
+        producer: "topic-assignment-builder",
+        execution_id: "execution-1",
+      },
+    ];
+    const artifact = await service.createArtifact({
+      artifact_type: "themes",
+      company_id: "MSFT",
+      period_id: "2026-Q2",
+      content: { themes: ["cloud growth"] },
+      lineage: {
+        upstream_dependencies: [],
+        execution_references: executionReferences,
+        generation_context: {
+          builder_type: "themes-builder",
+        },
+      },
+      schema_version: "themes-schema-v1",
+      pipeline_version: "themes-pipeline-v1",
+      input_hash: "input-hash-1",
+      generation_duration_ms: 10,
+      generated_at: "2026-06-15T00:00:00.000Z",
+    });
+
+    assert.deepEqual(artifact.lineage.upstream_dependencies, []);
+    assert.deepEqual(artifact.lineage.execution_references, executionReferences);
+    assert.equal(
+      artifact.metadata.artifact_hash,
+      calculateArtifactHash({ themes: ["cloud growth"] }),
+    );
+
+    const loaded = await service.getArtifact<{ themes: string[] }>(
+      artifact.identity.artifact_id,
+    );
+
+    assert.deepEqual(loaded?.lineage.execution_references, executionReferences);
+  });
+
+  it("allows empty execution record references without changing artifact hash", async () => {
+    const repository = new TestArtifactRepository();
+    const service = new ArtifactService(repository);
+    const artifact = await service.createArtifact({
+      artifact_type: "themes",
+      company_id: "MSFT",
+      period_id: "2026-Q2",
+      content: { themes: ["cloud growth"] },
+      lineage: {
+        upstream_dependencies: [],
+        execution_references: [],
+        generation_context: {
+          builder_type: "themes-builder",
+        },
+      },
+      schema_version: "themes-schema-v1",
+      pipeline_version: "themes-pipeline-v1",
+      input_hash: "input-hash-1",
+      generation_duration_ms: 10,
+      generated_at: "2026-06-15T00:00:00.000Z",
+    });
+
+    assert.equal(
+      artifact.metadata.artifact_hash,
+      calculateArtifactHash({ themes: ["cloud growth"] }),
+    );
+    assert.deepEqual(artifact.lineage.execution_references, []);
+  });
+
+  it("rejects malformed execution record references", () => {
+    const artifact: Artifact<{ value: string }> = {
+      identity: {
+        artifact_id: "artifact-1",
+        artifact_type: "themes",
+        company_id: "MSFT",
+        period_id: "2026-Q2",
+        version: 1,
+      },
+      metadata: {
+        version: 1,
+        schema_version: "themes-schema-v1",
+        pipeline_version: "themes-pipeline-v1",
+        generated_at: "2026-06-15T00:00:00.000Z",
+        artifact_hash: "hash",
+        input_hash: "input-hash",
+        generation_duration_ms: 1,
+        status: ArtifactStatus.ACTIVE,
+      },
+      lineage: {
+        upstream_dependencies: [],
+        execution_references: [
+          {
+            schema_version: EXECUTION_RECORD_REFERENCE_SCHEMA_VERSION,
+            record_type: "topic_signal",
+            record_id: "",
+            record_hash: "signal-hash",
+            producer: "topic-assignment-builder",
+            execution_id: "execution-1",
+          },
+        ],
+        generation_context: {
+          builder_type: "themes-builder",
+        },
+      },
+      content: { value: "test" },
+    };
+
+    assert.throws(
+      () => validateArtifact(artifact),
+      /lineage\.execution_references\[\]\.record_id/,
+    );
+  });
+
   it("Postgres repository resolves current through artifact_current_pointer", async () => {
     const client = new RecordingPostgresClient();
     const repository = new ArtifactPostgresRepository(client);
@@ -245,4 +374,3 @@ function lookupKey(lookup: ArtifactLookup): string {
 function cloneArtifact<T>(artifact: Artifact<T>): Artifact<T> {
   return JSON.parse(JSON.stringify(artifact)) as Artifact<T>;
 }
-
