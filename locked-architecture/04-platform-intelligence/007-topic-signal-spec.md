@@ -5,15 +5,15 @@
 **Owner:** Platform Intelligence Architecture  
 **Producer:** Builder 012 - Topic Assignment  
 **Consumer:** Cross-Company Aggregation  
-**Last Updated:** 2026-06-30
+**Last Updated:** 2026-07-01
 
 ---
 
 # Purpose
 
-Topic Signals capture the complete deterministic execution trace produced by Builder 012 while evaluating a Theme against the current Topic Registry.
+Topic Signals capture the qualified deterministic execution observations produced by Builder 012 while evaluating a Theme against the current Topic Registry.
 
-They preserve the evaluation process that produced the final Topic Assignment.
+They preserve the execution evidence required to explain Builder 012's deterministic Topic Assignment outcome.
 
 Topic Signals are execution evidence.
 
@@ -23,14 +23,16 @@ They are **not** governance decisions.
 
 They are **not** Platform Registry mutations.
 
+They are **not** complete execution traces.
+
 ---
 
 # Why Topic Signals Exist
 
 Builder 012 has two independent responsibilities.
 
-1. Produce Topic Assignment for Company Intelligence.
-2. Produce execution evidence for Platform Intelligence.
+1. Produce Topic Assignments for Company Intelligence.
+2. Produce execution observations for Platform Intelligence.
 
 These outputs intentionally serve different consumers.
 
@@ -40,9 +42,9 @@ The Topic Assignment Artifact answers:
 
 The Topic Signal answers:
 
-> How did Builder 012 reach that decision?
+> What qualified execution observations explain that deterministic decision?
 
-Platform Intelligence depends on execution evidence rather than business knowledge.
+Platform Intelligence depends on execution observations rather than business knowledge.
 
 ---
 
@@ -146,8 +148,8 @@ Builder inputs:
 
 Builder outputs observed:
 
-- evaluation
-- final assignment
+- deterministic execution decisions
+- qualified execution observations
 
 Topic Signals must never reopen:
 
@@ -180,11 +182,37 @@ Signal count must always equal Theme count.
 
 ---
 
-# Execution Trace
+# Deterministic Qualification Boundary
 
-A Topic Signal preserves the complete deterministic evaluation performed for a Theme.
+The Builder Specification defines deterministic qualification rules.
 
-The execution trace consists of four logical sections.
+These rules determine which execution results qualify as execution observations.
+
+Qualified execution observations become Topic Signals.
+
+Execution results that do not satisfy the qualification rules remain transient computation.
+
+The qualification boundary is:
+
+- deterministic
+- versioned
+- replayable
+- specification-defined
+- implementation-independent
+
+Builder implementations apply the qualification rules.
+
+They never redefine them.
+
+---
+
+# Execution Observations
+
+A Topic Signal preserves qualified execution observations.
+
+It does not preserve the builder's complete computational trace.
+
+The execution observation consists of:
 
 ```text
 Execution Context
@@ -195,7 +223,7 @@ Theme
 
 ↓
 
-Evaluation
+Qualified Observations
 
 ↓
 
@@ -206,7 +234,7 @@ Final Result
 
 # Required Information
 
-Every Topic Signal must preserve sufficient evidence to completely explain the Builder execution.
+Every Topic Signal must preserve sufficient qualified execution observations to explain Builder 012's deterministic execution outcome.
 
 ## Execution Context
 
@@ -215,43 +243,54 @@ Every Topic Signal must preserve sufficient evidence to completely explain the B
 - filing_id
 - execution_id
 
+---
+
 ## Theme
 
 - theme_id
 - theme_title
 
-## Evaluation
+---
 
-The evaluation records every Topic candidate considered by Builder 012.
+## Qualified Observations
 
-Each candidate contains:
+Qualified observations include only execution evidence that satisfies the Deterministic Qualification Boundary.
+
+Examples include:
+
+- accepted assignments
+- qualified rejected candidates
+- deterministic rejection reasons
+
+Each qualified observation contains:
 
 - topic_id
 - similarity_score
 - assignment_method
 - decision
+- rejection_reason (when applicable)
 
-Decision values:
+Only qualified observations may be persisted.
 
-- accepted
-- rejected
-
-The evaluation preserves the ranking produced during execution.
-
-No candidate ranking may be recomputed later.
+Unqualified comparisons remain transient computation.
 
 ---
 
 ## Final Result
 
-The final result records the Builder's deterministic decision.
+The final result records Builder 012's deterministic execution outcome.
 
 It contains:
 
 - assignment_status
-  - assigned
-  - human_review
-  - unassigned
+
+Examples:
+
+- assigned
+- partially_assigned
+- unassigned
+
+and
 
 - final_assignments
 
@@ -280,18 +319,19 @@ A Theme may contain zero, one, or many final assignments.
 
 # Execution Evidence
 
-Topic Signals preserve execution evidence.
+Topic Signals preserve qualified execution evidence.
 
 This includes:
 
-- accepted candidates
-- rejected candidates
-- similarity measurements
-- assignment decisions
+- accepted assignments
+- qualified rejected candidates
+- deterministic assignment decisions
 
-Execution evidence must never be discarded.
+Execution evidence exists to explain Builder 012's deterministic outcome.
 
-Platform Intelligence depends on historical execution evidence to evolve the Platform Registry.
+Transient execution computation is intentionally discarded.
+
+Platform Intelligence learns from execution observations rather than implementation details.
 
 ---
 
@@ -300,14 +340,17 @@ Platform Intelligence depends on historical execution evidence to evolve the Pla
 Topic Signals must never contain:
 
 - governance decisions
-- Topic Candidates
 - Platform Registry mutations
 - Company Knowledge
 - Business Signals
 - Quarter Understanding
 - Investor Intelligence
+- embedding vectors
+- complete candidate rankings
+- discarded execution computation
+- implementation-specific state
 
-Topic Signals preserve execution evidence only.
+Topic Signals preserve qualified execution observations only.
 
 ---
 
@@ -319,7 +362,7 @@ Historical Topic Signals are never modified.
 
 Replay produces new Topic Signals.
 
-Historical execution evidence remains unchanged.
+Historical execution observations remain unchanged.
 
 ---
 
@@ -329,20 +372,21 @@ Given identical:
 
 - Themes
 - Topic Registry
-- embedding model
+- Builder Specification
 - Builder implementation
+- embedding model
 
 Builder 012 must emit identical Topic Signals.
 
-Replay must reproduce identical execution evidence.
+Replay must reproduce identical qualified execution observations.
 
 ---
 
 # Relationship with Topic Assignment
 
-Topic Assignment records the Builder's business conclusion.
+Topic Assignment records Builder 012's business conclusion.
 
-Topic Signals record the Builder's execution trace.
+Topic Signals record the qualified execution observations that explain that conclusion.
 
 These outputs intentionally contain different information.
 
@@ -384,9 +428,9 @@ Execution remains strictly read-only.
 
 Topic Signals never recommend governance actions.
 
-They preserve execution evidence only.
+They preserve qualified execution observations only.
 
-Governance evaluates accumulated evidence across many Topic Signals.
+Platform Governance evaluates accumulated execution evidence across many Topic Signals.
 
 Individual executions never evolve the Platform Registry.
 
@@ -421,23 +465,28 @@ Topic Signals must be:
 - replayable
 - immutable
 - explainable
-- evidence-complete
+- evidence-focused
 - execution-scoped
+- specification-defined
 
 Topic Signals must never:
 
+- preserve complete execution computation
+- expose implementation internals
 - create Topics
 - modify Topics
 - merge Topics
 - bypass Governance
-- discard evaluated execution evidence
+- leak transient computation into Platform Intelligence
 
 ---
 
 # Architecture Summary
 
-Topic Signals provide the deterministic execution evidence that connects Company Intelligence to Platform Intelligence.
+Topic Signals provide the deterministic execution observations that connect Company Intelligence to Platform Intelligence.
 
-Unlike the Topic Assignment Artifact, which records the Builder's business conclusions, Topic Signals preserve the complete execution trace that produced those conclusions.
+Unlike the Topic Assignment Artifact, which records Builder 012's business conclusions, Topic Signals preserve only the qualified execution observations required to explain those conclusions.
 
-This separation allows Platform Intelligence to learn from historical execution evidence across companies while Company Intelligence continues to consume only governed Platform Knowledge, preserving determinism, replayability, explainability, and governed ontology evolution.
+The Builder Specification defines deterministic qualification rules that separate qualified execution observations from transient computation.
+
+By persisting only qualified execution observations, the platform enables scalable evidence accumulation, deterministic replay, explainability, and autonomous Platform Intelligence while preventing implementation details from becoming long-term platform knowledge.
