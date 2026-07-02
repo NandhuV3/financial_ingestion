@@ -6,6 +6,7 @@ export const ARTIFACT_TYPES = [
   "topic_registry",
   "topic_assignment",
   "aggregation_result",
+  "topic_candidate",
   "topic_evolution",
   "quarter_change",
   "financial_statements",

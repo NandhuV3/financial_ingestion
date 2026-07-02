@@ -40,7 +40,13 @@ tmp/
 
 *.notes
 notes
+*.backlog
+backlog
+
+*.reviews
+reviews
 
 docs/reviews
 docs/updates_required
 /bug-reviews
+locked-architecture/backlog
