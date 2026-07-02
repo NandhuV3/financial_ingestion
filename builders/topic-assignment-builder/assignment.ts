@@ -96,12 +96,11 @@ export function buildTopicAssignmentExecution(
     themeEvaluations.push({
       theme_id: theme.theme_id,
       theme_title: theme.title,
-      candidates: candidates.map((candidate) => ({
-        topic_id: candidate.topic_id,
-        similarity_score: candidate.similarity_score,
-        assignment_method: candidate.assignment_method,
-        decision: acceptedTopicIds.has(candidate.topic_id) ? "accepted" : "rejected",
-      })),
+      candidates: qualifiedSignalCandidates(
+        candidates,
+        acceptedTopicIds,
+        automatic.length,
+      ),
       final_assignments: finalAssignments,
       assignment_status: assignmentStatus(automatic, candidates),
     });
@@ -248,6 +247,33 @@ function toCandidateTopic(candidate: TopicMatchCandidate): TopicAssignmentCandid
     similarity_score: candidate.similarity_score,
     rejection_reason: rejectionReason(candidate.similarity_score),
   };
+}
+
+function qualifiedSignalCandidates(
+  candidates: TopicMatchCandidate[],
+  acceptedTopicIds: Set<string>,
+  acceptedCount: number,
+): TopicAssignmentThemeEvaluation["candidates"] {
+  if (acceptedCount > 0) {
+    return candidates
+      .filter(({ topic_id }) => acceptedTopicIds.has(topic_id))
+      .map((candidate) => ({
+        topic_id: candidate.topic_id,
+        similarity_score: candidate.similarity_score,
+        assignment_method: candidate.assignment_method,
+        decision: "accepted",
+      }));
+  }
+
+  return candidates
+    .slice(0, MAX_ASSIGNMENTS_PER_THEME)
+    .map((candidate) => ({
+      topic_id: candidate.topic_id,
+      similarity_score: candidate.similarity_score,
+      assignment_method: candidate.assignment_method,
+      decision: "rejected",
+      rejection_reason: rejectionReason(candidate.similarity_score),
+    }));
 }
 
 function rejectionReason(similarityScore: number): string {

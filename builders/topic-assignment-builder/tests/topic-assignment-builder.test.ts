@@ -408,21 +408,28 @@ describe("TopicAssignmentBuilder", () => {
       confidence: 1,
       assignment_method: "exact_match",
     }]);
-    assert.equal(
-      exactSignal?.evaluation.candidates.find(({ topic_id }) =>
-        topic_id === "topic:cloud")?.decision,
-      "accepted",
-    );
+    assert.deepEqual(exactSignal?.evaluation.candidates, [{
+      topic_id: "topic:cloud",
+      similarity_score: 1,
+      assignment_method: "exact_match",
+      decision: "accepted",
+    }]);
 
     assert.equal(multiSignal?.final_result.assignment_status, "assigned");
     assert.deepEqual(
       multiSignal?.final_result.final_assignments.map(({ topic_id }) => topic_id),
       ["topic:cloud", "topic:growth", "topic:platform"],
     );
-    assert.equal(
-      multiSignal?.evaluation.candidates.find(({ topic_id }) =>
-        topic_id === "topic:strategy")?.decision,
-      "rejected",
+    assert.deepEqual(
+      multiSignal?.evaluation.candidates.map(({ topic_id, decision }) => ({
+        topic_id,
+        decision,
+      })),
+      [
+        { topic_id: "topic:cloud", decision: "accepted" },
+        { topic_id: "topic:growth", decision: "accepted" },
+        { topic_id: "topic:platform", decision: "accepted" },
+      ],
     );
 
     assert.equal(reviewSignal?.final_result.assignment_status, "human_review");
@@ -432,11 +439,16 @@ describe("TopicAssignmentBuilder", () => {
       similarity_score: 0.8,
       assignment_method: "semantic_match",
       decision: "rejected",
+      rejection_reason: "below_automatic_assignment_threshold",
     });
 
     assert.equal(unassignedSignal?.final_result.assignment_status, "unassigned");
     assert.deepEqual(unassignedSignal?.final_result.final_assignments, []);
     assert.equal(unassignedSignal?.evaluation.candidates[0]?.decision, "rejected");
+    assert.equal(
+      unassignedSignal?.evaluation.candidates[0]?.rejection_reason,
+      "below_human_review_threshold",
+    );
     assert.equal(
       unassignedSignal?.execution_metadata.embedding_model,
       "text-embedding-3-small",

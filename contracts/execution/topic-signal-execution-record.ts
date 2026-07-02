@@ -26,6 +26,7 @@ export type TopicSignalEvaluationCandidate = {
   similarity_score: number;
   assignment_method: TopicAssignmentMethod;
   decision: TopicSignalCandidateDecision;
+  rejection_reason?: string;
 };
 
 export type TopicSignalEvaluation = {

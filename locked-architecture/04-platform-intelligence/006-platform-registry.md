@@ -3,7 +3,7 @@
 **Status:** LOCKED  
 **Layer:** Platform Intelligence  
 **Owner:** Platform Intelligence Architecture  
-**Classification:** Governed Platform Artifact  
+**Classification:** Platform Registry 
 **Last Updated:** 2026-07-01
 
 ---
@@ -80,11 +80,19 @@ Aggregation Result
 Candidate Discovery
         │
         ▼
+Topic Candidate
+(Governance Artifact)
+        │
+        ▼
 Platform Governance
         │
         ▼
+Governance Decision
+(Governance Artifact)
+        │
+        ▼
 Platform Registry
-(Governed Platform Artifact)
+(Platform Registry)
         │
         ▼
 Company Intelligence
@@ -211,10 +219,10 @@ Cross-Company Aggregation
 Aggregation Result
         │
         ▼
-Candidate Discovery
+Topic Candidate
         │
         ▼
-Platform Governance
+Governance Decision
         │
         ▼
 Platform Registry
@@ -231,15 +239,15 @@ Every approved governance action produces a new Registry version.
 Example:
 
 ```text
-Registry v18
+Registry Version 18
 
-↓
+        ↓
 
-Governance Approval
+Approved Governance Decision
 
-↓
+        ↓
 
-Registry v19
+Registry Version 19
 ```
 
 Historical Registry versions remain immutable.
@@ -257,7 +265,7 @@ Example:
 ```text
 Topic Assignment
 
-↓
+        ↓
 
 Topic Registry v12
 ```
@@ -277,15 +285,15 @@ Corrections never overwrite historical versions.
 Instead:
 
 ```text
-Registry v4
+Platform Registry Version 4
 
-↓
+        ↓
 
-Governance Decision
+Approved Governance Decision
 
-↓
+        ↓
 
-Registry v5
+Platform Registry Version 5
 ```
 
 Historical Registry versions remain available for replay.
@@ -368,11 +376,11 @@ Aggregation Result
 
 ↓
 
-Candidate Discovery
+Topic Candidate
 
 ↓
 
-Platform Governance
+Governance Decision
 
 ↓
 
@@ -451,6 +459,10 @@ topics.json
 Governed Platform Registry
 ```
 
+The bootstrap source changes.
+
+The Platform Registry contract does not.
+
 Execution architecture remains unchanged.
 
 ---
@@ -483,8 +495,8 @@ Platform Registries must never:
 
 Platform Registries are the governed, versioned, and reusable knowledge foundation of the platform.
 
-Cross-Company Aggregation transforms execution evidence into Derived Platform Artifacts.
+Cross-Company Aggregation transforms execution observations into Derived Platform Artifacts. Candidate Discovery transforms derived evidence into immutable Governance Artifacts. 
 
-Platform Governance transforms those derived artifacts into Governed Platform Artifacts.
+Platform Governance evaluates those Governance Artifacts and produces Governance Decisions, which authorize new Platform Registry versions. 
 
-Company Intelligence consumes only approved Platform Registry versions, ensuring that execution remains deterministic while platform knowledge evolves through evidence-driven governance.
+Company Intelligence consumes only approved Platform Registry versions, ensuring that execution remains deterministic while reusable Platform Knowledge evolves through governed, evidence-driven decisions.

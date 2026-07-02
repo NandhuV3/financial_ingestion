@@ -3,108 +3,145 @@
 **Status:** LOCKED  
 **Layer:** Platform Intelligence  
 **Owner:** Platform Intelligence Architecture  
-**Last Updated:** 2026-06-30
+**Producer:** Builder 014 - Candidate Discovery  
+**Consumer:** Platform Governance  
+**Last Updated:** 2026-07-01
 
 ---
 
 # Purpose
 
-Candidate Discovery is responsible for converting recurring cross-company evidence into governed Platform Knowledge Candidates.
+Candidate Discovery converts recurring aggregated evidence into governed Topic Candidates.
 
-A Candidate represents a reusable business concept that appears sufficiently supported by Platform Signals but has **not yet** become part of the Platform Registry.
+A Topic Candidate represents a reusable platform concept that is sufficiently supported by aggregated execution evidence but has not yet become part of the Platform Registry.
 
-Candidate Discovery does not approve, reject, promote, merge, or deprecate platform knowledge.
+Candidate Discovery proposes candidate concepts.
 
-Its sole responsibility is discovering candidate concepts worthy of governance review.
+It never evolves the Platform Registry.
 
 ---
 
 # Core Principle
 
-Observations become evidence.
+Execution observations become aggregated evidence.
 
-Evidence becomes Candidates.
+Aggregated evidence becomes Topic Candidates.
 
-Governance produces Platform Knowledge.
+Platform Governance determines Registry evolution.
 
 ```text
-Platform Signals
+Topic Signals
         │
         ▼
 Cross-Company Aggregation
         │
         ▼
+Aggregation Result
+        │
+        ▼
 Candidate Discovery
         │
         ▼
-Governance
+Topic Candidate
+        │
+        ▼
+Platform Governance
+        │
+        ▼
+Platform Registry
 ```
+
+Candidate Discovery transforms evidence into governed proposals.
+
+It never transforms proposals into Platform Knowledge.
 
 ---
 
 # Why Candidate Discovery Exists
 
-Recurring evidence alone is insufficient to evolve Platform Knowledge.
+Recurring evidence alone does not justify Platform Registry evolution.
 
-A governance process requires explicit candidate objects that:
+Platform Governance requires explicit candidate objects that:
 
-- summarize evidence,
-- explain why evolution is being proposed,
-- remain immutable,
-- can be reviewed,
-- can be replayed.
+- summarize recurring evidence
+- preserve evidence traceability
+- propose reusable concepts
+- remain deterministic
+- remain replayable
+- remain immutable
 
-Candidate Discovery creates those objects.
+Candidate Discovery creates these governed candidate objects.
 
 ---
 
 # Position in Platform Intelligence
 
 ```text
-Platform Signals
+Aggregation Result
         │
         ▼
-Cross-Company Aggregation
+Builder 014
         │
         ▼
-Candidate Discovery
+Topic Candidate
         │
         ▼
-Governance
+Platform Governance
         │
         ▼
 Platform Registry
 ```
 
+Candidate Discovery exists between evidence accumulation and governance.
+
 ---
 
-# Inputs
+# Input
 
-Candidate Discovery consumes only Aggregation Results.
+Candidate Discovery consumes only:
 
-It never consumes:
+- Aggregation Result Platform Artifacts
 
-- SEC filings
+Candidate Discovery must never consume:
+
+- Topic Signals
 - Themes
-- Topic Assignment artifacts
+- Topic Assignment Artifacts
 - Company Knowledge
-- Platform Signals directly
+- SEC filings
+- Platform Registry
+- Company Intelligence artifacts
 
-Aggregation has already normalized those observations.
+Aggregation has already accumulated and normalized execution evidence.
+
+Candidate Discovery never recomputes aggregation.
 
 ---
 
-# Outputs
+# Output
 
-Candidate Discovery produces Platform Knowledge Candidates.
+Candidate Discovery produces:
 
-Candidates are governance artifacts.
+**Topic Candidates**
 
-They are **not** Platform Registries.
+Topic Candidates are:
 
-They are **not** active ontology.
+**Governance Artifacts**
 
-They are proposals.
+Properties:
+
+- deterministic
+- replayable
+- immutable
+- evidence-backed
+- governance-scoped
+
+Topic Candidates are NOT:
+
+- Platform Artifacts
+- Platform Registries
+- Company Intelligence artifacts
+- Execution Records
 
 ---
 
@@ -112,174 +149,178 @@ They are proposals.
 
 Candidate Discovery is responsible for:
 
-- evaluating recurring evidence
-- grouping related observations
-- proposing reusable concepts
-- explaining supporting evidence
-- producing deterministic candidates
+- evaluating Aggregation Results
+- identifying reusable platform concepts
+- constructing deterministic Topic Candidates
+- preserving supporting evidence
+- explaining why a candidate exists
 
-Candidate Discovery is **not** responsible for:
+Candidate Discovery is NOT responsible for:
 
-- approving candidates
-- rejecting candidates
-- editing registries
-- merging ontology
-- deprecating ontology
+- aggregating Topic Signals
+- recomputing evidence
+- semantic similarity evaluation
+- embedding generation
+- LLM reasoning
+- ontology mutation
+- Platform Registry updates
+- governance decisions
 
 ---
 
-# Candidate Requirements
+# Deterministic Candidate Formation
 
-Every Candidate must represent:
+Candidate Discovery follows deterministic candidate formation rules.
 
-- a reusable business concept,
-- supported recurring evidence,
-- company-independent meaning,
-- deterministic construction,
-- complete supporting evidence.
+The Candidate Discovery Specification defines these rules.
 
-Candidates must never represent:
+Builder implementations apply them.
 
-- company names,
-- products,
-- quarters,
-- metrics,
-- temporary events.
+They never redefine them.
+
+Candidate formation must always be:
+
+- deterministic
+- replayable
+- specification-defined
+- implementation-independent
+
+Given identical Aggregation Results:
+
+Builder 014 must produce identical Topic Candidates.
 
 ---
 
 # Candidate Formation
 
-Candidates emerge from recurring patterns.
+Candidate Discovery evaluates accumulated evidence.
+
+It determines whether the accumulated evidence represents a reusable platform concept.
 
 Example:
 
 ```text
-Microsoft
+Aggregation Result
 
 ↓
 
-Strategic Partnership with OpenAI
+Recurring evidence:
 
-Apple
-
-↓
-
-Foundation Model Partnership
-
-Google
+- Strategic Partnership with OpenAI
+- Foundation Model Partnership
+- AI Collaboration
+- Generative AI Alliance
 
 ↓
 
-AI Collaboration
-
-Amazon
+Proposed reusable concept
 
 ↓
 
-Generative AI Alliance
-```
-
-Cross-Company Aggregation discovers:
-
-```text
-Recurring AI partnership pattern
-```
-
-Candidate Discovery proposes:
-
-```text
 Strategic AI Partnerships
+
+↓
+
+Topic Candidate
 ```
 
-Governance later decides whether this belongs in the Platform Registry.
+Candidate Discovery proposes reusable concepts.
+
+Platform Governance determines whether they become Platform Knowledge.
 
 ---
 
-# Candidate Independence
+# Candidate Requirements
 
-Candidates describe reusable concepts.
+Every Topic Candidate must represent:
 
-They must never describe observations.
+- a reusable business concept
+- company-independent meaning
+- recurring evidence
+- deterministic construction
+- preserved evidence traceability
 
-Example:
+Topic Candidates must never represent:
 
-Correct:
-
-```text
-Hardware and Devices
-```
-
-Incorrect:
-
-```text
-Windows OEM Revenue Decline
-```
-
-The first is reusable.
-
-The second is a company-specific observation.
-
----
-
-# Candidate Stability
-
-Candidates should remain stable across:
-
-- companies,
-- industries,
-- reporting periods.
-
-Candidate identity must not depend on:
-
-- one filing,
-- one company,
-- one quarter.
-
----
-
-# Determinism
-
-Given identical Aggregation Results:
-
-- identical Candidates must be produced.
-
-Candidate generation must never depend on execution order.
-
-Candidate identifiers must be deterministic.
+- company names
+- products
+- individual filings
+- reporting periods
+- metrics
+- temporary business events
 
 ---
 
 # Evidence Preservation
 
-Every Candidate must preserve traceability.
+Every Topic Candidate must preserve sufficient evidence for governance.
 
-Governance must always be able to answer:
+Governance must always be able to determine:
 
-- Why was this Candidate created?
-- Which recurring observations support it?
-- Which companies contributed?
-- Over what time period?
-- What evidence exists?
+- why the candidate exists
+- what recurring evidence supports it
+- which Aggregation Results contributed
+- what companies contributed
+- what reporting periods contributed
+- what Registry version was evaluated
 
-Candidate Discovery must never lose supporting evidence.
+Candidate Discovery preserves evidence lineage.
+
+It never consumes or references Topic Signals directly.
 
 ---
 
-# Relationship with Governance
+# Candidate Stability
+
+Topic Candidates should remain stable across:
+
+- companies
+- industries
+- reporting periods
+
+Candidate identity must never depend upon:
+
+- one company
+- one filing
+- one reporting period
+
+Topic Candidates represent reusable Platform Knowledge proposals.
+
+---
+
+# Relationship with Cross-Company Aggregation
+
+Cross-Company Aggregation answers:
+
+> What recurring execution evidence exists?
+
+Candidate Discovery answers:
+
+> Does this recurring evidence justify proposing a reusable platform concept?
+
+These responsibilities intentionally remain separate.
+
+Candidate Discovery never performs aggregation.
+
+Cross-Company Aggregation never proposes candidates.
+
+---
+
+# Relationship with Platform Governance
 
 Candidate Discovery proposes.
 
-Governance decides.
+Platform Governance evaluates.
 
-Candidate Discovery cannot:
+Candidate Discovery never:
 
-- activate concepts,
-- modify registries,
-- merge concepts,
-- deprecate concepts.
+- approves candidates
+- rejects candidates
+- merges concepts
+- edits Platform Registries
+- activates Platform Knowledge
 
-Only Governance owns Platform Knowledge evolution.
+Only Platform Governance evolves the Platform Registry.
 
 ---
 
@@ -289,12 +330,18 @@ Only Governance owns Platform Knowledge evolution.
 Aggregation Result
         │
         ▼
-Candidate
+Builder 014
         │
         ▼
-Governance Review
+Topic Candidate
+(Governance Artifact)
         │
-        ├─────────────► Rejected
+        ▼
+Platform Governance
+        │
+        ├────────────► Rejected
+        │
+        ├────────────► Deferred
         │
         ▼
 Approved
@@ -303,7 +350,45 @@ Approved
 Platform Registry
 ```
 
-Candidate Discovery owns only the first step.
+Candidate Discovery owns only Topic Candidate construction.
+
+---
+
+# Lineage
+
+Topic Candidates preserve lineage through Aggregation Results.
+
+Evidence traceability follows:
+
+```text
+Topic Signals
+        │
+        ▼
+Aggregation Result
+        │
+        ▼
+Topic Candidate
+```
+
+Candidate Discovery preserves upstream evidence.
+
+It never reconstructs execution history.
+
+---
+
+# Determinism
+
+Given identical:
+
+- Aggregation Results
+- Candidate Discovery Specification
+- Builder implementation
+
+Builder 014 must produce identical Topic Candidates.
+
+Candidate identifiers must be deterministic.
+
+Candidate construction must never depend upon execution order.
 
 ---
 
@@ -311,25 +396,29 @@ Candidate Discovery owns only the first step.
 
 Candidate Discovery must be:
 
-- deterministic,
-- evidence-backed,
-- replayable,
-- explainable,
-- ontology-independent.
+- deterministic
+- replayable
+- evidence-backed
+- aggregation-driven
+- specification-defined
+- explainable
+- immutable
 
 Candidate Discovery must never:
 
-- bypass governance,
-- create active Platform Knowledge,
-- mutate Platform Registries,
-- infer company-specific concepts.
+- aggregate execution observations
+- recompute similarity
+- invent evidence
+- bypass Platform Governance
+- mutate Platform Registries
+- expose implementation details
 
 ---
 
 # Architecture Summary
 
-Candidate Discovery converts recurring cross-company evidence into governed Platform Knowledge Candidates.
+Candidate Discovery is the proposal layer of Platform Intelligence.
 
-It forms the architectural boundary between analytical observation and governance.
+It transforms recurring aggregated evidence into deterministic Topic Candidates while preserving complete evidence traceability.
 
-By separating Candidate creation from Governance, the platform ensures that reusable business concepts emerge only from evidence while all ontology evolution remains deliberate, explainable, versioned, and replayable.
+By separating evidence accumulation, candidate formation, governance, and registry evolution, the platform ensures that reusable Platform Knowledge emerges only from deterministic evidence and governed decisions, preserving explainability, replayability, and long-term autonomous Platform Intelligence.

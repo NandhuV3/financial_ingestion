@@ -3,15 +3,17 @@
 **Status:** LOCKED  
 **Layer:** Platform Intelligence  
 **Owner:** Platform Intelligence Architecture  
-**Last Updated:** 2026-06-30
+**Consumer:** Topic Candidate Governance Artifacts  
+**Output:** Platform Registry Versions & Governance Decisions  
+**Last Updated:** 2026-07-01
 
 ---
 
 # Purpose
 
-Platform Governance is responsible for evaluating Platform Knowledge Candidates and deciding whether they should become part of the Platform Registry.
+Platform Governance is responsible for evaluating Topic Candidates and determining whether they should evolve the Platform Registry.
 
-Governance is the only subsystem authorized to evolve Platform Knowledge.
+Platform Governance is the only subsystem authorized to evolve reusable Platform Knowledge.
 
 Execution pipelines never modify Platform Knowledge.
 
@@ -19,26 +21,34 @@ Candidate Discovery never modifies Platform Knowledge.
 
 Cross-Company Aggregation never modifies Platform Knowledge.
 
-Platform Governance is the exclusive authority for ontology evolution.
+Platform Governance is the exclusive authority responsible for Platform Registry evolution.
 
 ---
 
 # Core Principle
 
-Observation does not imply knowledge.
+Execution observations do not become Platform Knowledge.
 
-Evidence does not imply approval.
+Aggregated evidence does not become Platform Knowledge.
 
-Only governance creates reusable platform knowledge.
+Topic Candidates do not become Platform Knowledge.
+
+Only Platform Governance evolves the Platform Registry.
 
 ```text
-Platform Signals
+Topic Signals
         │
         ▼
 Cross-Company Aggregation
         │
         ▼
+Aggregation Result
+        │
+        ▼
 Candidate Discovery
+        │
+        ▼
+Topic Candidate
         │
         ▼
 Platform Governance
@@ -49,103 +59,162 @@ Platform Registry
 
 ---
 
-# Purpose of Governance
+# Why Platform Governance Exists
 
-Platform Governance exists to ensure that reusable platform knowledge evolves deliberately rather than automatically.
+Platform Intelligence must evolve deliberately.
 
-Governance protects:
+Recurring evidence alone is insufficient.
+
+Candidate proposals alone are insufficient.
+
+Platform Governance protects:
 
 - ontology quality
 - semantic consistency
+- deterministic execution
 - replayability
-- determinism
-- long-term stability
+- long-term registry stability
+- reusable Platform Knowledge
 
 ---
 
 # Inputs
 
-Platform Governance consumes only Platform Knowledge Candidates.
+Platform Governance consumes only:
 
-Governance never consumes:
+- Topic Candidate Governance Artifacts
 
-- SEC filings
+Platform Governance must never consume:
+
+- Topic Signals
+- Aggregation Results
 - Themes
-- Topic Assignment
+- Topic Assignment Artifacts
 - Company Knowledge
-- Platform Signals
+- Company Intelligence Artifacts
+- SEC filings
 
-Those have already been evaluated by previous Platform Intelligence stages.
+Evidence has already been accumulated.
+
+Candidates have already been constructed.
+
+Governance evaluates proposals.
+
+It never recreates them.
 
 ---
 
 # Outputs
 
-Governance produces Governance Decisions.
+Platform Governance produces:
 
-Possible outcomes include:
+## Governance Decisions
+
+Possible deterministic outcomes include:
 
 - Approved
 - Rejected
 - Deferred
 - Merged
-- Deprecated
 - Superseded
 
-Governance does not modify historical Candidates.
+## Platform Registry Evolution
 
-Governance produces decisions.
+Approved decisions create:
+
+- new Platform Registry versions
+
+Platform Governance never edits historical Governance Artifacts.
+
+Platform Governance never edits historical Platform Registry versions.
 
 ---
 
-# Governance Responsibilities
+# Output Classification
+
+Governance Decisions are:
+
+**Governance Artifacts**
+
+Platform Registry Versions are:
+
+**Platform Registries**
+
+These outputs intentionally belong to different architectural classes.
+
+---
+
+# Responsibilities
 
 Platform Governance is responsible for:
 
-- evaluating reusable concepts
-- validating supporting evidence
-- preventing duplicate ontology
-- protecting semantic consistency
-- promoting approved knowledge
-- rejecting weak candidates
-- managing ontology evolution
+- evaluating Topic Candidates
+- validating evidence sufficiency
+- validating concept reusability
+- protecting ontology consistency
+- preventing duplicate concepts
+- approving reusable Platform Knowledge
+- rejecting unsupported proposals
+- evolving Platform Registries
 
-Governance is not responsible for:
+Platform Governance is NOT responsible for:
 
-- discovering concepts
-- collecting signals
-- executing company intelligence
+- collecting execution observations
+- aggregating evidence
+- constructing Topic Candidates
+- executing Company Intelligence
 - assigning Topics
-- producing Themes
+- modifying execution outputs
+
+---
+
+# Governance Policy
+
+Platform Governance follows deterministic Governance Policies.
+
+Governance Policies define:
+
+- evaluation criteria
+- promotion rules
+- merge rules
+- supersession rules
+- rejection rules
+
+Platform Governance implementations execute these policies.
+
+They never redefine them.
 
 ---
 
 # Evaluation Principles
 
-Every Candidate should be evaluated using principles such as:
+Every Topic Candidate is evaluated using deterministic governance criteria.
 
-- reusability
+Examples include:
+
+- reusable business meaning
 - company independence
 - semantic uniqueness
-- evidence quality
+- ontology compatibility
+- evidence sufficiency
 - evidence diversity
 - temporal persistence
-- ontology consistency
+- registry consistency
 
-Governance decisions must always be explainable.
+Governance decisions must always remain:
+
+- deterministic
+- explainable
+- replayable
 
 ---
 
 # Promotion Rule
 
-Promotion creates Platform Knowledge.
-
-Only promoted Candidates become part of the Platform Registry.
-
-Example:
+Promotion creates reusable Platform Knowledge.
 
 ```text
-Candidate
+Topic Candidate
 
 ↓
 
@@ -153,35 +222,36 @@ Approved
 
 ↓
 
-Platform Registry
+Platform Registry Version N+1
 ```
 
-Promotion creates a new governed registry version.
+Promotion always creates a new immutable Platform Registry version.
+
+Historical Platform Registry versions remain unchanged.
 
 ---
 
 # Rejection Rule
 
-Rejected Candidates remain historical records.
+Rejected Topic Candidates remain immutable Governance Artifacts.
 
-Rejection does not delete evidence.
+Rejection never removes:
 
-Rejection preserves:
+- Topic Candidate
+- supporting evidence
+- Governance Decision
 
-- candidate
-- evidence
-- governance decision
-- reasoning
+Future evidence may produce a new Topic Candidate.
 
-Future evidence may justify a new Candidate.
+Rejected candidates are never modified.
 
 ---
 
 # Merge Rule
 
-Governance may determine that multiple Candidates describe the same reusable concept.
+Platform Governance may determine that multiple Topic Candidates represent the same reusable concept.
 
-Example:
+Example
 
 ```text
 AI Partnerships
@@ -193,92 +263,97 @@ Foundation Model Alliances
 Strategic AI Partnerships
 ```
 
-Governance may merge them into a single Platform concept.
+Merge creates new governed Platform Knowledge.
 
-Merge history must remain replayable.
-
----
-
-# Deprecation Rule
-
-Platform Knowledge evolves over time.
-
-Governance may deprecate concepts that:
-
-- become obsolete
-- become overly broad
-- become redundant
-- are replaced by better concepts
-
-Deprecation never removes historical versions.
-
-Historical execution must remain replayable.
+Historical Topic Candidates remain immutable.
 
 ---
 
-# Registry Versioning
+# Supersession Rule
 
-Every approved governance action creates a new Platform Registry version.
+A Topic Candidate or Platform Registry entry may later be superseded by a more complete reusable concept.
 
-Example:
+Supersession creates new Governance Artifacts.
+
+Historical objects remain replayable.
+
+---
+
+# Registry Evolution
+
+Platform Governance is solely responsible for Platform Registry evolution.
+
+Every approved governance action produces:
 
 ```text
-Registry v12
+Platform Registry Version N
 
 ↓
 
-Governance Approval
+Governance Decision
 
 ↓
 
-Registry v13
+Platform Registry Version N+1
 ```
 
-Historical executions always reference the registry version used during execution.
+Historical Registry versions are immutable.
 
 ---
 
 # Determinism
 
-Given:
+Given identical:
 
-- identical Candidate
-- identical supporting evidence
-- identical governance policy
+- Topic Candidate
+- supporting evidence
+- Governance Policy
 
-Governance must produce identical decisions.
+Platform Governance must produce identical Governance Decisions.
 
-Governance must remain replayable.
+Governance execution must never depend upon:
+
+- execution order
+- timing
+- operator choice
 
 ---
 
 # Separation of Responsibilities
 
-Candidate Discovery proposes.
+Cross-Company Aggregation answers:
 
-Governance evaluates.
+> What recurring execution evidence exists?
 
-Registry stores approved knowledge.
+Candidate Discovery answers:
 
-Execution consumes approved knowledge.
+> Does the aggregated evidence justify proposing a reusable concept?
 
-Responsibilities must never overlap.
+Platform Governance answers:
+
+> Should this reusable concept become Platform Knowledge?
+
+Platform Registry answers:
+
+> What reusable Platform Knowledge is currently approved?
+
+Each layer owns exactly one responsibility.
 
 ---
 
 # Platform Knowledge Lifecycle
 
 ```text
-Platform Signal
+Topic Signal
         │
         ▼
-Aggregation
+Aggregation Result
         │
         ▼
-Candidate
+Topic Candidate
         │
         ▼
-Governance
+Platform Governance
         │
         ├────────► Rejected
         │
@@ -286,7 +361,7 @@ Governance
         │
         ├────────► Merged
         │
-        ├────────► Deprecated
+        ├────────► Superseded
         │
         ▼
 Approved
@@ -295,43 +370,31 @@ Approved
 Platform Registry
 ```
 
----
+Platform Governance owns only governance.
 
-# Design Principles
-
-Platform Governance must be:
-
-- deterministic
-- explainable
-- replayable
-- versioned
-- evidence-driven
-- ontology-aware
-
-Platform Governance must never:
-
-- bypass evidence
-- modify execution artifacts
-- mutate company intelligence
-- change historical registry versions
+Execution remains completely independent.
 
 ---
 
 # Relationship with Company Intelligence
 
-Company Intelligence consumes Platform Registries.
+Company Intelligence consumes only approved Platform Registry versions.
 
-Company Intelligence never participates in governance decisions.
+Company Intelligence never:
+
+- evaluates Topic Candidates
+- participates in governance
+- evolves Platform Knowledge
 
 Execution remains read-only.
-
-Platform Governance remains independent.
 
 ---
 
 # Future Governance Scope
 
-The same governance architecture applies to:
+The same governance architecture applies to all Platform Registries.
+
+Examples include:
 
 - Topic Registry
 - Industry Registry
@@ -340,14 +403,37 @@ The same governance architecture applies to:
 - Market Context Ontology
 - Future Platform Registries
 
-Platform Governance is registry-agnostic.
+Platform Governance remains registry-independent.
+
+---
+
+# Design Principles
+
+Platform Governance must be:
+
+- deterministic
+- replayable
+- explainable
+- evidence-driven
+- policy-driven
+- versioned
+- ontology-aware
+
+Platform Governance must never:
+
+- consume execution artifacts
+- aggregate evidence
+- construct Topic Candidates
+- mutate Company Intelligence
+- overwrite historical Platform Registry versions
+- bypass Governance Policies
 
 ---
 
 # Architecture Summary
 
-Platform Governance is the sole authority responsible for evolving Platform Knowledge.
+Platform Governance is the decision layer of Platform Intelligence.
 
-It evaluates Platform Knowledge Candidates using deterministic, evidence-driven policies and produces governed Platform Registry versions.
+It evaluates immutable Topic Candidates using deterministic Governance Policies and determines whether reusable Platform Knowledge should evolve the Platform Registry.
 
-By separating governance from execution, the platform ensures that ontology evolution remains deliberate, replayable, explainable, and stable while Company Intelligence continues to operate deterministically on approved Platform Knowledge.
+By separating execution, evidence accumulation, candidate formation, governance, and registry evolution into independent architectural responsibilities, the platform ensures that reusable Platform Knowledge evolves deliberately while Company Intelligence remains deterministic, replayable, and governed.
