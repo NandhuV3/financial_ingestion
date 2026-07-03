@@ -1,9 +1,10 @@
 /**
- * Read-only Embedding Store implementation.
+ * Embedding Store implementation.
  *
  * This module validates immutable Embedding Execution Record source content
- * and exposes deterministic lookup APIs. It never generates embeddings,
- * modifies vectors, performs similarity computation, or contacts providers.
+ * and exposes deterministic lookup plus append-only persistence APIs. It
+ * never generates embeddings, modifies vectors, performs similarity
+ * computation, or contacts providers.
  */
 import {
   EMBEDDING_EXECUTION_RECORD_SCHEMA_VERSION,
@@ -12,13 +13,17 @@ import {
 import {
   EMBEDDING_STORE_SCHEMA_VERSION,
   type EmbeddingStoreLookupRequest,
-  type EmbeddingStoreReader,
+  type EmbeddingStoreRepository,
   type EmbeddingStoreSource,
 } from "../../contracts/execution/embedding-store-contract.js";
 import {
   ConfigurationError,
   type PlatformErrorOptions,
 } from "../../packages/builder-framework/src/platform-error.js";
+import { stableHash } from "../shared/hashing/stable-hash.js";
+import { createLogger } from "../shared/logger.js";
+
+const logger = createLogger("embedding-store");
 
 export class EmbeddingStoreError extends ConfigurationError {
   constructor(message: string, options: PlatformErrorOptions = {}) {
@@ -31,10 +36,10 @@ export class EmbeddingStoreError extends ConfigurationError {
   }
 }
 
-export class EmbeddingStore implements EmbeddingStoreReader {
+export class EmbeddingStore implements EmbeddingStoreRepository {
   private readonly recordsById = new Map<string, EmbeddingExecutionRecord>();
   private readonly recordsByLookupKey = new Map<string, EmbeddingExecutionRecord>();
-  private readonly recordIds: string[];
+  private recordIds: string[];
 
   constructor(source: EmbeddingStoreSource) {
     validateEmbeddingStoreSource(source);
@@ -80,6 +85,88 @@ export class EmbeddingStore implements EmbeddingStoreReader {
     const record = this.recordsByLookupKey.get(lookupKey(request));
 
     return record === undefined ? undefined : clone(record);
+  }
+
+  persistRecord(record: EmbeddingExecutionRecord): EmbeddingExecutionRecord {
+    logger.info("Embedding Execution Record persistence started.", {
+      record_id: getLogString(record, "record_id"),
+    });
+
+    try {
+      validatePersistableEmbeddingExecutionRecord(record);
+
+      const existingById = this.recordsById.get(record.record_id);
+
+      if (existingById !== undefined) {
+        if (existingById.record_hash !== record.record_hash) {
+          throw new EmbeddingStoreError(
+            "Embedding Execution Record record_id already exists with a different record_hash.",
+          );
+        }
+
+        logger.info("Duplicate Embedding Execution Record detected.", {
+          record_id: record.record_id,
+          record_hash: record.record_hash,
+          duplicate_match: "record_id",
+        });
+
+        return clone(existingById);
+      }
+
+      for (const existing of this.recordsById.values()) {
+        if (existing.record_hash === record.record_hash) {
+          throw new EmbeddingStoreError(
+            "Embedding Execution Record record_hash already exists with a different record_id.",
+          );
+        }
+      }
+
+      const deterministicLookupKey = lookupKeyFromRecord(record);
+      const existingByLookupKey = this.recordsByLookupKey.get(
+        deterministicLookupKey,
+      );
+
+      if (existingByLookupKey !== undefined) {
+        if (
+          existingByLookupKey.record_id !== record.record_id
+            || existingByLookupKey.record_hash !== record.record_hash
+        ) {
+          throw new EmbeddingStoreError(
+            "Embedding Execution Record deterministic lookup key already exists with a different record.",
+          );
+        }
+
+        logger.info("Duplicate Embedding Execution Record detected.", {
+          record_id: record.record_id,
+          record_hash: record.record_hash,
+          duplicate_match: "deterministic_lookup_key",
+        });
+
+        return clone(existingByLookupKey);
+      }
+
+      this.recordsById.set(record.record_id, clone(record));
+      this.recordsByLookupKey.set(deterministicLookupKey, clone(record));
+      this.recordIds = sortedRecordIds(this.recordsById);
+
+      logger.info("Embedding Execution Record persisted.", {
+        record_id: record.record_id,
+        record_hash: record.record_hash,
+        source_type: record.source.source_type,
+        source_id: record.source.source_id,
+        embedding_model: record.embedding.model,
+        embedding_model_version: record.embedding.model_version,
+      });
+
+      return clone(record);
+    } catch (error) {
+      logger.error("Embedding Execution Record persistence failed.", {
+        record_id: getLogString(record, "record_id"),
+        error_message: error instanceof Error ? error.message : String(error),
+      });
+
+      throw error;
+    }
   }
 }
 
@@ -201,6 +288,38 @@ function validateEmbeddingExecutionRecord(
   }
 }
 
+function validatePersistableEmbeddingExecutionRecord(
+  record: unknown,
+): asserts record is EmbeddingExecutionRecord {
+  validateEmbeddingExecutionRecord(record, "record");
+
+  const identityInput = {
+    source_type: record.source.source_type,
+    source_id: record.source.source_id,
+    source_hash: record.source.source_hash,
+    model_version: record.embedding.model_version,
+    vector: record.embedding.vector,
+  };
+  const expectedRecordId = `embedding:${stableHash(identityInput)}`;
+  const expectedRecordHash = stableHash({
+    schema_version: EMBEDDING_EXECUTION_RECORD_SCHEMA_VERSION,
+    record_type: "embedding",
+    ...identityInput,
+  });
+
+  if (record.record_id !== expectedRecordId) {
+    throw new EmbeddingStoreError(
+      "record.record_id does not match deterministic identity.",
+    );
+  }
+
+  if (record.record_hash !== expectedRecordHash) {
+    throw new EmbeddingStoreError(
+      "record.record_hash does not match deterministic integrity hash.",
+    );
+  }
+}
+
 function requireObject(
   value: unknown,
   field: string,
@@ -248,6 +367,28 @@ function lookupKey(request: EmbeddingStoreLookupRequest): string {
     request.source_hash,
     request.embedding_model_version,
   ].join("\u001f");
+}
+
+function sortedRecordIds(
+  recordsById: ReadonlyMap<string, EmbeddingExecutionRecord>,
+): string[] {
+  return [...recordsById.keys()]
+    .sort((left, right) => left.localeCompare(right));
+}
+
+function getLogString(value: unknown, field: string): string {
+  const candidate = value as Record<string, unknown>;
+
+  if (
+    value !== null
+      && typeof value === "object"
+      && !Array.isArray(value)
+      && typeof candidate[field] === "string"
+  ) {
+    return candidate[field];
+  }
+
+  return "unknown";
 }
 
 function clone<T>(value: T): T {

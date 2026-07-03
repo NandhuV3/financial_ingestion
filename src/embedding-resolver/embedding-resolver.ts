@@ -3,8 +3,7 @@
  *
  * This module is the single embedding resolution entry point for builders.
  * It enforces original-execution versus replay behavior and never computes
- * similarity, persists records, orchestrates replay, or calls providers
- * directly.
+ * similarity, orchestrates replay, or calls providers directly.
  */
 import {
   EMBEDDING_EXECUTION_RECORD_SCHEMA_VERSION,
@@ -106,13 +105,19 @@ export class EmbeddingResolver implements EmbeddingResolverReader {
 
     validateResolvedRecord(generatedRecord, request, "generated_record");
 
+    const persistedRecord = this.dependencies.store.persistRecord(
+      generatedRecord,
+    );
+
+    validateResolvedRecord(persistedRecord, request, "persisted_record");
+
     logger.info("Embedding resolution succeeded.", {
       ...logContext(request),
-      record_id: generatedRecord.record_id,
-      resolution_source: "generator",
+      record_id: persistedRecord.record_id,
+      resolution_source: "generator_persisted",
     });
 
-    return clone(generatedRecord);
+    return clone(persistedRecord);
   }
 }
 

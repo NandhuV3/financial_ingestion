@@ -5,11 +5,11 @@ import type {
   EmbeddingResolverExecutionContext,
 } from "../../contracts/execution/embedding-resolver-contract.js";
 import type {
-  EmbeddingStoreReader,
+  EmbeddingStoreRepository,
 } from "../../contracts/execution/embedding-store-contract.js";
 
 export type EmbeddingResolverDependencies = {
-  store: EmbeddingStoreReader;
+  store: EmbeddingStoreRepository;
   generator: EmbeddingGeneratorReader;
   execution_context: EmbeddingResolverExecutionContext;
 };

@@ -16,6 +16,10 @@ import {
   EmbeddingStoreError,
   loadEmbeddingStore,
 } from "../src/embedding-store/index.js";
+import {
+  embeddingExecutionRecordHash,
+  embeddingExecutionRecordId,
+} from "../src/embedding-generator/index.js";
 
 describe("Embedding Store", () => {
   it("loads the default static store and exposes deterministic record lookup", async () => {
@@ -97,6 +101,103 @@ describe("Embedding Store", () => {
     });
 
     assert.deepEqual(original?.embedding.vector, [0.4, 0.5]);
+  });
+
+  it("persists newly generated records with deterministic lookup support", () => {
+    const store = new EmbeddingStore(source());
+    const generatedRecord = deterministicRecord({
+      source_id: "source-new",
+      source_hash: "source-hash-new",
+      vector: [0.2, 0.3],
+    });
+
+    const persisted = store.persistRecord(generatedRecord);
+
+    assert.deepEqual(persisted, generatedRecord);
+    assert.equal(store.hasRecord(generatedRecord.record_id), true);
+    assert.deepEqual(store.listRecordIds(), [
+      "embedding-record-2",
+      generatedRecord.record_id,
+    ].sort((left, right) => left.localeCompare(right)));
+
+    const resolved = store.lookupRecord({
+      source_type: "test_source",
+      source_id: "source-new",
+      source_hash: "source-hash-new",
+      embedding_model_version: "test-v1",
+    });
+
+    assert.deepEqual(resolved, generatedRecord);
+  });
+
+  it("returns defensive copies from persisted records", () => {
+    const store = new EmbeddingStore(source());
+    const generatedRecord = deterministicRecord({
+      source_id: "source-new",
+      source_hash: "source-hash-new",
+    });
+
+    const persisted = store.persistRecord(generatedRecord);
+    persisted.embedding.vector[0] = 999;
+
+    const stored = store.getRecord(generatedRecord.record_id);
+
+    assert.deepEqual(stored.embedding.vector, generatedRecord.embedding.vector);
+  });
+
+  it("does not duplicate an already persisted record", () => {
+    const store = new EmbeddingStore(source());
+    const generatedRecord = deterministicRecord({
+      source_id: "source-new",
+      source_hash: "source-hash-new",
+    });
+
+    store.persistRecord(generatedRecord);
+    const duplicate = store.persistRecord(generatedRecord);
+
+    assert.deepEqual(duplicate, generatedRecord);
+    assert.equal(
+      store.listRecordIds().filter((recordId) =>
+        recordId === generatedRecord.record_id).length,
+      1,
+    );
+  });
+
+  it("rejects persisted records with invalid deterministic identity", () => {
+    const store = new EmbeddingStore(source());
+    const generatedRecord = {
+      ...deterministicRecord({
+        source_id: "source-new",
+        source_hash: "source-hash-new",
+      }),
+      record_id: "embedding:invalid",
+    };
+
+    assert.throws(
+      () => store.persistRecord(generatedRecord),
+      EmbeddingStoreError,
+    );
+  });
+
+  it("rejects persisted records that collide on deterministic lookup key", () => {
+    const store = new EmbeddingStore(source());
+    const firstRecord = deterministicRecord({
+      source_id: "source-new",
+      source_hash: "source-hash-new",
+      vector: [0.2, 0.3],
+    });
+    const secondRecord = deterministicRecord({
+      source_id: "source-new",
+      source_hash: "source-hash-new",
+      vector: [0.8, 0.9],
+    });
+
+    store.persistRecord(firstRecord);
+
+    assert.throws(
+      () => store.persistRecord(secondRecord),
+      EmbeddingStoreError,
+    );
   });
 
   it("returns sorted record IDs for deterministic listing", () => {
@@ -292,6 +393,51 @@ function record(input: {
       model_version: "test-v1",
       dimensions: 2,
       vector: [0.4, 0.5],
+    },
+  };
+}
+
+function deterministicRecord(
+  overrides: Partial<{
+    source_type: string;
+    source_id: string;
+    source_hash: string;
+    model: string;
+    model_version: string;
+    vector: number[];
+  }> = {},
+): EmbeddingExecutionRecord {
+  const source_type = overrides.source_type ?? "test_source";
+  const source_id = overrides.source_id ?? "source-deterministic";
+  const source_hash = overrides.source_hash ?? "source-hash-deterministic";
+  const model = overrides.model ?? "test-embedding-model";
+  const model_version = overrides.model_version ?? "test-v1";
+  const vector = overrides.vector ?? [0.4, 0.5];
+  const identityInput = {
+    source_type,
+    source_id,
+    source_hash,
+    model_version,
+    vector,
+  };
+
+  return {
+    schema_version: EMBEDDING_EXECUTION_RECORD_SCHEMA_VERSION,
+    record_type: "embedding",
+    record_id: embeddingExecutionRecordId(identityInput),
+    record_hash: embeddingExecutionRecordHash(identityInput),
+    producer: "embedding-generator",
+    execution_id: `execution-${source_id}`,
+    source: {
+      source_type,
+      source_id,
+      source_hash,
+    },
+    embedding: {
+      model,
+      model_version,
+      dimensions: vector.length,
+      vector: [...vector],
     },
   };
 }

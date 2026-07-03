@@ -24,3 +24,10 @@ export type EmbeddingStoreReader = {
     request: EmbeddingStoreLookupRequest,
   ): EmbeddingExecutionRecord | undefined;
 };
+
+export type EmbeddingStoreWriter = {
+  persistRecord(record: EmbeddingExecutionRecord): EmbeddingExecutionRecord;
+};
+
+export type EmbeddingStoreRepository = EmbeddingStoreReader
+  & EmbeddingStoreWriter;

@@ -13,7 +13,7 @@ import type {
 } from "../contracts/execution/embedding-resolver-contract.js";
 import type {
   EmbeddingStoreLookupRequest,
-  EmbeddingStoreReader,
+  EmbeddingStoreRepository,
 } from "../contracts/execution/embedding-store-contract.js";
 import {
   EmbeddingResolver,
@@ -60,6 +60,8 @@ describe("Embedding Resolver", () => {
 
     assert.deepEqual(resolved, generatedRecord);
     assert.equal(generator.calls.length, 1);
+    assert.deepEqual(store.persistedRecords, [generatedRecord]);
+    assert.deepEqual(store.getRecord(generatedRecord.record_id), generatedRecord);
     assert.deepEqual(generator.calls[0], {
       execution_context: {
         execution_id: "resolver-execution",
@@ -84,6 +86,7 @@ describe("Embedding Resolver", () => {
       EmbeddingResolverError,
     );
     assert.equal(generator.calls.length, 0);
+    assert.equal(store.persistedRecords.length, 0);
   });
 
   it("returns a persisted record on replay store hit", async () => {
@@ -191,8 +194,9 @@ describe("Embedding Resolver", () => {
   });
 });
 
-class MemoryStore implements EmbeddingStoreReader {
+class MemoryStore implements EmbeddingStoreRepository {
   readonly lookupRequests: EmbeddingStoreLookupRequest[] = [];
+  readonly persistedRecords: EmbeddingExecutionRecord[] = [];
   private readonly recordsById = new Map<string, EmbeddingExecutionRecord>();
 
   constructor(records: EmbeddingExecutionRecord[]) {
@@ -239,6 +243,22 @@ class MemoryStore implements EmbeddingStoreReader {
 
     return undefined;
   }
+
+  persistRecord(recordToPersist: EmbeddingExecutionRecord): EmbeddingExecutionRecord {
+    const existing = this.recordsById.get(recordToPersist.record_id);
+
+    if (existing !== undefined) {
+      return structuredClone(existing);
+    }
+
+    this.recordsById.set(
+      recordToPersist.record_id,
+      structuredClone(recordToPersist),
+    );
+    this.persistedRecords.push(structuredClone(recordToPersist));
+
+    return structuredClone(recordToPersist);
+  }
 }
 
 class RecordingGenerator implements EmbeddingGeneratorReader {
@@ -256,7 +276,7 @@ class RecordingGenerator implements EmbeddingGeneratorReader {
 }
 
 function resolverWith(
-  store: EmbeddingStoreReader,
+  store: EmbeddingStoreRepository,
   generator: EmbeddingGeneratorReader,
 ): EmbeddingResolver {
   return new EmbeddingResolver({
