@@ -2,9 +2,23 @@ import type { ArtifactRepository } from "../../packages/artifact-framework/src/a
 import { ArtifactService } from "../../packages/artifact-framework/src/artifact-service.js";
 import { BuilderExecutor } from "../../packages/builder-framework/src/builder-executor.js";
 import { BuilderRegistry } from "../../packages/builder-framework/src/builder-registry.js";
+import type {
+  EmbeddingProvider,
+  EmbeddingProviderInput,
+  EmbeddingProviderResult,
+} from "../../contracts/execution/embedding-generator-contract.js";
+import type {
+  EmbeddingResolverExecutionContext,
+  EmbeddingResolverReader,
+} from "../../contracts/execution/embedding-resolver-contract.js";
+import {
+  EMBEDDING_STORE_SCHEMA_VERSION,
+} from "../../contracts/execution/embedding-store-contract.js";
 import type { LLMClient } from "../../packages/llm-framework/src/llm-client.js";
 import type { PromptResolver } from "../../src/prompt-registry/prompt-resolver.js";
-import type { SemanticEmbeddingProvider } from "../topic-assignment-builder/types.js";
+import { EmbeddingGenerator } from "../../src/embedding-generator/index.js";
+import { EmbeddingResolver } from "../../src/embedding-resolver/index.js";
+import { EmbeddingStore } from "../../src/embedding-store/index.js";
 import { BusinessSignalsBuilder } from "../business-signals-builder/builder.js";
 import {
   BUSINESS_SIGNALS_BUILDER_TYPE,
@@ -82,6 +96,16 @@ import {
   InMemoryReviewQueueRepository,
   type ReviewQueueRepository,
 } from "../../governance/company-knowledge-governance/review-queue.repository.js";
+import {
+  TOPIC_ASSIGNMENT_EMBEDDING_MODEL,
+} from "../topic-assignment-builder/contract.js";
+
+export type SemanticEmbeddingProvider = {
+  embed(input: {
+    model: string;
+    texts: string[];
+  }): Promise<number[][]>;
+};
 
 export type UpstreamPipelineRuntimeOptions = {
   repository: ArtifactRepository;
@@ -149,7 +173,13 @@ export function registerUpstreamBuilders(
     version: TOPIC_ASSIGNMENT_BUILDER_VERSION,
     schema_version: TOPIC_ASSIGNMENT_SCHEMA_VERSION,
     pipeline_version: TOPIC_ASSIGNMENT_PIPELINE_VERSION,
-  }, () => new TopicAssignmentBuilder(options.semanticEmbeddingProvider));
+  }, () => new TopicAssignmentBuilder(createTopicAssignmentEmbeddingResolver(
+    options.semanticEmbeddingProvider,
+    {
+      execution_id: "topic-assignment-embedding-resolution",
+      producer: TOPIC_ASSIGNMENT_BUILDER_TYPE,
+    },
+  )));
 
   registry.registerBuilder({
     builder_type: TOPIC_EVOLUTION_BUILDER_TYPE,
@@ -198,4 +228,47 @@ export function registerUpstreamBuilders(
       options.invalidationPort ?? new RecordingInvalidationPort(),
     ),
   };
+}
+
+export function createTopicAssignmentEmbeddingResolver(
+  provider: SemanticEmbeddingProvider,
+  executionContext: EmbeddingResolverExecutionContext,
+): EmbeddingResolverReader {
+  return new EmbeddingResolver({
+    store: new EmbeddingStore({
+      schema_version: EMBEDDING_STORE_SCHEMA_VERSION,
+      records: [],
+    }),
+    generator: new EmbeddingGenerator(
+      new SemanticEmbeddingProviderAdapter(provider),
+    ),
+    execution_context: executionContext,
+  });
+}
+
+class SemanticEmbeddingProviderAdapter implements EmbeddingProvider {
+  constructor(private readonly provider: SemanticEmbeddingProvider) {}
+
+  async generateEmbedding(
+    input: EmbeddingProviderInput,
+  ): Promise<EmbeddingProviderResult> {
+    const embeddings = await this.provider.embed({
+      model: TOPIC_ASSIGNMENT_EMBEDDING_MODEL,
+      texts: [input.input_text],
+    });
+    const vector = embeddings[0];
+
+    if (vector === undefined) {
+      throw new Error(
+        "Semantic embedding provider did not return an embedding vector.",
+      );
+    }
+
+    return {
+      model: TOPIC_ASSIGNMENT_EMBEDDING_MODEL,
+      model_version: TOPIC_ASSIGNMENT_EMBEDDING_MODEL,
+      dimensions: vector.length,
+      vector,
+    };
+  }
 }

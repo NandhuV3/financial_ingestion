@@ -8,15 +8,26 @@ import type {
 import type {
   TopicSignalExecutionRecord,
 } from "../../contracts/execution/topic-signal-execution-record.js";
+import type {
+  EmbeddingExecutionRecord,
+} from "../../contracts/execution/embedding-execution-record.js";
+import type {
+  EmbeddingResolverReader,
+  EmbeddingResolutionMode,
+} from "../../contracts/execution/embedding-resolver-contract.js";
+import {
+  EXECUTION_RECORD_REFERENCE_SCHEMA_VERSION,
+  type ExecutionRecordReference,
+} from "../../contracts/framework/execution-record-reference.js";
 import { buildTopicAssignmentExecution } from "./assignment.js";
 import { calculateTopicAssignmentConfidence } from "./confidence.js";
 import { TOPIC_ASSIGNMENT_BUILDER_TYPE } from "./contract.js";
 import { TOPIC_ASSIGNMENT_EMBEDDING_MODEL } from "./contract.js";
 import type {
-  SemanticEmbeddingProvider,
   TopicAssignmentBuilderInput,
   TopicRegistryEntry,
 } from "./types.js";
+import { stableHash } from "../../src/shared/hashing/stable-hash.js";
 import {
   requireThemesDependency,
   requireTopicRegistryDependency,
@@ -25,12 +36,17 @@ import {
   validateTopicAssignmentBuilderInput,
 } from "./validator.js";
 
+const TOPIC_ASSIGNMENT_THEME_EMBEDDING_SOURCE_TYPE =
+  "topic_assignment_theme";
+const TOPIC_ASSIGNMENT_TOPIC_EMBEDDING_SOURCE_TYPE =
+  "topic_assignment_topic";
+
 export class TopicAssignmentBuilder implements Builder<
   TopicAssignmentBuilderInput,
   TopicAssignmentArtifactContent
 > {
   constructor(
-    private readonly embeddingProvider: SemanticEmbeddingProvider,
+    private readonly embeddingResolver: EmbeddingResolverReader,
   ) {}
 
   builderType(): string {
@@ -73,25 +89,28 @@ export class TopicAssignmentBuilder implements Builder<
     );
     const orderedTopics = [...activeTopics].sort((left, right) =>
       left.topic_id.localeCompare(right.topic_id));
-    const embeddingTexts = [
-      ...orderedThemes.map(buildThemeEmbeddingInput),
-      ...orderedTopics.map(buildTopicEmbeddingInput),
-    ];
-    const embeddings = await this.embeddingProvider.embed({
-      model: TOPIC_ASSIGNMENT_EMBEDDING_MODEL,
-      texts: embeddingTexts,
-    });
+    const embeddingExecutionMode =
+      context.input.embedding_execution_mode ?? "ORIGINAL_EXECUTION";
+    const themeEmbeddingRecords: EmbeddingExecutionRecord[] = [];
 
-    if (
-      embeddings.length !== embeddingTexts.length
-      || embeddings.some((embedding) =>
-        !Array.isArray(embedding)
-        || embedding.length === 0
-        || embedding.some((value) => !Number.isFinite(value)))
-    ) {
-      throw new BuilderValidationError(
-        "Semantic embedding provider returned invalid Topic Assignment embeddings.",
-      );
+    for (const theme of orderedThemes) {
+      themeEmbeddingRecords.push(await this.resolveEmbeddingRecord({
+        executionMode: embeddingExecutionMode,
+        sourceType: TOPIC_ASSIGNMENT_THEME_EMBEDDING_SOURCE_TYPE,
+        sourceId: theme.theme_id,
+        sourceText: buildThemeEmbeddingInput(theme),
+      }));
+    }
+
+    const topicEmbeddingRecords: EmbeddingExecutionRecord[] = [];
+
+    for (const topic of orderedTopics) {
+      topicEmbeddingRecords.push(await this.resolveEmbeddingRecord({
+        executionMode: embeddingExecutionMode,
+        sourceType: TOPIC_ASSIGNMENT_TOPIC_EMBEDDING_SOURCE_TYPE,
+        sourceId: topic.topic_id,
+        sourceText: buildTopicEmbeddingInput(topic),
+      }));
     }
 
     context.recordModelReference({
@@ -101,19 +120,19 @@ export class TopicAssignmentBuilder implements Builder<
       temperature: 0,
     });
 
-    const themeEmbeddings = embeddings.slice(0, orderedThemes.length);
-    const topicEmbeddings = embeddings.slice(orderedThemes.length);
     const { assignments, unassignedThemes, themeEvaluations } =
       buildTopicAssignmentExecution(
         orderedThemes,
         orderedTopics,
         orderedThemes.map((theme, index) => ({
           theme_id: theme.theme_id,
-          embedding: themeEmbeddings[index] ?? [],
+          embedding: themeEmbeddingRecords[index]?.embedding.vector ?? [],
+          embedding_record_id: themeEmbeddingRecords[index]?.record_id ?? "",
         })),
         orderedTopics.map((topic, index) => ({
           topic_id: topic.topic_id,
-          embedding: topicEmbeddings[index] ?? [],
+          embedding: topicEmbeddingRecords[index]?.embedding.vector ?? [],
+          embedding_record_id: topicEmbeddingRecords[index]?.record_id ?? "",
         })),
       );
     const confidence = calculateTopicAssignmentConfidence(
@@ -141,6 +160,10 @@ export class TopicAssignmentBuilder implements Builder<
       builder_result: {
         content,
         confidence: confidence.overall,
+        execution_references: embeddingExecutionReferences([
+          ...themeEmbeddingRecords,
+          ...topicEmbeddingRecords,
+        ]),
       },
       topic_signals: themeEvaluations.map((evaluation) => ({
         execution_context: {
@@ -149,6 +172,12 @@ export class TopicAssignmentBuilder implements Builder<
           filing_id: context.input.filing_id,
           execution_id: context.executionId,
         },
+        execution_references: embeddingExecutionReferencesForTheme(
+          evaluation.theme_id,
+          themeEmbeddingRecords,
+          orderedThemes,
+          topicEmbeddingRecords,
+        ),
         theme: {
           theme_id: evaluation.theme_id,
           theme_title: evaluation.theme_title,
@@ -170,6 +199,76 @@ export class TopicAssignmentBuilder implements Builder<
       })),
     };
   }
+
+  private async resolveEmbeddingRecord(input: {
+    executionMode: EmbeddingResolutionMode;
+    sourceType: string;
+    sourceId: string;
+    sourceText: string;
+  }): Promise<EmbeddingExecutionRecord> {
+    const record = await this.embeddingResolver.resolve({
+      execution_mode: input.executionMode,
+      source_type: input.sourceType,
+      source_id: input.sourceId,
+      source_hash: stableHash(input.sourceText),
+      embedding_model: TOPIC_ASSIGNMENT_EMBEDDING_MODEL,
+      embedding_model_version: TOPIC_ASSIGNMENT_EMBEDDING_MODEL,
+      source_text: input.sourceText,
+    });
+
+    if (
+      !Array.isArray(record.embedding.vector)
+        || record.embedding.vector.length === 0
+        || record.embedding.vector.some((value) => !Number.isFinite(value))
+    ) {
+      throw new BuilderValidationError(
+        "Embedding Resolver returned invalid Topic Assignment embedding vector.",
+      );
+    }
+
+    return record;
+  }
+}
+
+function embeddingExecutionReferencesForTheme(
+  themeId: string,
+  themeEmbeddingRecords: EmbeddingExecutionRecord[],
+  orderedThemes: Array<{ theme_id: string }>,
+  topicEmbeddingRecords: EmbeddingExecutionRecord[],
+): ExecutionRecordReference[] {
+  const themeIndex = orderedThemes.findIndex((theme) =>
+    theme.theme_id === themeId);
+  const themeRecord = themeEmbeddingRecords[themeIndex];
+
+  if (themeRecord === undefined) {
+    throw new BuilderValidationError(
+      `Missing embedding execution record for theme ${themeId}.`,
+    );
+  }
+
+  return [
+    embeddingExecutionReference(themeRecord),
+    ...topicEmbeddingRecords.map(embeddingExecutionReference),
+  ];
+}
+
+function embeddingExecutionReferences(
+  records: EmbeddingExecutionRecord[],
+): ExecutionRecordReference[] {
+  return records.map(embeddingExecutionReference);
+}
+
+function embeddingExecutionReference(
+  record: EmbeddingExecutionRecord,
+): ExecutionRecordReference {
+  return {
+    schema_version: EXECUTION_RECORD_REFERENCE_SCHEMA_VERSION,
+    record_type: "embedding_execution_record",
+    record_id: record.record_id,
+    record_hash: record.record_hash,
+    producer: record.producer,
+    execution_id: record.execution_id,
+  };
 }
 
 function buildThemeEmbeddingInput(

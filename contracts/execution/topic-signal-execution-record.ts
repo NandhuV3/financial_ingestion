@@ -1,6 +1,9 @@
 import type {
   TopicAssignmentMethod,
 } from "../artifacts/topic-assignment-artifact-content.js";
+import type {
+  ExecutionRecordReference,
+} from "../framework/execution-record-reference.js";
 
 export type TopicSignalAssignmentStatus =
   | "assigned"
@@ -55,6 +58,7 @@ export type TopicSignalExecutionMetadata = {
 
 export type TopicSignalExecutionRecord = {
   execution_context: TopicSignalExecutionContext;
+  execution_references?: ExecutionRecordReference[];
   theme: TopicSignalTheme;
   evaluation: TopicSignalEvaluation;
   final_result: TopicSignalFinalResult;

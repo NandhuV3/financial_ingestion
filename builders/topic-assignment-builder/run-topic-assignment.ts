@@ -30,6 +30,9 @@ import { loadEnv } from "../../src/shared/config/load.env.js";
 import { OpenAIResponsesLLMClient } from "../upstream-pipeline/openai-llm-client.js";
 import { MemoryArtifactRepository } from "../upstream-pipeline/memory-artifact-repository.js";
 import { registerUpstreamBuilders } from "../upstream-pipeline/register-builders.js";
+import {
+  createTopicAssignmentEmbeddingResolver,
+} from "../upstream-pipeline/register-builders.js";
 import { writeArtifactDump } from "../upstream-pipeline/artifact-dump.js";
 import {
   TOPIC_ASSIGNMENT_BUILDER_TYPE,
@@ -103,7 +106,12 @@ export async function runTopicAssignmentReplay(
     topic_registry: topicRegistry.metadata.artifact_hash,
     input: topicAssignmentInput,
   });
-  const builder = new TopicAssignmentBuilder(embeddingClient);
+  const builder = new TopicAssignmentBuilder(
+    createTopicAssignmentEmbeddingResolver(embeddingClient, {
+      execution_id: executionId,
+      producer: TOPIC_ASSIGNMENT_BUILDER_TYPE,
+    }),
+  );
   const result = await builder.executeWithTopicSignals({
     companyId: topicAssignmentInput.company_id,
     periodId: topicAssignmentInput.period_id,

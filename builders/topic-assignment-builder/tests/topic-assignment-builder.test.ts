@@ -10,6 +10,14 @@ import type {
   TopicRegistryArtifactContent,
   TopicRegistryEntry,
 } from "../../../contracts/artifacts/topic-registry-artifact-content.js";
+import {
+  EMBEDDING_EXECUTION_RECORD_SCHEMA_VERSION,
+  type EmbeddingExecutionRecord,
+} from "../../../contracts/execution/embedding-execution-record.js";
+import type {
+  EmbeddingResolverReader,
+  EmbeddingResolverRequest,
+} from "../../../contracts/execution/embedding-resolver-contract.js";
 import { calculateArtifactHash } from "../../../packages/artifact-framework/src/artifact-service.js";
 import type { BuilderContext } from "../../../packages/builder-framework/src/builder-context.js";
 import {
@@ -26,14 +34,17 @@ import {
 } from "../assignment.js";
 import { TopicAssignmentBuilder } from "../builder.js";
 import type {
-  SemanticEmbeddingProvider,
   TopicAssignmentBuilderInput,
 } from "../types.js";
 import { validateTopicAssignmentArtifactContent } from "../validator.js";
+import {
+  embeddingExecutionRecordHash,
+  embeddingExecutionRecordId,
+} from "../../../src/embedding-generator/index.js";
 
 describe("TopicAssignmentBuilder", () => {
   it("assigns exact and semantic matches with stable deterministic output", async () => {
-    const builder = new TopicAssignmentBuilder(embeddingProvider({
+    const builder = new TopicAssignmentBuilder(embeddingResolver({
       "Theme: Artificial Intelligence": [0, 1],
       "Theme: Cloud platform demand": [1, 0],
       "Topic: Artificial Intelligence": [0, 1],
@@ -133,7 +144,7 @@ describe("TopicAssignmentBuilder", () => {
   });
 
   it("preserves unassigned Themes and review-range candidate Topics", async () => {
-    const builder = new TopicAssignmentBuilder(embeddingProvider({
+    const builder = new TopicAssignmentBuilder(embeddingResolver({
       "Theme: Cloud": [0.8, 0.6],
       "Theme: Operations": [0, 1],
       "Topic: Cloud Services": [1, 0],
@@ -191,7 +202,7 @@ describe("TopicAssignmentBuilder", () => {
   });
 
   it("rejects inactive Topic assignments", async () => {
-    const builder = new TopicAssignmentBuilder(embeddingProvider({
+    const builder = new TopicAssignmentBuilder(embeddingResolver({
       "Theme: Cloud": [1, 0],
     }));
     const result = await builder.execute(context({
@@ -206,7 +217,7 @@ describe("TopicAssignmentBuilder", () => {
   });
 
   it("rejects duplicate Topic Registry entries", async () => {
-    const builder = new TopicAssignmentBuilder(embeddingProvider({}));
+    const builder = new TopicAssignmentBuilder(embeddingResolver({}));
 
     await assert.rejects(
       () => builder.execute(context({
@@ -221,7 +232,7 @@ describe("TopicAssignmentBuilder", () => {
   });
 
   it("rejects duplicate Theme IDs", async () => {
-    const builder = new TopicAssignmentBuilder(embeddingProvider({}));
+    const builder = new TopicAssignmentBuilder(embeddingResolver({}));
 
     await assert.rejects(
       () => builder.execute(context({
@@ -305,7 +316,7 @@ describe("TopicAssignmentBuilder", () => {
   });
 
   it("rejects forbidden dependencies", async () => {
-    const builder = new TopicAssignmentBuilder(embeddingProvider({}));
+    const builder = new TopicAssignmentBuilder(embeddingResolver({}));
 
     await assert.rejects(
       () => builder.execute(context({
@@ -320,7 +331,7 @@ describe("TopicAssignmentBuilder", () => {
   });
 
   it("records the registry version from the Topic Registry", async () => {
-    const builder = new TopicAssignmentBuilder(embeddingProvider({
+    const builder = new TopicAssignmentBuilder(embeddingResolver({
       "Theme: Cloud": [1, 0],
       "Topic: Cloud": [1, 0],
     }));
@@ -332,9 +343,68 @@ describe("TopicAssignmentBuilder", () => {
     assert.equal(result.content.registry_version, 12);
   });
 
+  it("resolves embeddings through the Embedding Resolver in original execution", async () => {
+    const requests: EmbeddingResolverRequest[] = [];
+    const builder = new TopicAssignmentBuilder(embeddingResolver({
+      "Theme: Cloud": [1, 0],
+      "Topic: Cloud": [1, 0],
+    }, requests));
+
+    await builder.execute(context({
+      themes: themesArtifact([theme("theme-a", "Cloud", "Cloud.")]),
+      registry: registryArtifact([topic("topic:cloud", "Cloud")]),
+    }));
+
+    assert.deepEqual(
+      requests.map((request) => ({
+        execution_mode: request.execution_mode,
+        source_type: request.source_type,
+        source_id: request.source_id,
+        embedding_model_version: request.embedding_model_version,
+      })),
+      [
+        {
+          execution_mode: "ORIGINAL_EXECUTION",
+          source_type: "topic_assignment_theme",
+          source_id: "theme-a",
+          embedding_model_version: "text-embedding-3-small",
+        },
+        {
+          execution_mode: "ORIGINAL_EXECUTION",
+          source_type: "topic_assignment_topic",
+          source_id: "topic:cloud",
+          embedding_model_version: "text-embedding-3-small",
+        },
+      ],
+    );
+    assert.ok(requests.every((request) => request.source_hash.length > 0));
+  });
+
+  it("passes replay mode to the Embedding Resolver without generation branching", async () => {
+    const requests: EmbeddingResolverRequest[] = [];
+    const builder = new TopicAssignmentBuilder(embeddingResolver({
+      "Theme: Cloud": [1, 0],
+      "Topic: Cloud": [1, 0],
+    }, requests));
+
+    const result = await builder.execute(context({
+      themes: themesArtifact([theme("theme-a", "Cloud", "Cloud.")]),
+      registry: registryArtifact([topic("topic:cloud", "Cloud")]),
+      input: {
+        embedding_execution_mode: "REPLAY",
+      },
+    }));
+
+    assert.equal(result.content.assignments.length, 1);
+    assert.deepEqual(
+      requests.map(({ execution_mode }) => execution_mode),
+      ["REPLAY", "REPLAY"],
+    );
+  });
+
   it("records the semantic embedding model reference", async () => {
     const modelReferences: unknown[] = [];
-    const builder = new TopicAssignmentBuilder(embeddingProvider({
+    const builder = new TopicAssignmentBuilder(embeddingResolver({
       "Theme: Cloud": [1, 0],
       "Topic: Cloud": [1, 0],
     }));
@@ -356,7 +426,7 @@ describe("TopicAssignmentBuilder", () => {
   });
 
   it("emits deterministic Topic Signals for every assigned, review, and unassigned Theme", async () => {
-    const builder = new TopicAssignmentBuilder(embeddingProvider({
+    const builder = new TopicAssignmentBuilder(embeddingResolver({
       "Theme: Exact Cloud": [0, 1],
       "Theme: Multi Topic": [1, 0],
       "Theme: Review Topic": [0.8, 0.6],
@@ -393,6 +463,7 @@ describe("TopicAssignmentBuilder", () => {
     assert.equal(first.topic_signals.length, 4);
     assert.equal(first.builder_result.content.assignments.length, 4);
     assert.equal(first.builder_result.content.unassigned_themes.length, 2);
+    assert.equal(first.builder_result.execution_references?.length, 9);
 
     const signalsByTheme = new Map(
       first.topic_signals.map((signal) => [signal.theme.theme_id, signal]),
@@ -403,6 +474,19 @@ describe("TopicAssignmentBuilder", () => {
     const unassignedSignal = signalsByTheme.get("theme-d");
 
     assert.equal(exactSignal?.final_result.assignment_status, "assigned");
+    assert.ok(exactSignal?.execution_references);
+    assert.equal(exactSignal?.execution_references.length, 6);
+    assert.deepEqual(
+      exactSignal?.execution_references.map(({ record_type }) => record_type),
+      [
+        "embedding_execution_record",
+        "embedding_execution_record",
+        "embedding_execution_record",
+        "embedding_execution_record",
+        "embedding_execution_record",
+        "embedding_execution_record",
+      ],
+    );
     assert.deepEqual(exactSignal?.final_result.final_assignments, [{
       topic_id: "topic:cloud",
       confidence: 1,
@@ -465,6 +549,7 @@ function context(params: {
   themes: Artifact<ThemesArtifactContent>;
   registry: Artifact<TopicRegistryArtifactContent>;
   extraDependencies?: Record<string, Artifact<unknown>>;
+  input?: Partial<TopicAssignmentBuilderInput>;
   recordModelReference?: BuilderContext<TopicAssignmentBuilderInput>["recordModelReference"];
 }): BuilderContext<TopicAssignmentBuilderInput> {
   return {
@@ -475,6 +560,7 @@ function context(params: {
       company_id: "MSFT",
       period_id: "2026-Q2",
       filing_id: "msft-2026-q2-10q",
+      ...params.input,
     },
     dependencies: {
       themes: params.themes,
@@ -600,16 +686,50 @@ function topic(
   };
 }
 
-function embeddingProvider(
+function embeddingResolver(
   byPrefix: Record<string, number[]>,
-): SemanticEmbeddingProvider {
+  requests: EmbeddingResolverRequest[] = [],
+): EmbeddingResolverReader {
   return {
-    async embed({ texts }) {
-      return texts.map((text) => {
-        const firstLine = text.split("\n")[0] ?? "";
+    async resolve(request) {
+      const firstLine = request.source_text.split("\n")[0] ?? "";
 
-        return byPrefix[firstLine] ?? [0, 0];
-      });
+      requests.push(structuredClone(request));
+
+      return embeddingRecord(request, byPrefix[firstLine] ?? [0, 0]);
+    },
+  };
+}
+
+function embeddingRecord(
+  request: EmbeddingResolverRequest,
+  vector: number[],
+): EmbeddingExecutionRecord {
+  const identityInput = {
+    source_type: request.source_type,
+    source_id: request.source_id,
+    source_hash: request.source_hash,
+    model_version: request.embedding_model_version,
+    vector,
+  };
+
+  return {
+    schema_version: EMBEDDING_EXECUTION_RECORD_SCHEMA_VERSION,
+    record_type: "embedding",
+    record_id: embeddingExecutionRecordId(identityInput),
+    record_hash: embeddingExecutionRecordHash(identityInput),
+    producer: "embedding-resolver-test",
+    execution_id: "embedding-resolution-test",
+    source: {
+      source_type: request.source_type,
+      source_id: request.source_id,
+      source_hash: request.source_hash,
+    },
+    embedding: {
+      model: request.embedding_model,
+      model_version: request.embedding_model_version,
+      dimensions: vector.length,
+      vector,
     },
   };
 }

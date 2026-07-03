@@ -15,6 +15,9 @@ import type {
   TopicSignalEvaluationCandidate,
   TopicSignalFinalAssignment,
 } from "../../contracts/execution/topic-signal-execution-record.js";
+import type {
+  EmbeddingResolutionMode,
+} from "../../contracts/execution/embedding-resolver-contract.js";
 import type { ThemesArtifactContent } from "../themes/contract.js";
 
 export type {
@@ -31,6 +34,7 @@ export type TopicAssignmentBuilderInput = {
   company_id: string;
   period_id: string;
   filing_id: string;
+  embedding_execution_mode?: EmbeddingResolutionMode;
 };
 
 export type SemanticEmbeddingProvider = {
@@ -64,11 +68,13 @@ export type TopicMatchCandidate = {
 export type ThemeSemanticEmbedding = {
   theme_id: string;
   embedding: number[];
+  embedding_record_id?: string;
 };
 
 export type TopicSemanticEmbedding = {
   topic_id: string;
   embedding: number[];
+  embedding_record_id?: string;
 };
 
 export type TopicAssignmentThemeEvaluation = {
