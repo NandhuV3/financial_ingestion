@@ -75,9 +75,18 @@ Topic Candidates provide this proposal layer.
 
 # Output Classification
 
-Topic Candidates are:
+Topic Candidates are persisted as:
 
-**Governance Artifacts**
+**Topic Candidate Governance Artifacts**
+
+Each Topic Candidate Governance Artifact contains exactly one Topic Candidate.
+
+Every Topic Candidate Governance Artifact has:
+
+- one artifact identity
+- one Topic Candidate
+- one lineage
+- one version history
 
 Properties:
 
@@ -87,7 +96,7 @@ Properties:
 - governance-scoped
 - evidence-backed
 
-Topic Candidates are NOT:
+Topic Candidate Governance Artifacts are NOT:
 
 - Platform Artifacts
 - Execution Records
@@ -150,6 +159,40 @@ Identity should remain stable for identical evidence.
 
 ---
 
+# Artifact Identity
+
+Platform Governance assigns identity at the artifact level.
+
+Therefore:
+
+```text
+One Topic Candidate
+
+↓
+
+One Topic Candidate Governance Artifact
+
+↓
+
+One Governance Decision
+```
+
+A Topic Candidate Governance Artifact must never contain multiple Topic Candidates.
+
+Every Topic Candidate must have its own:
+
+artifact identity
+lineage
+version history
+governance lifecycle
+
+This allows every governance proposal to be independently replayed, audited, evaluated, approved, rejected, or superseded.
+
+
+This is the heart of the architectural correction.
+
+---
+
 # Required Information
 
 Every Topic Candidate preserves sufficient information for governance evaluation.
@@ -200,9 +243,11 @@ It does not reconstruct execution.
 
 ## Supporting Aggregation
 
-Topic Candidates preserve references to supporting Aggregation Results.
+Every Topic Candidate Governance Artifact preserves lineage to exactly one supporting Aggregation Result.
 
-Evidence lineage must remain intact.
+Candidate Discovery may produce many Topic Candidate Governance Artifacts from one Aggregation Result.
+
+Each Topic Candidate Governance Artifact preserves its lineage independently.
 
 Topic Candidates never reference Topic Signals directly.
 
@@ -309,17 +354,17 @@ Only Platform Governance may transform an approved Topic Candidate into a new Pl
 
 ```text
 Aggregation Result
-
-↓
-
+        │
+        ▼
 Candidate Discovery
-
-↓
-
-Topic Candidate
-
-↓
-
+        │
+        ├────────────► Topic Candidate Artifact A
+        │
+        ├────────────► Topic Candidate Artifact B
+        │
+        ├────────────► Topic Candidate Artifact C
+        │
+        ▼
 Platform Governance
 
 ↓
@@ -353,6 +398,12 @@ Topic Candidates are immutable.
 
 Governance never edits existing Topic Candidates.
 
+Each Topic Candidate Governance Artifact remains immutable after publication.
+
+Governance outcomes never modify an existing Topic Candidate Governance Artifact.
+
+Every governance action references the Topic Candidate through lineage rather than mutation.
+
 Changes produce new Governance Artifacts.
 
 Historical Topic Candidates remain available for audit and replay.
@@ -370,6 +421,8 @@ Topic Candidates must be:
 - governance-ready
 - company-independent
 - specification-defined
+- one artifact represents exactly one Topic Candidate
+- independently governable
 
 Topic Candidates must never:
 
@@ -378,6 +431,8 @@ Topic Candidates must never:
 - expose implementation details
 - duplicate execution records
 - bypass Platform Governance
+- contain multiple Topic Candidates
+
 
 ---
 

@@ -1,0 +1,28 @@
+{
+  "schema_version": "embedding-store-v1",
+  "records": [
+    {
+      "schema_version": "embedding-execution-record-v1",
+      "record_type": "embedding",
+      "record_id": "embedding-record-bootstrap-001",
+      "record_hash": "f4f5b8a7b6a64eb28e96f0a8d74ed4e62c91f6186e8613fd55c3c956642ac221",
+      "producer": "embedding-generation-bootstrap",
+      "execution_id": "embedding-execution-bootstrap-001",
+      "source": {
+        "source_type": "bootstrap_source",
+        "source_id": "embedding-source-bootstrap-001",
+        "source_hash": "6b53f4b74c50d0c4a1ea56d21ef302f2b7c52f843a23f630f165d67ad4ad0bb7"
+      },
+      "embedding": {
+        "model": "bootstrap-embedding-model",
+        "model_version": "bootstrap-v1",
+        "dimensions": 3,
+        "vector": [
+          0.125,
+          -0.25,
+          0.5
+        ]
+      }
+    }
+  ]
+}

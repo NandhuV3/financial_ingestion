@@ -10,6 +10,7 @@ import type {
 import {
   resolveAggregationResultDependency,
   validateCandidateDiscoveryBuilderInput,
+  validateCandidateDiscoveryTarget,
   validateTopicCandidateArtifactContent,
 } from "./validator.js";
 
@@ -33,9 +34,18 @@ export class CandidateDiscoveryBuilder implements Builder<
     const aggregationResult = resolveAggregationResultDependency(
       context.dependencies,
     );
-    const content = buildTopicCandidateContent(aggregationResult.content);
+    validateCandidateDiscoveryTarget(context.input, aggregationResult.content);
 
-    validateTopicCandidateArtifactContent(content, aggregationResult.content);
+    const content = buildTopicCandidateContent(
+      aggregationResult.content,
+      context.input,
+    );
+
+    validateTopicCandidateArtifactContent(
+      content,
+      aggregationResult.content,
+      context.input,
+    );
 
     return {
       content,

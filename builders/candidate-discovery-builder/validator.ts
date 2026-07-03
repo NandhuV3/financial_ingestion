@@ -26,12 +26,8 @@ export function validateCandidateDiscoveryBuilderInput(
   input: CandidateDiscoveryBuilderInput,
 ): void {
   requireObject(input, "input");
-
-  if (Object.keys(input).length > 0) {
-    throw new BuilderValidationError(
-      "Candidate Discovery input must be empty; Aggregation Result must be supplied as a dependency.",
-    );
-  }
+  requireNonEmptyString(input.topic_id, "input.topic_id");
+  requirePositiveInteger(input.registry_version, "input.registry_version");
 }
 
 export function resolveAggregationResultDependency(
@@ -67,9 +63,25 @@ export function resolveAggregationResultDependency(
   return aggregationResult as Artifact<AggregationResultArtifactContent>;
 }
 
+export function validateCandidateDiscoveryTarget(
+  input: CandidateDiscoveryBuilderInput,
+  aggregationResult: AggregationResultArtifactContent,
+): void {
+  const targetExists = aggregationResult.topic_statistics.some((topic) =>
+    topic.topic_id === input.topic_id
+      && topic.registry_version === input.registry_version);
+
+  if (!targetExists) {
+    throw new BuilderValidationError(
+      "Candidate Discovery input target does not exist in Aggregation Result topic_statistics.",
+    );
+  }
+}
+
 export function validateTopicCandidateArtifactContent(
   content: TopicCandidateArtifactContent,
   aggregationResult: AggregationResultArtifactContent,
+  input: CandidateDiscoveryBuilderInput,
 ): void {
   requireObject(content, "topic_candidate");
   requireObject(content.discovery_context, "discovery_context");
@@ -101,48 +113,30 @@ export function validateTopicCandidateArtifactContent(
     "discovery_context.candidate_count",
   );
 
-  if (!Array.isArray(content.candidates)) {
-    throw new BuilderValidationError("candidates must be an array.");
-  }
-
-  if (content.discovery_context.candidate_count !== content.candidates.length) {
+  if (content.discovery_context.candidate_count !== 1) {
     throw new BuilderValidationError(
-      "discovery_context.candidate_count does not reconcile with candidates.",
+      "Topic Candidate Governance Artifact must contain exactly one Topic Candidate.",
     );
   }
 
-  if (content.candidates.length !== aggregationResult.topic_statistics.length) {
+  if (!Array.isArray(content.candidates) || content.candidates.length !== 1) {
     throw new BuilderValidationError(
-      "Candidate Discovery must produce one Topic Candidate for each topic_statistics entry.",
+      "candidates must contain exactly one Topic Candidate.",
     );
   }
-
-  const candidateIds = new Set<string>();
-  let previousSortKey = "";
 
   content.candidates.forEach((candidate, index) => {
     validateTopicCandidate(candidate, index, aggregationResult);
 
-    if (candidateIds.has(candidate.candidate_id)) {
+    if (
+      candidate.proposed_concept.proposed_topic_id !== input.topic_id
+        || candidate.proposed_concept.registry_version
+          !== input.registry_version
+    ) {
       throw new BuilderValidationError(
-        `candidates[${index}].candidate_id duplicates another Topic Candidate.`,
+        `candidates[${index}] does not reconcile with Candidate Discovery input.`,
       );
     }
-
-    candidateIds.add(candidate.candidate_id);
-
-    const sortKey = [
-      String(candidate.proposed_concept.registry_version).padStart(10, "0"),
-      candidate.proposed_concept.proposed_topic_id,
-    ].join(":");
-
-    if (index > 0 && previousSortKey.localeCompare(sortKey) > 0) {
-      throw new BuilderValidationError(
-        "candidates must be deterministically ordered by registry_version and proposed_topic_id.",
-      );
-    }
-
-    previousSortKey = sortKey;
   });
 }
 

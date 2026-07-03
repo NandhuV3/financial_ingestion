@@ -56,5 +56,5 @@ export type TopicCandidate = {
 
 export type TopicCandidateArtifactContent = {
   discovery_context: TopicCandidateDiscoveryContext;
-  candidates: TopicCandidate[];
+  candidates: [TopicCandidate];
 };

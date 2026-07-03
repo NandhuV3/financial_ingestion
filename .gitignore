@@ -40,11 +40,19 @@ tmp/
 
 *.notes
 notes
+notes-to-learn
+
 *.backlog
 backlog
 
 *.reviews
 reviews
+
+*.pending
+pending
+
+*.completed
+completed
 
 docs/reviews
 docs/updates_required

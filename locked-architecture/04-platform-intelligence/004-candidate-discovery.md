@@ -122,11 +122,18 @@ Candidate Discovery never recomputes aggregation.
 
 Candidate Discovery produces:
 
-**Topic Candidates**
+**Topic Candidate Governance Artifacts**
 
-Topic Candidates are:
+Each Topic Candidate Governance Artifact contains exactly one Topic Candidate.
 
-**Governance Artifacts**
+One Topic Candidate represents one proposed reusable platform concept.
+
+One Topic Candidate Governance Artifact has:
+
+- one artifact identity
+- one Topic Candidate
+- one lineage
+- one version history
 
 Properties:
 
@@ -136,12 +143,16 @@ Properties:
 - evidence-backed
 - governance-scoped
 
-Topic Candidates are NOT:
+Topic Candidate Governance Artifacts are NOT:
 
 - Platform Artifacts
 - Platform Registries
 - Company Intelligence artifacts
 - Execution Records
+
+Builder 014 may produce multiple Topic Candidate Governance Artifacts during a single execution.
+
+Each artifact remains an independent governance unit.
 
 ---
 
@@ -188,6 +199,40 @@ Candidate formation must always be:
 Given identical Aggregation Results:
 
 Builder 014 must produce identical Topic Candidates.
+
+---
+
+# Candidate Artifact Granularity
+
+Candidate Discovery produces one Governance Artifact for each discovered Topic Candidate.
+
+The platform assigns identity at the artifact level.
+
+Therefore:
+
+```text
+One Topic Candidate
+
+↓
+
+One Governance Artifact
+
+↓
+
+One Governance Decision
+```
+
+Multiple Topic Candidates must never share a single Governance Artifact.
+
+This preserves:
+
+- immutable artifact identity
+- deterministic lineage
+- replayability
+- governance auditability
+- independent candidate lifecycle
+
+This is now one of the core architectural rules.
 
 ---
 
@@ -332,9 +377,11 @@ Aggregation Result
         ▼
 Builder 014
         │
-        ▼
-Topic Candidate
-(Governance Artifact)
+        ├────────────► Topic Candidate Artifact A
+        │
+        ├────────────► Topic Candidate Artifact B
+        │
+        ├────────────► Topic Candidate Artifact C
         │
         ▼
 Platform Governance
@@ -367,8 +414,14 @@ Topic Signals
 Aggregation Result
         │
         ▼
-Topic Candidate
+Topic Candidate Governance Artifact
 ```
+
+Every Topic Candidate Governance Artifact preserves lineage independently.
+
+Governance Decisions reference the Topic Candidate Governance Artifact directly.
+
+Candidate lineage never depends upon sibling candidates produced during the same Builder execution.
 
 Candidate Discovery preserves upstream evidence.
 
@@ -412,6 +465,11 @@ Candidate Discovery must never:
 - bypass Platform Governance
 - mutate Platform Registries
 - expose implementation details
+
+Candidate Discovery must also ensure:
+
+- one Governance Artifact represents exactly one Topic Candidate
+- artifact identity never represents multiple governance units
 
 ---
 

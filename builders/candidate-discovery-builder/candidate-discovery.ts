@@ -6,22 +6,48 @@ import type {
   TopicCandidate,
   TopicCandidateArtifactContent,
 } from "../../contracts/artifacts/topic-candidate-artifact-content.js";
+import type { ReservedArtifactId } from "../../packages/artifact-framework/src/artifact-types.js";
 import { stableHash } from "../../src/shared/hashing/stable-hash.js";
 import {
   CANDIDATE_DISCOVERY_BUILDER_VERSION,
   CANDIDATE_DISCOVERY_VERSION,
   TOPIC_CANDIDATE_VERSION,
 } from "./contract.js";
+import type { CandidateDiscoveryBuilderInput } from "./types.js";
 
-export function buildTopicCandidateContent(
+export type CandidateDiscoveryTarget = {
+  topic_id: string;
+  registry_version: number;
+};
+
+export function listCandidateDiscoveryTargets(
   aggregationResult: AggregationResultArtifactContent,
-): TopicCandidateArtifactContent {
-  const candidates = [...aggregationResult.topic_statistics]
+): CandidateDiscoveryTarget[] {
+  return [...aggregationResult.topic_statistics]
     .sort((left, right) =>
       left.registry_version - right.registry_version
       || left.topic_id.localeCompare(right.topic_id))
-    .map((topicStatistics) =>
-      buildTopicCandidate(aggregationResult, topicStatistics));
+    .map((topicStatistics) => ({
+      topic_id: topicStatistics.topic_id,
+      registry_version: topicStatistics.registry_version,
+    }));
+}
+
+export function buildTopicCandidateContent(
+  aggregationResult: AggregationResultArtifactContent,
+  input: CandidateDiscoveryBuilderInput,
+): TopicCandidateArtifactContent {
+  const topicStatistics = aggregationResult.topic_statistics.find((topic) =>
+    topic.topic_id === input.topic_id
+      && topic.registry_version === input.registry_version);
+
+  if (topicStatistics === undefined) {
+    throw new Error(
+      "Candidate Discovery target does not exist in Aggregation Result.",
+    );
+  }
+
+  const candidate = buildTopicCandidate(aggregationResult, topicStatistics);
 
   return {
     discovery_context: {
@@ -31,10 +57,31 @@ export function buildTopicCandidateContent(
         aggregationResult.aggregation_context.aggregation_version,
       aggregation_configuration_version:
         aggregationResult.aggregation_context.aggregation_configuration_version,
-      candidate_count: candidates.length,
+      candidate_count: 1,
     },
-    candidates,
+    candidates: [candidate],
   };
+}
+
+export function topicCandidateArtifactId(
+  aggregationResult: AggregationResultArtifactContent,
+  input: CandidateDiscoveryBuilderInput,
+): ReservedArtifactId {
+  return `topic-candidate-artifact:${stableHash({
+    aggregation_id: aggregationResult.aggregation_context.aggregation_id,
+    aggregation_version:
+      aggregationResult.aggregation_context.aggregation_version,
+    candidate_id: `topic-candidate:${stableHash({
+      aggregation_id: aggregationResult.aggregation_context.aggregation_id,
+      aggregation_version:
+        aggregationResult.aggregation_context.aggregation_version,
+      candidate_discovery_version: CANDIDATE_DISCOVERY_VERSION,
+      candidate_version: TOPIC_CANDIDATE_VERSION,
+      proposed_topic_id: input.topic_id,
+      registry_version: input.registry_version,
+    })}`,
+    candidate_discovery_version: CANDIDATE_DISCOVERY_VERSION,
+  })}` as ReservedArtifactId;
 }
 
 function buildTopicCandidate(

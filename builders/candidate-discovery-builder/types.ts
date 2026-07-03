@@ -6,7 +6,10 @@ import type {
   TopicCandidateArtifactContent,
 } from "../../contracts/artifacts/topic-candidate-artifact-content.js";
 
-export type CandidateDiscoveryBuilderInput = Record<string, never>;
+export type CandidateDiscoveryBuilderInput = {
+  topic_id: string;
+  registry_version: number;
+};
 
 export type CandidateDiscoveryBuilderDependencies = {
   aggregation_result: Artifact<AggregationResultArtifactContent>;

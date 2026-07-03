@@ -19,6 +19,10 @@ import { BuilderRegistry } from "../../../packages/builder-framework/src/builder
 import { stableHash } from "../../../src/shared/hashing/stable-hash.js";
 import { CandidateDiscoveryBuilder } from "../builder.js";
 import {
+  listCandidateDiscoveryTargets,
+  topicCandidateArtifactId,
+} from "../candidate-discovery.js";
+import {
   CANDIDATE_DISCOVERY_BUILDER_TYPE,
   CANDIDATE_DISCOVERY_VERSION,
   TOPIC_CANDIDATE_ARTIFACT_TYPE,
@@ -28,17 +32,25 @@ import {
 import type { CandidateDiscoveryBuilderInput } from "../types.js";
 
 describe("CandidateDiscoveryBuilder", () => {
-  it("creates deterministic Topic Candidate governance content from Aggregation Result", async () => {
+  it("creates one deterministic Topic Candidate Governance Artifact per target", async () => {
     const firstAggregation = aggregationArtifact(baseAggregationContent());
     const secondAggregation = aggregationArtifact({
       ...baseAggregationContent(),
       topic_statistics: [...baseAggregationContent().topic_statistics].reverse(),
     });
+    const input: CandidateDiscoveryBuilderInput = {
+      topic_id: "artificial_intelligence",
+      registry_version: 1,
+    };
 
-    const first = await executeCandidateDiscovery(firstAggregation);
-    const second = await executeCandidateDiscovery(secondAggregation);
+    const first = await executeCandidateDiscovery(firstAggregation, input);
+    const second = await executeCandidateDiscovery(secondAggregation, input);
 
     assert.equal(first.identity.artifact_type, "topic_candidate");
+    assert.equal(
+      first.identity.artifact_id,
+      topicCandidateArtifactId(firstAggregation.content, input),
+    );
     assert.equal(
       first.lineage.generation_context.builder_type,
       CANDIDATE_DISCOVERY_BUILDER_TYPE,
@@ -52,15 +64,15 @@ describe("CandidateDiscoveryBuilder", () => {
         input_hash: firstAggregation.metadata.input_hash,
       },
     ]);
-    assert.equal(first.content.discovery_context.candidate_count, 3);
+    assert.equal(first.content.discovery_context.candidate_count, 1);
     assert.equal(
       first.content.discovery_context.candidate_discovery_version,
       CANDIDATE_DISCOVERY_VERSION,
     );
-    assert.deepEqual(
-      first.content.candidates.map((candidate) =>
-        candidate.proposed_concept.proposed_topic_id),
-      ["artificial_intelligence", "cloud_infrastructure", "regulation"],
+    assert.equal(first.content.candidates.length, 1);
+    assert.equal(
+      first.content.candidates[0].proposed_concept.proposed_topic_id,
+      "artificial_intelligence",
     );
     assert.equal(first.metadata.artifact_hash, calculateArtifactHash(first.content));
     assert.deepEqual(first.content, second.content);
@@ -68,13 +80,12 @@ describe("CandidateDiscoveryBuilder", () => {
 
   it("preserves aggregation evidence without recomputing upstream execution records", async () => {
     const aggregation = aggregationArtifact(baseAggregationContent());
-    const artifact = await executeCandidateDiscovery(aggregation);
-    const aiCandidate = artifact.content.candidates.find(
-      (candidate) =>
-        candidate.proposed_concept.proposed_topic_id === "artificial_intelligence",
-    );
+    const artifact = await executeCandidateDiscovery(aggregation, {
+      topic_id: "artificial_intelligence",
+      registry_version: 1,
+    });
+    const aiCandidate = artifact.content.candidates[0];
 
-    assert.ok(aiCandidate);
     assert.equal(aiCandidate.evidence_summary.candidate_count, 4);
     assert.equal(aiCandidate.evidence_summary.accepted_count, 3);
     assert.equal(aiCandidate.evidence_summary.rejected_count, 1);
@@ -91,9 +102,23 @@ describe("CandidateDiscoveryBuilder", () => {
     assert.equal("topic_registry" in artifact.content, false);
   });
 
+  it("lists deterministic targets in artifact emission order", () => {
+    assert.deepEqual(
+      listCandidateDiscoveryTargets(baseAggregationContent()),
+      [
+        { topic_id: "artificial_intelligence", registry_version: 1 },
+        { topic_id: "cloud_infrastructure", registry_version: 1 },
+        { topic_id: "regulation", registry_version: 2 },
+      ],
+    );
+  });
+
   it("rejects missing Aggregation Result dependency", async () => {
     await assert.rejects(
-      () => executeCandidateDiscovery(undefined),
+      () => executeCandidateDiscovery(undefined, {
+        topic_id: "artificial_intelligence",
+        registry_version: 1,
+      }),
       BuilderValidationError,
     );
   });
@@ -102,9 +127,16 @@ describe("CandidateDiscoveryBuilder", () => {
     const aggregation = aggregationArtifact(baseAggregationContent());
 
     await assert.rejects(
-      () => executeCandidateDiscovery(aggregation, {
-        topic_registry: artifact("registry-1", "topic_registry", {}),
-      }),
+      () => executeCandidateDiscovery(
+        aggregation,
+        {
+          topic_id: "artificial_intelligence",
+          registry_version: 1,
+        },
+        {
+          topic_registry: artifact("registry-1", "topic_registry", {}),
+        },
+      ),
       BuilderValidationError,
     );
   });
@@ -114,7 +146,22 @@ describe("CandidateDiscoveryBuilder", () => {
     aggregation.content.topic_statistics[0]!.candidate_count = 99;
 
     await assert.rejects(
-      () => executeCandidateDiscovery(aggregation),
+      () => executeCandidateDiscovery(aggregation, {
+        topic_id: "regulation",
+        registry_version: 2,
+      }),
+      BuilderValidationError,
+    );
+  });
+
+  it("rejects target topics absent from the Aggregation Result", async () => {
+    const aggregation = aggregationArtifact(baseAggregationContent());
+
+    await assert.rejects(
+      () => executeCandidateDiscovery(aggregation, {
+        topic_id: "missing_topic",
+        registry_version: 1,
+      }),
       BuilderValidationError,
     );
   });
@@ -122,6 +169,10 @@ describe("CandidateDiscoveryBuilder", () => {
 
 async function executeCandidateDiscovery(
   aggregationResult?: Artifact<AggregationResultArtifactContent>,
+  input: CandidateDiscoveryBuilderInput = {
+    topic_id: "artificial_intelligence",
+    registry_version: 1,
+  },
   extraDependencies: Record<string, Artifact<unknown>> = {},
 ): Promise<Artifact<TopicCandidateArtifactContent>> {
   const registry = new BuilderRegistry();
@@ -130,8 +181,6 @@ async function executeCandidateDiscovery(
     registry,
     new ArtifactService(repository),
   );
-  const input: CandidateDiscoveryBuilderInput = {};
-
   registry.registerBuilder({
     builder_type: CANDIDATE_DISCOVERY_BUILDER_TYPE,
     version: CANDIDATE_DISCOVERY_VERSION,
@@ -145,6 +194,9 @@ async function executeCandidateDiscovery(
     TopicCandidateArtifactContent
   >({
     builderType: CANDIDATE_DISCOVERY_BUILDER_TYPE,
+    artifactId: aggregationResult === undefined
+      ? undefined
+      : topicCandidateArtifactId(aggregationResult.content, input),
     companyId: "PLATFORM",
     periodId: "2026-Q3",
     executionId: "candidate-discovery-execution",

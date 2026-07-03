@@ -1,0 +1,44 @@
+{
+  "schema_version": "governance-policy-registry-v1",
+  "registry_id": "governance-policy-registry",
+  "policies": [
+    {
+      "schema_version": "governance-policy-v1",
+      "policy_id": "topic-candidate-governance",
+      "policy_version": "topic-candidate-governance-v1",
+      "status": "active",
+      "description": "Bootstrap deterministic governance policy for Topic Candidate evaluation.",
+      "compatibility": {
+        "topic_candidate_schema_version": "topic-candidate-artifact-v1",
+        "governance_engine_version": "governance-engine-v1"
+      },
+      "rules": [
+        {
+          "rule_id": "candidate-eligibility-v1",
+          "rule_type": "candidate_eligibility",
+          "description": "Evaluate whether the Topic Candidate is structurally eligible for governance execution.",
+          "parameters": {
+            "required_candidate_type": "topic_candidate"
+          }
+        },
+        {
+          "rule_id": "required-evidence-presence-v1",
+          "rule_type": "required_evidence_presence",
+          "description": "Evaluate whether the Topic Candidate contains deterministic supporting evidence.",
+          "parameters": {
+            "minimum_candidate_count": 1,
+            "minimum_company_count": 1
+          }
+        },
+        {
+          "rule_id": "required-registry-context-presence-v1",
+          "rule_type": "required_registry_context_presence",
+          "description": "Evaluate whether the Topic Candidate preserves required registry context.",
+          "parameters": {
+            "require_registry_version": true
+          }
+        }
+      ]
+    }
+  ]
+}

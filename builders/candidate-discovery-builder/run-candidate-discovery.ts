@@ -23,6 +23,10 @@ import { createLogger } from "../../src/shared/logger.js";
 import { MemoryArtifactRepository } from "../upstream-pipeline/memory-artifact-repository.js";
 import { CandidateDiscoveryBuilder } from "./builder.js";
 import {
+  listCandidateDiscoveryTargets,
+  topicCandidateArtifactId,
+} from "./candidate-discovery.js";
+import {
   CANDIDATE_DISCOVERY_BUILDER_TYPE,
   CANDIDATE_DISCOVERY_VERSION,
   TOPIC_CANDIDATE_ARTIFACT_TYPE,
@@ -47,7 +51,6 @@ export async function runCandidateDiscoveryReplay(
   const aggregationResult = await loadAggregationResult(
     args.aggregationResultPath,
   );
-  const input: CandidateDiscoveryBuilderInput = {};
   const registry = new BuilderRegistry();
   const repository = new MemoryArtifactRepository();
   const executor = new BuilderExecutor(
@@ -70,27 +73,42 @@ export async function runCandidateDiscoveryReplay(
     topic_statistics_count: aggregationResult.content.topic_statistics.length,
   });
 
-  const artifact = await executor.executeBuilder<
-    CandidateDiscoveryBuilderInput,
-    TopicCandidateArtifactContent
-  >({
-    builderType: CANDIDATE_DISCOVERY_BUILDER_TYPE,
-    companyId: "PLATFORM",
-    periodId: "PLATFORM_INTELLIGENCE",
-    executionId: "platform:candidate-discovery-replay",
-    input,
-    inputHash: stableHash(input),
-    dependencies: {
-      aggregation_result: aggregationResult,
-    },
-    generatedAt: new Date().toISOString(),
-  });
+  const generatedAt = new Date().toISOString();
+  const artifacts: Array<Artifact<TopicCandidateArtifactContent>> = [];
 
-  await writeJson(args.outputPath, artifact);
+  for (const target of listCandidateDiscoveryTargets(aggregationResult.content)) {
+    const input: CandidateDiscoveryBuilderInput = {
+      topic_id: target.topic_id,
+      registry_version: target.registry_version,
+    };
+
+    artifacts.push(await executor.executeBuilder<
+      CandidateDiscoveryBuilderInput,
+      TopicCandidateArtifactContent
+    >({
+      builderType: CANDIDATE_DISCOVERY_BUILDER_TYPE,
+      artifactId: topicCandidateArtifactId(aggregationResult.content, input),
+      companyId: "PLATFORM",
+      periodId: "PLATFORM_INTELLIGENCE",
+      executionId:
+        `platform:candidate-discovery-replay:${target.registry_version}:${target.topic_id}`,
+      input,
+      inputHash: stableHash(input),
+      dependencies: {
+        aggregation_result: aggregationResult,
+      },
+      generatedAt,
+    }));
+  }
+
+  await writeJson(args.outputPath, artifacts);
 
   logger.info("Candidate Discovery replay completed.", {
-    candidate_count: artifact.content.discovery_context.candidate_count,
-    aggregation_dependency_count: artifact.lineage.upstream_dependencies.length,
+    artifact_count: artifacts.length,
+    candidate_count: artifacts.length,
+    aggregation_dependency_count:
+      artifacts.reduce((count, artifact) =>
+        count + artifact.lineage.upstream_dependencies.length, 0),
     output_path: resolve(args.outputPath),
   });
 }

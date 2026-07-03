@@ -4,6 +4,7 @@ import type { ArtifactGovernance } from "../../../contracts/artifacts/artifact-g
 import type { ArtifactLineage, ModelReference, PromptReference } from "../../../contracts/artifacts/artifact-lineage.js";
 import type { ArtifactService } from "../../artifact-framework/src/artifact-service.js";
 import type { BuilderDependencies, BuilderContext } from "./builder-context.js";
+import type { ReservedArtifactId } from "../../artifact-framework/src/artifact-types.js";
 import {
   BuilderDependencyError,
   BuilderError,
@@ -19,6 +20,7 @@ import { validateBuilderInput, validateBuilderOutput } from "./builder-validator
 
 export type ExecuteBuilderParams<TInput> = {
   builderType: string;
+  artifactId?: ReservedArtifactId;
   companyId: string;
   periodId: string;
   executionId: string;
@@ -102,6 +104,7 @@ export class BuilderExecutor {
       validateBuilderOutput(result);
 
       const artifact = await this.artifactService.createArtifact<TOutput>({
+        artifact_id: params.artifactId,
         artifact_type: definition.artifact_type,
         company_id: params.companyId,
         period_id: params.periodId,
