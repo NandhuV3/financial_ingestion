@@ -17,6 +17,7 @@ import {
   renderPlatformError,
 } from "../../packages/builder-framework/src/platform-error-renderer.js";
 import { createLogger } from "../shared/logger.js";
+import { DEMO_ARTIFACTS_DIRECTORY } from "../../builders/upstream-pipeline/demo-output-paths.js";
 import { MemoryArtifactRepository } from "../../builders/upstream-pipeline/memory-artifact-repository.js";
 import { loadGovernancePolicyRegistry } from "../governance-policy-registry/index.js";
 import { GovernanceEngine } from "./executor.js";
@@ -84,8 +85,9 @@ export async function runGovernanceReplay(
 }
 
 export function parseArguments(args: string[]): GovernanceReplayArguments {
-  let topicCandidatesPath = "output/demo/06-topic-candidates.json";
-  let outputPath = "output/demo/08-governance-decisions.json";
+  let topicCandidatesPath =
+    `${DEMO_ARTIFACTS_DIRECTORY}/06-topic-candidates.json`;
+  let outputPath = `${DEMO_ARTIFACTS_DIRECTORY}/08-governance-decisions.json`;
   let generatedAt: string | undefined;
   let generationDurationMs = 0;
   let debug = false;
@@ -170,7 +172,7 @@ async function loadTopicCandidateArtifacts(
       "Governance replay input must be a JSON array of Topic Candidate Governance Artifacts.",
       {
         suggestedAction:
-          "Provide Topic Candidate artifacts, such as output/demo/06-topic-candidates.json.",
+          `Provide Topic Candidate artifacts, such as ${DEMO_ARTIFACTS_DIRECTORY}/06-topic-candidates.json.`,
       },
     );
   }

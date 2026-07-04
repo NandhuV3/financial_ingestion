@@ -44,6 +44,11 @@ import { MemoryArtifactRepository } from "../upstream-pipeline/memory-artifact-r
 import { registerUpstreamBuilders } from "../upstream-pipeline/register-builders.js";
 import { writeArtifactDump } from "../upstream-pipeline/artifact-dump.js";
 import {
+  demoArtifactsDirectory,
+  demoExecutionDirectory,
+  DEMO_OUTPUT_ROOT,
+} from "../upstream-pipeline/demo-output-paths.js";
+import {
   TOPIC_ASSIGNMENT_BUILDER_TYPE,
   TOPIC_ASSIGNMENT_EMBEDDING_MODEL,
   TOPIC_ASSIGNMENT_PIPELINE_VERSION,
@@ -183,12 +188,12 @@ export async function runTopicAssignmentReplay(
     });
 
   const outputPath = await writeArtifactDump(
-    args.outputDirectory,
+    demoArtifactsDirectory(args.outputDirectory),
     "topic_assignment",
     topicAssignment,
   );
   const topicSignalsPath = await writeTopicSignals(
-    args.outputDirectory,
+    demoExecutionDirectory(args.outputDirectory),
     result.topic_signals,
   );
 
@@ -205,10 +210,10 @@ export async function runTopicAssignmentReplay(
 export function parseArguments(
   args: string[],
 ): TopicAssignmentReplayArguments {
-  let themesPath = "output/demo/02-themes.json";
+  let themesPath = `${DEMO_OUTPUT_ROOT}/artifacts/02-themes.json`;
   let topicRegistryPath = "data/registry/topics.json";
   let embeddingStorePath = "src/embedding-store/embedding-execution-records.json";
-  let outputDirectory = "output/demo";
+  let outputDirectory = DEMO_OUTPUT_ROOT;
   let originalExecutionId: string | undefined;
   let originalGeneratedAt: string | undefined;
   let debug = false;

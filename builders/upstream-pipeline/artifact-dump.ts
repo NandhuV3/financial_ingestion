@@ -5,6 +5,7 @@ import type {
   UpstreamPipelineArtifactObserver,
   UpstreamPipelineStage,
 } from "./run-upstream-pipeline.js";
+import { DEMO_ARTIFACTS_DIRECTORY } from "./demo-output-paths.js";
 
 const ARTIFACT_DUMP_FILENAMES: Record<UpstreamPipelineStage, string> = {
   filing: "00-filing.json",
@@ -14,7 +15,7 @@ const ARTIFACT_DUMP_FILENAMES: Record<UpstreamPipelineStage, string> = {
 };
 
 export function createArtifactDumpObserver(
-  outputDirectory = "output/demo",
+  outputDirectory = DEMO_ARTIFACTS_DIRECTORY,
 ): {
   outputDirectory: string;
   observer: UpstreamPipelineArtifactObserver;
@@ -30,7 +31,7 @@ export function createArtifactDumpObserver(
 }
 
 export async function resetArtifactDumps(
-  outputDirectory = "output/demo",
+  outputDirectory = DEMO_ARTIFACTS_DIRECTORY,
 ): Promise<void> {
   const absoluteOutputDirectory = resolve(outputDirectory);
 

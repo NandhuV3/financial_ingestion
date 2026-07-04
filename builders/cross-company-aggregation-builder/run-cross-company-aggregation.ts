@@ -19,6 +19,10 @@ import {
 } from "../../packages/builder-framework/src/platform-error-renderer.js";
 import { stableHash } from "../../src/shared/hashing/stable-hash.js";
 import { createLogger } from "../../src/shared/logger.js";
+import {
+  DEMO_ARTIFACTS_DIRECTORY,
+  DEMO_EXECUTION_DIRECTORY,
+} from "../upstream-pipeline/demo-output-paths.js";
 import { MemoryArtifactRepository } from "../upstream-pipeline/memory-artifact-repository.js";
 import { CrossCompanyAggregationBuilder } from "./builder.js";
 import { aggregationResultArtifactId } from "./aggregator.js";
@@ -109,8 +113,8 @@ export async function runCrossCompanyAggregationReplay(
 export function parseArguments(
   args: string[],
 ): CrossCompanyAggregationReplayArguments {
-  let topicSignalsPath = "output/demo/04-topic-signals.json";
-  let outputPath = "output/demo/05-aggregation-result.json";
+  let topicSignalsPath = `${DEMO_EXECUTION_DIRECTORY}/04-topic-signals.json`;
+  let outputPath = `${DEMO_ARTIFACTS_DIRECTORY}/05-aggregation-result.json`;
   let aggregationConfigurationVersion = "cross-company-default-v1";
   let generatedAt: string | undefined;
   let generationDurationMs = 0;
@@ -186,7 +190,7 @@ async function loadTopicSignals(
       "Topic Signal replay input must be a JSON array.",
       {
         suggestedAction:
-          "Provide a Topic Signal JSON array, such as output/demo/04-topic-signals.json.",
+          `Provide a Topic Signal JSON array, such as ${DEMO_EXECUTION_DIRECTORY}/04-topic-signals.json.`,
       },
     );
   }

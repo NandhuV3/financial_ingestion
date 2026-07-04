@@ -52,10 +52,16 @@ describe("Topic Assignment replay runner", () => {
     ]);
 
     const topicAssignment = JSON.parse(
-      await readFile(join(paths.outputDirectory, "03-topic-assignment.json"), "utf8"),
+      await readFile(
+        join(paths.outputDirectory, "artifacts", "03-topic-assignment.json"),
+        "utf8",
+      ),
     ) as Artifact<unknown>;
     const topicSignals = JSON.parse(
-      await readFile(join(paths.outputDirectory, "04-topic-signals.json"), "utf8"),
+      await readFile(
+        join(paths.outputDirectory, "execution", "04-topic-signals.json"),
+        "utf8",
+      ),
     ) as TopicSignalExecutionRecord[];
 
     assert.equal(topicAssignment.identity.artifact_type, "topic_assignment");

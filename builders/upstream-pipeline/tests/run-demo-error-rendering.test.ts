@@ -13,6 +13,7 @@ import {
   renderPlatformError,
 } from "../../../packages/builder-framework/src/platform-error-renderer.js";
 import { parseArguments, runDemoCli } from "../run-demo.js";
+import { DEMO_ARTIFACTS_DIRECTORY } from "../demo-output-paths.js";
 
 describe("pipeline error rendering", () => {
   it("renders BuilderValidationError without stack traces by default", () => {
@@ -108,7 +109,7 @@ describe("pipeline error rendering", () => {
 
     assert.equal(parsed.ticker, "MSFT");
     assert.equal(parsed.filingDate, undefined);
-    assert.equal(parsed.outputDirectory, "output/demo");
+    assert.equal(parsed.outputDirectory, DEMO_ARTIFACTS_DIRECTORY);
   });
 
   it("renders CLI failures without stacks by default and with stacks in debug mode", async () => {

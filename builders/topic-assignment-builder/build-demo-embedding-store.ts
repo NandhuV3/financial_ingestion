@@ -31,6 +31,10 @@ import {
 } from "../../src/embedding-store/index.js";
 import { createLogger } from "../../src/shared/logger.js";
 import { loadEnv } from "../../src/shared/config/load.env.js";
+import {
+  DEMO_ARTIFACTS_DIRECTORY,
+  DEMO_EXECUTION_DIRECTORY,
+} from "../upstream-pipeline/demo-output-paths.js";
 import { OpenAIResponsesLLMClient } from "../upstream-pipeline/openai-llm-client.js";
 import { MemoryArtifactRepository } from "../upstream-pipeline/memory-artifact-repository.js";
 import { registerUpstreamBuilders } from "../upstream-pipeline/register-builders.js";
@@ -155,9 +159,10 @@ export async function buildDemoEmbeddingStore(
 }
 
 export function parseArguments(args: string[]): DemoEmbeddingStoreArguments {
-  let themesPath = "output/demo/02-themes.json";
+  let themesPath = `${DEMO_ARTIFACTS_DIRECTORY}/02-themes.json`;
   let topicRegistryPath = "data/registry/topics.json";
-  let outputPath = "output/demo/07-embedding-execution-records.json";
+  let outputPath =
+    `${DEMO_EXECUTION_DIRECTORY}/07-embedding-execution-records.json`;
   let debug = false;
 
   for (let index = 0; index < args.length; index += 1) {

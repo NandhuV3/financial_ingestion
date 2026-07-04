@@ -20,6 +20,7 @@ import {
 } from "../../packages/builder-framework/src/platform-error-renderer.js";
 import { stableHash } from "../../src/shared/hashing/stable-hash.js";
 import { createLogger } from "../../src/shared/logger.js";
+import { DEMO_ARTIFACTS_DIRECTORY } from "../upstream-pipeline/demo-output-paths.js";
 import { MemoryArtifactRepository } from "../upstream-pipeline/memory-artifact-repository.js";
 import { CandidateDiscoveryBuilder } from "./builder.js";
 import {
@@ -121,8 +122,9 @@ export async function runCandidateDiscoveryReplay(
 export function parseArguments(
   args: string[],
 ): CandidateDiscoveryReplayArguments {
-  let aggregationResultPath = "output/demo/05-aggregation-result.json";
-  let outputPath = "output/demo/06-topic-candidates.json";
+  let aggregationResultPath =
+    `${DEMO_ARTIFACTS_DIRECTORY}/05-aggregation-result.json`;
+  let outputPath = `${DEMO_ARTIFACTS_DIRECTORY}/06-topic-candidates.json`;
   let candidateDiscoveryVersion = CANDIDATE_DISCOVERY_VERSION;
   let generatedAt: string | undefined;
   let generationDurationMs = 0;
@@ -211,7 +213,7 @@ async function loadAggregationResult(
       "Candidate Discovery replay input must be an Aggregation Result Platform Artifact.",
       {
         suggestedAction:
-          "Provide an Aggregation Result artifact, such as output/demo/05-aggregation-result.json.",
+          `Provide an Aggregation Result artifact, such as ${DEMO_ARTIFACTS_DIRECTORY}/05-aggregation-result.json.`,
       },
     );
   }

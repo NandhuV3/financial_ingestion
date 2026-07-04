@@ -21,6 +21,7 @@ import {
   createArtifactDumpObserver,
   resetArtifactDumps,
 } from "./artifact-dump.js";
+import { DEMO_ARTIFACTS_DIRECTORY } from "./demo-output-paths.js";
 import { MemoryArtifactRepository } from "./memory-artifact-repository.js";
 import {
   loadNormalizedFilingBuilderInput,
@@ -165,7 +166,7 @@ function parseRegistryVersion(version: string): number {
 export function parseArguments(args: string[]): DemoArguments {
   let ticker = "MSFT";
   let filingDate: string | undefined;
-  let outputDirectory = "output/demo";
+  let outputDirectory = DEMO_ARTIFACTS_DIRECTORY;
   let debug = false;
 
   for (let index = 0; index < args.length; index += 1) {
