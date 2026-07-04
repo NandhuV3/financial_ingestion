@@ -5,7 +5,11 @@
  * Candidate Governance Artifact with one Governance Policy and produce one
  * Governance Decision object.
  */
-export { GovernanceEngine } from "./executor.js";
+export {
+  GovernanceEngine,
+  governanceDecisionArtifactContent,
+  governanceDecisionArtifactId,
+} from "./executor.js";
 export {
   GovernanceEngineValidationError,
   validateGovernanceDecision,

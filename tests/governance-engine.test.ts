@@ -3,19 +3,28 @@ import { describe, it } from "node:test";
 import type { Artifact } from "../contracts/artifacts/artifact.js";
 import { ArtifactStatus } from "../contracts/artifacts/artifact-status.js";
 import type {
+  GovernanceDecisionArtifactContent,
+} from "../contracts/artifacts/governance-decision-artifact-content.js";
+import type {
   TopicCandidate,
   TopicCandidateArtifactContent,
 } from "../contracts/artifacts/topic-candidate-artifact-content.js";
 import {
+  GOVERNANCE_DECISION_ARTIFACT_TYPE,
+  GOVERNANCE_DECISION_PIPELINE_VERSION,
+  GOVERNANCE_DECISION_SCHEMA_VERSION,
   GOVERNANCE_DECISION_VERSION,
+  GOVERNANCE_ENGINE_ARTIFACT_PRODUCER,
   GOVERNANCE_ENGINE_VERSION,
 } from "../contracts/governance/governance-engine-contract.js";
 import type { GovernanceEngineInput } from "../contracts/governance/governance-engine-types.js";
 import type { GovernancePolicy } from "../contracts/governance/governance-policy-registry-types.js";
 import { calculateArtifactHash } from "../packages/artifact-framework/src/artifact-service.js";
+import { ArtifactService } from "../packages/artifact-framework/src/artifact-service.js";
 import { GovernanceEngine } from "../src/governance-engine/index.js";
 import { GovernanceEngineValidationError } from "../src/governance-engine/validator.js";
 import { loadGovernancePolicyRegistry } from "../src/governance-policy-registry/index.js";
+import { MemoryArtifactRepository } from "../builders/upstream-pipeline/memory-artifact-repository.js";
 
 describe("Governance Engine", () => {
   it("produces one deterministic approved Governance Decision", async () => {
@@ -125,7 +134,90 @@ describe("Governance Engine", () => {
       GovernanceEngineValidationError,
     );
   });
+
+  it("persists one Governance Decision Governance Artifact through the Artifact Framework", async () => {
+    const input = await governanceInput();
+    const artifact = await persistGovernanceDecision(input);
+
+    assert.equal(artifact.identity.artifact_type, GOVERNANCE_DECISION_ARTIFACT_TYPE);
+    assert.equal(artifact.identity.company_id, input.topic_candidate_artifact.identity.company_id);
+    assert.equal(artifact.identity.period_id, input.topic_candidate_artifact.identity.period_id);
+    assert.equal(artifact.identity.version, 1);
+    assert.equal(artifact.metadata.schema_version, GOVERNANCE_DECISION_SCHEMA_VERSION);
+    assert.equal(artifact.metadata.pipeline_version, GOVERNANCE_DECISION_PIPELINE_VERSION);
+    assert.equal(artifact.metadata.artifact_hash, calculateArtifactHash(artifact.content));
+    assert.equal(artifact.content.decision_outcome, "approved");
+    assert.equal(artifact.content.candidate_reference.candidate_id, candidate().candidate_id);
+
+    const contentRecord = artifact.content as unknown as Record<string, unknown>;
+    const candidateReference = artifact.content.candidate_reference as unknown as Record<string, unknown>;
+
+    assert.equal(contentRecord.lineage, undefined);
+    assert.equal(candidateReference.artifact_hash, undefined);
+    assert.deepEqual(artifact.lineage.upstream_dependencies, [
+      {
+        artifact_id: input.topic_candidate_artifact.identity.artifact_id,
+        artifact_type: input.topic_candidate_artifact.identity.artifact_type,
+        version: input.topic_candidate_artifact.identity.version,
+        artifact_hash: input.topic_candidate_artifact.metadata.artifact_hash,
+        input_hash: input.topic_candidate_artifact.metadata.input_hash,
+      },
+    ]);
+    assert.equal(
+      artifact.lineage.generation_context.builder_type,
+      GOVERNANCE_ENGINE_ARTIFACT_PRODUCER,
+    );
+    assert.equal(
+      artifact.lineage.generation_context.execution_id,
+      input.execution_id,
+    );
+  });
+
+  it("produces deterministic Governance Decision artifact identity and hash", async () => {
+    const input = await governanceInput();
+    const first = await persistGovernanceDecision(input);
+    const second = await persistGovernanceDecision(input);
+
+    assert.equal(first.identity.artifact_id, second.identity.artifact_id);
+    assert.equal(first.metadata.artifact_hash, second.metadata.artifact_hash);
+    assert.deepEqual(first.content, second.content);
+    assert.deepEqual(first.lineage, second.lineage);
+  });
+
+  it("uses Artifact Framework versioning for repeated Governance Decision persistence", async () => {
+    const input = await governanceInput();
+    const repository = new MemoryArtifactRepository();
+    const artifactService = new ArtifactService(repository);
+    const engine = new GovernanceEngine();
+
+    const first = await engine.executeArtifact(input, artifactService, {
+      generatedAt: "2026-07-04T00:00:00.000Z",
+      generationDurationMs: 0,
+    });
+    const second = await engine.executeArtifact(input, artifactService, {
+      generatedAt: "2026-07-04T00:00:00.000Z",
+      generationDurationMs: 0,
+    });
+
+    assert.equal(first.identity.artifact_id, second.identity.artifact_id);
+    assert.equal(first.identity.version, 1);
+    assert.equal(second.identity.version, 2);
+    assert.equal(second.metadata.version, 2);
+  });
 });
+
+async function persistGovernanceDecision(
+  input: GovernanceEngineInput,
+): Promise<Artifact<GovernanceDecisionArtifactContent>> {
+  return new GovernanceEngine().executeArtifact(
+    input,
+    new ArtifactService(new MemoryArtifactRepository()),
+    {
+      generatedAt: "2026-07-04T00:00:00.000Z",
+      generationDurationMs: 0,
+    },
+  );
+}
 
 async function governanceInput(options: {
   candidate?: TopicCandidate;

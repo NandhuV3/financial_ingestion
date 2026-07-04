@@ -6,11 +6,19 @@
  * rules, and returns one Governance Decision object. It never persists,
  * mutates registries, changes policies, or performs semantic reasoning.
  */
+import type { Artifact } from "../../contracts/artifacts/artifact.js";
+import type {
+  GovernanceDecisionArtifactContent,
+} from "../../contracts/artifacts/governance-decision-artifact-content.js";
 import type {
   TopicCandidate,
 } from "../../contracts/artifacts/topic-candidate-artifact-content.js";
 import {
+  GOVERNANCE_DECISION_ARTIFACT_TYPE,
+  GOVERNANCE_DECISION_PIPELINE_VERSION,
+  GOVERNANCE_DECISION_SCHEMA_VERSION,
   GOVERNANCE_DECISION_VERSION,
+  GOVERNANCE_ENGINE_ARTIFACT_PRODUCER,
   GOVERNANCE_ENGINE_VERSION,
   type GovernancePolicyEvaluationRuleType,
   type GovernanceRuleResult,
@@ -24,6 +32,8 @@ import type {
 import type {
   GovernancePolicyRule,
 } from "../../contracts/governance/governance-policy-registry-types.js";
+import type { ArtifactService } from "../../packages/artifact-framework/src/artifact-service.js";
+import type { ReservedArtifactId } from "../../packages/artifact-framework/src/artifact-types.js";
 import { stableHash } from "../shared/hashing/stable-hash.js";
 import { createLogger } from "../shared/logger.js";
 import {
@@ -32,6 +42,11 @@ import {
 } from "./validator.js";
 
 const logger = createLogger("governance-engine");
+
+export type GovernanceDecisionArtifactOptions = {
+  generatedAt?: string;
+  generationDurationMs?: number;
+};
 
 export class GovernanceEngine {
   execute(input: GovernanceEngineInput): GovernanceDecision {
@@ -101,6 +116,92 @@ export class GovernanceEngine {
 
     return decision;
   }
+
+  async executeArtifact(
+    input: GovernanceEngineInput,
+    artifactService: ArtifactService,
+    options: GovernanceDecisionArtifactOptions = {},
+  ): Promise<Artifact<GovernanceDecisionArtifactContent>> {
+    const startedAt = Date.now();
+    const decision = this.execute(input);
+    const content = governanceDecisionArtifactContent(decision);
+
+    return artifactService.createArtifact<GovernanceDecisionArtifactContent>({
+      artifact_id: governanceDecisionArtifactId(content),
+      artifact_type: GOVERNANCE_DECISION_ARTIFACT_TYPE,
+      company_id: input.topic_candidate_artifact.identity.company_id,
+      period_id: input.topic_candidate_artifact.identity.period_id,
+      content,
+      lineage: {
+        upstream_dependencies: [
+          {
+            artifact_id:
+              input.topic_candidate_artifact.identity.artifact_id,
+            artifact_type:
+              input.topic_candidate_artifact.identity.artifact_type,
+            version: input.topic_candidate_artifact.identity.version,
+            artifact_hash:
+              input.topic_candidate_artifact.metadata.artifact_hash,
+            input_hash:
+              input.topic_candidate_artifact.metadata.input_hash,
+          },
+        ],
+        generation_context: {
+          builder_type: GOVERNANCE_ENGINE_ARTIFACT_PRODUCER,
+          execution_id: input.execution_id,
+        },
+      },
+      schema_version: GOVERNANCE_DECISION_SCHEMA_VERSION,
+      pipeline_version: GOVERNANCE_DECISION_PIPELINE_VERSION,
+      input_hash: governanceDecisionInputHash(input),
+      generation_duration_ms:
+        options.generationDurationMs ?? Date.now() - startedAt,
+      generated_at: options.generatedAt,
+    });
+  }
+}
+
+export function governanceDecisionArtifactContent(
+  decision: GovernanceDecision,
+): GovernanceDecisionArtifactContent {
+  return {
+    governance_decision_id: decision.governance_decision_id,
+    governance_policy_version: decision.governance_policy_version,
+    decision_version: decision.decision_version,
+    candidate_reference: {
+      artifact_id: decision.candidate_reference.artifact_id,
+      artifact_version: decision.candidate_reference.artifact_version,
+      candidate_id: decision.candidate_reference.candidate_id,
+      candidate_version: decision.candidate_reference.candidate_version,
+    },
+    decision_outcome: decision.decision_outcome,
+    decision_basis: decision.decision_basis,
+    registry_impact: decision.registry_impact,
+    governance_metadata: decision.governance_metadata,
+  };
+}
+
+export function governanceDecisionArtifactId(
+  content: GovernanceDecisionArtifactContent,
+): ReservedArtifactId {
+  return `governance-decision-artifact:${stableHash({
+    decision_version: content.decision_version,
+    governance_decision_id: content.governance_decision_id,
+    governance_policy_version: content.governance_policy_version,
+  })}` as ReservedArtifactId;
+}
+
+function governanceDecisionInputHash(input: GovernanceEngineInput): string {
+  return stableHash({
+    governance_engine_version: GOVERNANCE_ENGINE_VERSION,
+    governance_policy: input.governance_policy,
+    topic_candidate_artifact: {
+      artifact_hash: input.topic_candidate_artifact.metadata.artifact_hash,
+      artifact_id: input.topic_candidate_artifact.identity.artifact_id,
+      artifact_type: input.topic_candidate_artifact.identity.artifact_type,
+      version: input.topic_candidate_artifact.identity.version,
+    },
+  });
 }
 
 function evaluateRule(

@@ -7,6 +7,12 @@
  */
 export const GOVERNANCE_ENGINE_VERSION = "governance-engine-v1";
 export const GOVERNANCE_DECISION_VERSION = "governance-decision-v1";
+export const GOVERNANCE_ENGINE_ARTIFACT_PRODUCER = "governance-engine";
+export const GOVERNANCE_DECISION_ARTIFACT_TYPE = "governance_decision";
+export const GOVERNANCE_DECISION_SCHEMA_VERSION =
+  "governance-decision-artifact-v1";
+export const GOVERNANCE_DECISION_PIPELINE_VERSION =
+  "platform-governance-pipeline-v1";
 
 export const GOVERNANCE_DECISION_OUTCOMES = [
   "approved",
