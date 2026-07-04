@@ -5,6 +5,17 @@ import type {
   DependencyReference,
 } from "../../contracts/artifacts/artifact-lineage.js";
 import type {
+  EmbeddingExecutionRecord,
+} from "../../contracts/execution/embedding-execution-record.js";
+import type {
+  EmbeddingGeneratorInput,
+  EmbeddingGeneratorReader,
+} from "../../contracts/execution/embedding-generator-contract.js";
+import type {
+  EmbeddingResolverReader,
+  EmbeddingResolverRequest,
+} from "../../contracts/execution/embedding-resolver-contract.js";
+import type {
   TopicAssignmentArtifactContent,
 } from "../../contracts/artifacts/topic-assignment-artifact-content.js";
 import type {
@@ -25,14 +36,12 @@ import {
   normalizePlatformError,
   renderPlatformError,
 } from "../../packages/builder-framework/src/platform-error-renderer.js";
+import { EmbeddingResolver } from "../../src/embedding-resolver/index.js";
+import { loadEmbeddingStore } from "../../src/embedding-store/index.js";
 import { createLogger } from "../../src/shared/logger.js";
 import { loadEnv } from "../../src/shared/config/load.env.js";
-import { OpenAIResponsesLLMClient } from "../upstream-pipeline/openai-llm-client.js";
 import { MemoryArtifactRepository } from "../upstream-pipeline/memory-artifact-repository.js";
 import { registerUpstreamBuilders } from "../upstream-pipeline/register-builders.js";
-import {
-  createTopicAssignmentEmbeddingResolver,
-} from "../upstream-pipeline/register-builders.js";
 import { writeArtifactDump } from "../upstream-pipeline/artifact-dump.js";
 import {
   TOPIC_ASSIGNMENT_BUILDER_TYPE,
@@ -49,6 +58,7 @@ const logger = createLogger("topic-assignment-replay");
 export type TopicAssignmentReplayArguments = {
   themesPath: string;
   topicRegistryPath: string;
+  embeddingStorePath: string;
   outputDirectory: string;
   debug: boolean;
 };
@@ -57,26 +67,15 @@ export async function runTopicAssignmentReplay(
   rawArguments: string[],
 ): Promise<void> {
   const args = parseArguments(rawArguments);
-  const apiKey = process.env.OPENAI_API_KEY;
-
-  if (!apiKey) {
-    throw new ConfigurationError(
-      "OPENAI_API_KEY is required for Topic Assignment replay embeddings.",
-      {
-        suggestedAction:
-          "Set OPENAI_API_KEY in .env or the process environment and rerun Topic Assignment replay.",
-      },
-    );
-  }
 
   const themes = await loadJsonArtifact<ThemesArtifactContent>(args.themesPath);
   const repository = new MemoryArtifactRepository();
-  const embeddingClient = new OpenAIResponsesLLMClient(apiKey);
+  const embeddingStore = await loadEmbeddingStore(args.embeddingStorePath);
   const runtime = registerUpstreamBuilders({
     repository,
     promptResolver: new UnusedPromptResolver(),
     llmClient: new UnusedLLMClient(),
-    semanticEmbeddingProvider: embeddingClient,
+    semanticEmbeddingProvider: new UnusedSemanticEmbeddingProvider(),
   });
   const topicRegistry = await createTopicRegistryArtifact(
     runtime,
@@ -86,14 +85,21 @@ export async function runTopicAssignmentReplay(
     company_id: themes.content.company_id,
     period_id: themes.content.period_id,
     filing_id: themes.content.filing_id,
+    embedding_execution_mode: "REPLAY",
+  };
+  const artifactInputHashInput = {
+    company_id: topicAssignmentInput.company_id,
+    period_id: topicAssignmentInput.period_id,
+    filing_id: topicAssignmentInput.filing_id,
   };
   const generatedAt = new Date().toISOString();
 
-  logger.info("Executing Topic Assignment replay.", {
+  logger.info("Topic Assignment replay started.", {
     company_id: topicAssignmentInput.company_id,
     period_id: topicAssignmentInput.period_id,
     themes_path: args.themesPath,
     topic_registry_path: args.topicRegistryPath,
+    embedding_store_path: args.embeddingStorePath,
   });
 
   const executionId = [
@@ -104,13 +110,20 @@ export async function runTopicAssignmentReplay(
   const inputHash = calculateArtifactHash({
     themes: themes.metadata.artifact_hash,
     topic_registry: topicRegistry.metadata.artifact_hash,
-    input: topicAssignmentInput,
+    input: artifactInputHashInput,
   });
-  const builder = new TopicAssignmentBuilder(
-    createTopicAssignmentEmbeddingResolver(embeddingClient, {
-      execution_id: executionId,
-      producer: TOPIC_ASSIGNMENT_BUILDER_TYPE,
+  const replayEmbeddingResolver = new ReplayLoggingEmbeddingResolver(
+    new EmbeddingResolver({
+      store: embeddingStore,
+      generator: new ReplayForbiddenEmbeddingGenerator(),
+      execution_context: {
+        execution_id: executionId,
+        producer: TOPIC_ASSIGNMENT_BUILDER_TYPE,
+      },
     }),
+  );
+  const builder = new TopicAssignmentBuilder(
+    replayEmbeddingResolver,
   );
   const result = await builder.executeWithTopicSignals({
     companyId: topicAssignmentInput.company_id,
@@ -181,6 +194,7 @@ export function parseArguments(
 ): TopicAssignmentReplayArguments {
   let themesPath = "output/demo/02-themes.json";
   let topicRegistryPath = "data/registry/topics.json";
+  let embeddingStorePath = "src/embedding-store/embedding-execution-records.json";
   let outputDirectory = "output/demo";
   let debug = false;
 
@@ -200,6 +214,12 @@ export function parseArguments(
       continue;
     }
 
+    if (argument === "--embedding-store" && value) {
+      embeddingStorePath = value;
+      index += 1;
+      continue;
+    }
+
     if (argument === "--output" && value) {
       outputDirectory = value;
       index += 1;
@@ -215,7 +235,7 @@ export function parseArguments(
       `Unknown or incomplete argument: ${argument ?? ""}`,
       {
         suggestedAction:
-          "Use optional --themes <path>, --topic-registry <path>, --output <directory>, and --debug.",
+          "Use optional --themes <path>, --topic-registry <path>, --embedding-store <path>, --output <directory>, and --debug.",
       },
     );
   }
@@ -223,6 +243,7 @@ export function parseArguments(
   return {
     themesPath,
     topicRegistryPath,
+    embeddingStorePath,
     outputDirectory,
     debug,
   };
@@ -354,6 +375,64 @@ class UnusedLLMClient implements LLMClient {
     throw new PipelineExecutionError(
       "Topic Assignment replay must not invoke an LLM.",
     );
+  }
+}
+
+class UnusedSemanticEmbeddingProvider {
+  async embed(_input: {
+    model: string;
+    texts: string[];
+  }): Promise<number[][]> {
+    throw new PipelineExecutionError(
+      "Topic Assignment replay must not invoke an embedding provider.",
+    );
+  }
+}
+
+class ReplayForbiddenEmbeddingGenerator implements EmbeddingGeneratorReader {
+  async generate(
+    _input: EmbeddingGeneratorInput,
+  ): Promise<EmbeddingExecutionRecord> {
+    throw new PipelineExecutionError(
+      "Topic Assignment replay must not invoke the Embedding Generator.",
+    );
+  }
+}
+
+class ReplayLoggingEmbeddingResolver implements EmbeddingResolverReader {
+  constructor(private readonly delegate: EmbeddingResolverReader) {}
+
+  async resolve(
+    request: EmbeddingResolverRequest,
+  ): Promise<EmbeddingExecutionRecord> {
+    logger.info("Replay embedding resolution started.", {
+      source_type: request.source_type,
+      source_id: request.source_id,
+      source_hash: request.source_hash,
+      embedding_model_version: request.embedding_model_version,
+    });
+
+    try {
+      const record = await this.delegate.resolve(request);
+
+      logger.info("Replay Embedding Store hit.", {
+        source_type: request.source_type,
+        source_id: request.source_id,
+        record_id: record.record_id,
+      });
+
+      return record;
+    } catch (error) {
+      logger.error("Replay missing embedding.", {
+        source_type: request.source_type,
+        source_id: request.source_id,
+        source_hash: request.source_hash,
+        embedding_model_version: request.embedding_model_version,
+        error_message: error instanceof Error ? error.message : String(error),
+      });
+
+      throw error;
+    }
   }
 }
 
