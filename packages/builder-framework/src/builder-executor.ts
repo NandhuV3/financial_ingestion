@@ -29,6 +29,7 @@ export type ExecuteBuilderParams<TInput> = {
   dependencies?: BuilderDependencies;
   lineageDependencies?: BuilderDependencies;
   generatedAt?: string;
+  generationDurationMs?: number;
   evaluation?: ArtifactEvaluation;
   governance?: ArtifactGovernance;
 };
@@ -120,7 +121,8 @@ export class BuilderExecutor {
         schema_version: definition.schema_version,
         pipeline_version: definition.pipeline_version,
         input_hash: params.inputHash,
-        generation_duration_ms: Date.now() - startTime,
+        generation_duration_ms:
+          params.generationDurationMs ?? Date.now() - startTime,
         generated_at: params.generatedAt,
         evaluation: params.evaluation,
         governance: params.governance,

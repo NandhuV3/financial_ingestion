@@ -60,6 +60,8 @@ export type TopicAssignmentReplayArguments = {
   topicRegistryPath: string;
   embeddingStorePath: string;
   outputDirectory: string;
+  originalExecutionId?: string;
+  originalGeneratedAt?: string;
   debug: boolean;
 };
 
@@ -81,11 +83,20 @@ export async function runTopicAssignmentReplay(
     runtime,
     args.topicRegistryPath,
   );
+  const replayOriginalContext = {
+    execution_id: args.originalExecutionId ?? [
+      themes.content.company_id,
+      themes.content.period_id,
+      "topic-assignment-original",
+    ].join(":"),
+    generated_at: args.originalGeneratedAt ?? themes.metadata.generated_at,
+  };
   const topicAssignmentInput: TopicAssignmentBuilderInput = {
     company_id: themes.content.company_id,
     period_id: themes.content.period_id,
     filing_id: themes.content.filing_id,
     embedding_execution_mode: "REPLAY",
+    replay_original_execution_context: replayOriginalContext,
   };
   const artifactInputHashInput = {
     company_id: topicAssignmentInput.company_id,
@@ -100,6 +111,8 @@ export async function runTopicAssignmentReplay(
     themes_path: args.themesPath,
     topic_registry_path: args.topicRegistryPath,
     embedding_store_path: args.embeddingStorePath,
+    original_execution_id: replayOriginalContext.execution_id,
+    original_generated_at: replayOriginalContext.generated_at,
   });
 
   const executionId = [
@@ -196,6 +209,8 @@ export function parseArguments(
   let topicRegistryPath = "data/registry/topics.json";
   let embeddingStorePath = "src/embedding-store/embedding-execution-records.json";
   let outputDirectory = "output/demo";
+  let originalExecutionId: string | undefined;
+  let originalGeneratedAt: string | undefined;
   let debug = false;
 
   for (let index = 0; index < args.length; index += 1) {
@@ -226,6 +241,18 @@ export function parseArguments(
       continue;
     }
 
+    if (argument === "--original-execution-id" && value) {
+      originalExecutionId = value;
+      index += 1;
+      continue;
+    }
+
+    if (argument === "--original-generated-at" && value) {
+      originalGeneratedAt = value;
+      index += 1;
+      continue;
+    }
+
     if (argument === "--debug") {
       debug = true;
       continue;
@@ -235,7 +262,7 @@ export function parseArguments(
       `Unknown or incomplete argument: ${argument ?? ""}`,
       {
         suggestedAction:
-          "Use optional --themes <path>, --topic-registry <path>, --embedding-store <path>, --output <directory>, and --debug.",
+          "Use optional --themes <path>, --topic-registry <path>, --embedding-store <path>, --output <directory>, --original-execution-id <id>, --original-generated-at <timestamp>, and --debug.",
       },
     );
   }
@@ -245,6 +272,8 @@ export function parseArguments(
     topicRegistryPath,
     embeddingStorePath,
     outputDirectory,
+    originalExecutionId,
+    originalGeneratedAt,
     debug,
   };
 }

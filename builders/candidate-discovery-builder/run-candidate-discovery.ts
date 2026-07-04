@@ -41,6 +41,8 @@ export type CandidateDiscoveryReplayArguments = {
   aggregationResultPath: string;
   outputPath: string;
   candidateDiscoveryVersion: string;
+  generatedAt?: string;
+  generationDurationMs: number;
   debug: boolean;
 };
 
@@ -70,10 +72,12 @@ export async function runCandidateDiscoveryReplay(
     aggregation_result_path: args.aggregationResultPath,
     output_path: args.outputPath,
     candidate_discovery_version: args.candidateDiscoveryVersion,
+    generated_at: args.generatedAt ?? aggregationResult.metadata.generated_at,
+    generation_duration_ms: args.generationDurationMs,
     topic_statistics_count: aggregationResult.content.topic_statistics.length,
   });
 
-  const generatedAt = new Date().toISOString();
+  const generatedAt = args.generatedAt ?? aggregationResult.metadata.generated_at;
   const artifacts: Array<Artifact<TopicCandidateArtifactContent>> = [];
 
   for (const target of listCandidateDiscoveryTargets(aggregationResult.content)) {
@@ -98,6 +102,7 @@ export async function runCandidateDiscoveryReplay(
         aggregation_result: aggregationResult,
       },
       generatedAt,
+      generationDurationMs: args.generationDurationMs,
     }));
   }
 
@@ -119,6 +124,8 @@ export function parseArguments(
   let aggregationResultPath = "output/demo/05-aggregation-result.json";
   let outputPath = "output/demo/06-topic-candidates.json";
   let candidateDiscoveryVersion = CANDIDATE_DISCOVERY_VERSION;
+  let generatedAt: string | undefined;
+  let generationDurationMs = 0;
   let debug = false;
 
   for (let index = 0; index < args.length; index += 1) {
@@ -143,6 +150,18 @@ export function parseArguments(
       continue;
     }
 
+    if (argument === "--generated-at" && value) {
+      generatedAt = value;
+      index += 1;
+      continue;
+    }
+
+    if (argument === "--generation-duration-ms" && value) {
+      generationDurationMs = parseGenerationDurationMs(value);
+      index += 1;
+      continue;
+    }
+
     if (argument === "--debug") {
       debug = true;
       continue;
@@ -152,7 +171,7 @@ export function parseArguments(
       `Unknown or incomplete argument: ${argument ?? ""}`,
       {
         suggestedAction:
-          "Use optional --aggregation-result <path>, --output <path>, --candidate-discovery-version <version>, and --debug.",
+          "Use optional --aggregation-result <path>, --output <path>, --candidate-discovery-version <version>, --generated-at <timestamp>, --generation-duration-ms <milliseconds>, and --debug.",
       },
     );
   }
@@ -171,6 +190,8 @@ export function parseArguments(
     aggregationResultPath,
     outputPath,
     candidateDiscoveryVersion,
+    generatedAt,
+    generationDurationMs,
     debug,
   };
 }
@@ -203,6 +224,22 @@ async function writeJson(path: string, value: unknown): Promise<void> {
 
   await mkdir(dirname(outputPath), { recursive: true });
   await writeFile(outputPath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+function parseGenerationDurationMs(value: string): number {
+  const parsed = Number.parseInt(value, 10);
+
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new ConfigurationError(
+      `Invalid generation duration: ${value}`,
+      {
+        suggestedAction:
+          "Use --generation-duration-ms with a non-negative integer value.",
+      },
+    );
+  }
+
+  return parsed;
 }
 
 export async function runCandidateDiscoveryReplayCli(

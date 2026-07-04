@@ -16,7 +16,10 @@ import { BuilderExecutor } from "../../../packages/builder-framework/src/builder
 import { BuilderRegistry } from "../../../packages/builder-framework/src/builder-registry.js";
 import { BuilderValidationError } from "../../../packages/builder-framework/src/builder-errors.js";
 import { stableHash } from "../../../src/shared/hashing/stable-hash.js";
-import { buildTopicSignalExecutionReferences } from "../aggregator.js";
+import {
+  aggregationResultArtifactId,
+  buildTopicSignalExecutionReferences,
+} from "../aggregator.js";
 import { CrossCompanyAggregationBuilder } from "../builder.js";
 import {
   AGGREGATION_RESULT_ARTIFACT_TYPE,
@@ -54,6 +57,14 @@ describe("CrossCompanyAggregationBuilder", () => {
       first.metadata.artifact_hash,
       calculateArtifactHash(first.content),
     );
+    assert.equal(
+      first.identity.artifact_id,
+      aggregationResultArtifactId(baseInput()),
+    );
+    assert.equal(first.identity.artifact_id, second.identity.artifact_id);
+    assert.equal(first.metadata.generated_at, second.metadata.generated_at);
+    assert.equal(first.metadata.generation_duration_ms, 0);
+    assert.equal(second.metadata.generation_duration_ms, 0);
     assert.equal("signal_set" in first.content, false);
     assert.equal(
       first.content.topic_statistics.some((topic) => "signal_ids" in topic),
@@ -202,12 +213,14 @@ async function executeAggregation(
     AggregationResultArtifactContent
   >({
     builderType: CROSS_COMPANY_AGGREGATION_BUILDER_TYPE,
+    artifactId: aggregationResultArtifactId(input),
     companyId: "PLATFORM",
     periodId: "2026-Q3",
     executionId: "aggregation-execution",
     input,
     inputHash: stableHash(input),
     generatedAt: "2026-07-01T00:00:00.000Z",
+    generationDurationMs: 0,
   });
 }
 

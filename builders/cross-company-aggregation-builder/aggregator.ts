@@ -19,6 +19,7 @@ import {
   EXECUTION_RECORD_REFERENCE_SCHEMA_VERSION,
   type ExecutionRecordReference,
 } from "../../contracts/framework/execution-record-reference.js";
+import type { ReservedArtifactId } from "../../packages/artifact-framework/src/artifact-types.js";
 import { stableHash } from "../../src/shared/hashing/stable-hash.js";
 import {
   AGGREGATION_ASSIGNMENT_METHOD_VALUES,
@@ -26,6 +27,7 @@ import {
   CANDIDATE_DECISION_VALUES,
   CROSS_COMPANY_AGGREGATION_VERSION,
 } from "./contract.js";
+import type { CrossCompanyAggregationBuilderInput } from "./types.js";
 
 type TopicGroup = {
   topic_id: string;
@@ -134,12 +136,11 @@ export function buildAggregationResultContent(input: {
 
   return {
     aggregation_context: {
-      aggregation_id: `aggregation:${stableHash({
-        aggregation_configuration_version:
+      aggregation_id: aggregationId({
+        aggregationConfigurationVersion:
           input.aggregationConfigurationVersion,
-        aggregation_version: CROSS_COMPANY_AGGREGATION_VERSION,
-        signal_ids: signalIds,
-      })}`,
+        signalIds,
+      }),
       aggregation_version: CROSS_COMPANY_AGGREGATION_VERSION,
       aggregation_configuration_version: input.aggregationConfigurationVersion,
       signal_count: signalIds.length,
@@ -171,6 +172,26 @@ export function buildAggregationResultContent(input: {
         left.registry_version - right.registry_version
         || left.topic_id.localeCompare(right.topic_id)),
   };
+}
+
+export function aggregationResultArtifactId(
+  input: CrossCompanyAggregationBuilderInput,
+): ReservedArtifactId {
+  const signalIds = input.topic_signals
+    .map(topicSignalId)
+    .sort();
+  const id = aggregationId({
+    aggregationConfigurationVersion:
+      input.aggregation_configuration_version,
+    signalIds,
+  });
+
+  return `aggregation-result-artifact:${stableHash({
+    aggregation_id: id,
+    aggregation_configuration_version:
+      input.aggregation_configuration_version,
+    aggregation_version: CROSS_COMPANY_AGGREGATION_VERSION,
+  })}` as ReservedArtifactId;
 }
 
 export function topicSignalId(signal: TopicSignalExecutionRecord): string {
@@ -216,6 +237,18 @@ function signalReference(
     execution_id: signal.execution_context.execution_id,
     registry_version: signal.registry_context.registry_version,
   };
+}
+
+function aggregationId(input: {
+  aggregationConfigurationVersion: string;
+  signalIds: string[];
+}): string {
+  return `aggregation:${stableHash({
+    aggregation_configuration_version:
+      input.aggregationConfigurationVersion,
+    aggregation_version: CROSS_COMPANY_AGGREGATION_VERSION,
+    signal_ids: input.signalIds,
+  })}`;
 }
 
 function buildEvidenceStatistics(input: {

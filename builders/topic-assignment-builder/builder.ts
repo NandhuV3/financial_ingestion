@@ -91,6 +91,8 @@ export class TopicAssignmentBuilder implements Builder<
       left.topic_id.localeCompare(right.topic_id));
     const embeddingExecutionMode =
       context.input.embedding_execution_mode ?? "ORIGINAL_EXECUTION";
+    const topicSignalExecutionContext =
+      topicSignalExecutionContextFor(context, options.generatedAt);
     const themeEmbeddingRecords: EmbeddingExecutionRecord[] = [];
 
     for (const theme of orderedThemes) {
@@ -170,7 +172,7 @@ export class TopicAssignmentBuilder implements Builder<
           company_id: context.input.company_id,
           period_id: context.input.period_id,
           filing_id: context.input.filing_id,
-          execution_id: context.executionId,
+          execution_id: topicSignalExecutionContext.execution_id,
         },
         execution_references: embeddingExecutionReferencesForTheme(
           evaluation.theme_id,
@@ -194,7 +196,7 @@ export class TopicAssignmentBuilder implements Builder<
         },
         execution_metadata: {
           embedding_model: TOPIC_ASSIGNMENT_EMBEDDING_MODEL,
-          generated_at: options.generatedAt,
+          generated_at: topicSignalExecutionContext.generated_at,
         },
       })),
     };
@@ -228,6 +230,34 @@ export class TopicAssignmentBuilder implements Builder<
 
     return record;
   }
+}
+
+function topicSignalExecutionContextFor(
+  context: BuilderContext<TopicAssignmentBuilderInput>,
+  generatedAt: string,
+): {
+  execution_id: string;
+  generated_at: string;
+} {
+  if (context.input.embedding_execution_mode === "REPLAY") {
+    const originalContext = context.input.replay_original_execution_context;
+
+    if (originalContext === undefined) {
+      throw new BuilderValidationError(
+        "Topic Assignment replay requires original execution context.",
+      );
+    }
+
+    return {
+      execution_id: originalContext.execution_id,
+      generated_at: originalContext.generated_at,
+    };
+  }
+
+  return {
+    execution_id: context.executionId,
+    generated_at: generatedAt,
+  };
 }
 
 function embeddingExecutionReferencesForTheme(

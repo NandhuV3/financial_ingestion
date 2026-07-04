@@ -35,6 +35,12 @@ export type TopicAssignmentBuilderInput = {
   period_id: string;
   filing_id: string;
   embedding_execution_mode?: EmbeddingResolutionMode;
+  replay_original_execution_context?: TopicAssignmentReplayExecutionContext;
+};
+
+export type TopicAssignmentReplayExecutionContext = {
+  execution_id: string;
+  generated_at: string;
 };
 
 export type SemanticEmbeddingProvider = {

@@ -21,6 +21,7 @@ import { stableHash } from "../../src/shared/hashing/stable-hash.js";
 import { createLogger } from "../../src/shared/logger.js";
 import { MemoryArtifactRepository } from "../upstream-pipeline/memory-artifact-repository.js";
 import { CrossCompanyAggregationBuilder } from "./builder.js";
+import { aggregationResultArtifactId } from "./aggregator.js";
 import {
   AGGREGATION_RESULT_ARTIFACT_TYPE,
   AGGREGATION_RESULT_PIPELINE_VERSION,
@@ -38,6 +39,8 @@ export type CrossCompanyAggregationReplayArguments = {
   topicSignalsPath: string;
   outputPath: string;
   aggregationConfigurationVersion: string;
+  generatedAt?: string;
+  generationDurationMs: number;
   debug: boolean;
 };
 
@@ -71,6 +74,8 @@ export async function runCrossCompanyAggregationReplay(
     output_path: args.outputPath,
     aggregation_configuration_version:
       args.aggregationConfigurationVersion,
+    generated_at: args.generatedAt ?? generatedAtFromTopicSignals(topicSignals),
+    generation_duration_ms: args.generationDurationMs,
     topic_signal_count: topicSignals.length,
   });
 
@@ -79,12 +84,14 @@ export async function runCrossCompanyAggregationReplay(
     AggregationResultArtifactContent
   >({
     builderType: CROSS_COMPANY_AGGREGATION_BUILDER_TYPE,
+    artifactId: aggregationResultArtifactId(input),
     companyId: "PLATFORM",
     periodId: "CROSS_COMPANY",
     executionId: "platform:cross-company-aggregation-replay",
     input,
     inputHash: stableHash(input),
-    generatedAt: new Date().toISOString(),
+    generatedAt: args.generatedAt ?? generatedAtFromTopicSignals(topicSignals),
+    generationDurationMs: args.generationDurationMs,
   });
 
   await writeJson(args.outputPath, artifact);
@@ -105,6 +112,8 @@ export function parseArguments(
   let topicSignalsPath = "output/demo/04-topic-signals.json";
   let outputPath = "output/demo/05-aggregation-result.json";
   let aggregationConfigurationVersion = "cross-company-default-v1";
+  let generatedAt: string | undefined;
+  let generationDurationMs = 0;
   let debug = false;
 
   for (let index = 0; index < args.length; index += 1) {
@@ -129,6 +138,18 @@ export function parseArguments(
       continue;
     }
 
+    if (argument === "--generated-at" && value) {
+      generatedAt = value;
+      index += 1;
+      continue;
+    }
+
+    if (argument === "--generation-duration-ms" && value) {
+      generationDurationMs = parseGenerationDurationMs(value);
+      index += 1;
+      continue;
+    }
+
     if (argument === "--debug") {
       debug = true;
       continue;
@@ -138,7 +159,7 @@ export function parseArguments(
       `Unknown or incomplete argument: ${argument ?? ""}`,
       {
         suggestedAction:
-          "Use optional --topic-signals <path>, --output <path>, --aggregation-configuration-version <version>, and --debug.",
+          "Use optional --topic-signals <path>, --output <path>, --aggregation-configuration-version <version>, --generated-at <timestamp>, --generation-duration-ms <milliseconds>, and --debug.",
       },
     );
   }
@@ -147,6 +168,8 @@ export function parseArguments(
     topicSignalsPath,
     outputPath,
     aggregationConfigurationVersion,
+    generatedAt,
+    generationDurationMs,
     debug,
   };
 }
@@ -176,6 +199,44 @@ async function writeJson(path: string, value: unknown): Promise<void> {
 
   await mkdir(dirname(outputPath), { recursive: true });
   await writeFile(outputPath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+function generatedAtFromTopicSignals(
+  topicSignals: TopicSignalExecutionRecord[],
+): string {
+  const generatedAtValues = topicSignals
+    .map((signal) => signal.execution_metadata.generated_at)
+    .filter((value) => value.trim() !== "")
+    .sort();
+  const generatedAt = generatedAtValues[0];
+
+  if (generatedAt === undefined) {
+    throw new ConfigurationError(
+      "Cross-Company Aggregation replay requires Topic Signal generated_at metadata.",
+      {
+        suggestedAction:
+          "Provide Topic Signals with execution_metadata.generated_at or pass --generated-at.",
+      },
+    );
+  }
+
+  return generatedAt;
+}
+
+function parseGenerationDurationMs(value: string): number {
+  const parsed = Number.parseInt(value, 10);
+
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new ConfigurationError(
+      `Invalid generation duration: ${value}`,
+      {
+        suggestedAction:
+          "Use --generation-duration-ms with a non-negative integer value.",
+      },
+    );
+  }
+
+  return parsed;
 }
 
 export async function runCrossCompanyAggregationReplayCli(

@@ -392,6 +392,10 @@ describe("TopicAssignmentBuilder", () => {
       registry: registryArtifact([topic("topic:cloud", "Cloud")]),
       input: {
         embedding_execution_mode: "REPLAY",
+        replay_original_execution_context: {
+          execution_id: "original-topic-assignment-execution",
+          generated_at: "2026-06-18T00:00:00.000Z",
+        },
       },
     }));
 
@@ -399,6 +403,54 @@ describe("TopicAssignmentBuilder", () => {
     assert.deepEqual(
       requests.map(({ execution_mode }) => execution_mode),
       ["REPLAY", "REPLAY"],
+    );
+  });
+
+  it("preserves original Topic Signal execution context during replay", async () => {
+    const builder = new TopicAssignmentBuilder(embeddingResolver({
+      "Theme: Cloud": [1, 0],
+      "Topic: Cloud": [1, 0],
+    }));
+
+    const result = await builder.executeWithTopicSignals(context({
+      themes: themesArtifact([theme("theme-a", "Cloud", "Cloud.")]),
+      registry: registryArtifact([topic("topic:cloud", "Cloud")]),
+      input: {
+        embedding_execution_mode: "REPLAY",
+        replay_original_execution_context: {
+          execution_id: "MSFT:2026-Q2:topic-assignment-original",
+          generated_at: "2026-06-18T00:00:00.000Z",
+        },
+      },
+    }), {
+      generatedAt: "2026-07-04T00:00:00.000Z",
+    });
+
+    assert.equal(
+      result.topic_signals[0]?.execution_context.execution_id,
+      "MSFT:2026-Q2:topic-assignment-original",
+    );
+    assert.equal(
+      result.topic_signals[0]?.execution_metadata.generated_at,
+      "2026-06-18T00:00:00.000Z",
+    );
+  });
+
+  it("rejects replay without original execution context", async () => {
+    const builder = new TopicAssignmentBuilder(embeddingResolver({
+      "Theme: Cloud": [1, 0],
+      "Topic: Cloud": [1, 0],
+    }));
+
+    await assert.rejects(
+      () => builder.execute(context({
+        themes: themesArtifact([theme("theme-a", "Cloud", "Cloud.")]),
+        registry: registryArtifact([topic("topic:cloud", "Cloud")]),
+        input: {
+          embedding_execution_mode: "REPLAY",
+        },
+      })),
+      BuilderValidationError,
     );
   });
 

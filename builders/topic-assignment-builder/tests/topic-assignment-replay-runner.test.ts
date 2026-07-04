@@ -13,6 +13,9 @@ import {
   EMBEDDING_EXECUTION_RECORD_SCHEMA_VERSION,
   type EmbeddingExecutionRecord,
 } from "../../../contracts/execution/embedding-execution-record.js";
+import type {
+  TopicSignalExecutionRecord,
+} from "../../../contracts/execution/topic-signal-execution-record.js";
 import {
   EMBEDDING_STORE_SCHEMA_VERSION,
   type EmbeddingStoreSource,
@@ -42,6 +45,10 @@ describe("Topic Assignment replay runner", () => {
       paths.embeddingStorePath,
       "--output",
       paths.outputDirectory,
+      "--original-execution-id",
+      "company-1:2026-q1:topic-assignment-original",
+      "--original-generated-at",
+      "2026-06-18T00:00:00.000Z",
     ]);
 
     const topicAssignment = JSON.parse(
@@ -49,10 +56,18 @@ describe("Topic Assignment replay runner", () => {
     ) as Artifact<unknown>;
     const topicSignals = JSON.parse(
       await readFile(join(paths.outputDirectory, "04-topic-signals.json"), "utf8"),
-    ) as unknown[];
+    ) as TopicSignalExecutionRecord[];
 
     assert.equal(topicAssignment.identity.artifact_type, "topic_assignment");
     assert.equal(topicSignals.length, 1);
+    assert.equal(
+      topicSignals[0]?.execution_context.execution_id,
+      "company-1:2026-q1:topic-assignment-original",
+    );
+    assert.equal(
+      topicSignals[0]?.execution_metadata.generated_at,
+      "2026-06-18T00:00:00.000Z",
+    );
   });
 
   it("fails deterministically when replay embeddings are missing", async () => {

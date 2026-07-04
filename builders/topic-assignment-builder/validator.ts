@@ -25,6 +25,46 @@ export function validateTopicAssignmentBuilderInput(
   requireText(input.company_id, "company_id");
   requireText(input.period_id, "period_id");
   requireText(input.filing_id, "filing_id");
+
+  const executionMode = input.embedding_execution_mode ?? "ORIGINAL_EXECUTION";
+
+  if (
+    input.embedding_execution_mode !== undefined
+    && !["ORIGINAL_EXECUTION", "REPLAY"].includes(input.embedding_execution_mode)
+  ) {
+    throw new BuilderValidationError(
+      "Topic Assignment embedding_execution_mode is invalid.",
+    );
+  }
+
+  if (
+    executionMode === "REPLAY"
+    && input.replay_original_execution_context === undefined
+  ) {
+    throw new BuilderValidationError(
+      "Topic Assignment replay requires replay_original_execution_context.",
+    );
+  }
+
+  if (
+    executionMode !== "REPLAY"
+    && input.replay_original_execution_context !== undefined
+  ) {
+    throw new BuilderValidationError(
+      "Topic Assignment original execution must not provide replay_original_execution_context.",
+    );
+  }
+
+  if (input.replay_original_execution_context !== undefined) {
+    requireText(
+      input.replay_original_execution_context.execution_id,
+      "replay_original_execution_context.execution_id",
+    );
+    requireText(
+      input.replay_original_execution_context.generated_at,
+      "replay_original_execution_context.generated_at",
+    );
+  }
 }
 
 export function validateTopicAssignmentDependencies(

@@ -76,6 +76,9 @@ describe("CandidateDiscoveryBuilder", () => {
     );
     assert.equal(first.metadata.artifact_hash, calculateArtifactHash(first.content));
     assert.deepEqual(first.content, second.content);
+    assert.equal(first.metadata.generated_at, second.metadata.generated_at);
+    assert.equal(first.metadata.generation_duration_ms, 0);
+    assert.equal(second.metadata.generation_duration_ms, 0);
   });
 
   it("preserves aggregation evidence without recomputing upstream execution records", async () => {
@@ -209,6 +212,7 @@ async function executeCandidateDiscovery(
       ...extraDependencies,
     },
     generatedAt: "2026-07-01T00:00:00.000Z",
+    generationDurationMs: 0,
   });
 }
 
