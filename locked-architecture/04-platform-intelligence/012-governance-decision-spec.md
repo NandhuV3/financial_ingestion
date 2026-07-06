@@ -198,18 +198,59 @@ It never recreates execution evidence.
 
 ---
 
-## Registry Impact
+## Registry Mutation Authorization
 
-Registry impact records whether the decision changes the Platform Registry.
+A Governance Decision authorizes a deterministic Platform Registry mutation.
 
-Possible impacts include:
+The authorization records the exact registry mutation approved by Platform Governance.
 
-- no registry change
-- create new registry entry
-- merge existing registry entries
+Platform Registry Evolution executes this authorization.
+
+It never derives registry mutations independently.
+
+Possible mutation types include:
+
+- no registry mutation
+- create registry entry
+- merge registry entries
 - supersede registry entry
 
-Registry mutations occur only after an Approved Governance Decision.
+Every approved registry mutation must contain all deterministic information required by Platform Registry Evolution.
+
+Platform Registry Evolution must never reopen the Topic Candidate to obtain additional business information.
+
+Platform Registry Evolution must never invent registry content.
+
+---
+
+## Approved Registry Change
+
+For Governance Decisions that authorize a registry mutation, the Governance Decision must include the approved registry change.
+
+The approved registry change is the deterministic mutation payload that Platform Registry Evolution applies.
+
+It represents the governance-approved registry state.
+
+It is not execution evidence.
+
+It is not Topic Candidate content.
+
+It is not Platform Registry content.
+
+It is the approved mutation.
+
+Examples include:
+
+- topic identifier
+- canonical name
+- approved definition
+- approved aliases
+- approved taxonomy placement
+- approved lifecycle state
+
+The approved registry change contains only the information required to construct the next immutable Platform Registry version.
+
+It must never duplicate Topic Candidate evidence or Artifact Framework lineage.
 
 ---
 
@@ -251,25 +292,32 @@ A Topic Candidate remains immutable regardless of governance outcome.
 
 ---
 
-# Relationship with Platform Registry
+## Relationship with Platform Registry
 
-Approved Governance Decisions authorize Platform Registry evolution.
+Approved Governance Decisions authorize Platform Registry evolution by carrying the approved registry change.
+
+The approved registry change is the deterministic mutation authorized by Platform Governance.
+
+Platform Registry Evolution consumes only:
+
+- current Platform Registry
+- Governance Decision
+
+Platform Registry Evolution never reopens the Topic Candidate.
+
+It applies the approved registry change deterministically to produce the next immutable Platform Registry version.
 
 Platform Registry evolution always follows:
 
-```text
 Topic Candidate
-
-↓
-
+        ↓
 Governance Decision
-
-↓
-
+        ↓
 Platform Registry Version N+1
-```
 
-Rejected, Deferred, Merged, and Superseded decisions preserve governance history without modifying previous registry versions.
+Platform Registry Evolution applies only the approved registry change carried by a Governance Decision.
+
+Governance Decisions that do not authorize a registry mutation preserve governance history without producing a new Platform Registry version.
 
 ---
 
@@ -333,7 +381,10 @@ Given identical:
 - Governance Policy
 - Platform Governance implementation
 
-Platform Governance must produce identical Governance Decisions.
+Platform Governance must produce identical:
+
+- Governance Decision
+- Approved Registry Change
 
 Governance Decisions must remain fully replayable.
 
@@ -369,6 +420,8 @@ Governance Decisions must never:
 - overwrite Platform Registry history
 - duplicate execution evidence
 - bypass Platform Governance
+- require Platform Registry Evolution to reopen Topic Candidates
+- require Platform Registry Evolution to infer approved registry content
 
 ---
 
@@ -377,5 +430,7 @@ Governance Decisions must never:
 Governance Decisions are the authoritative record of Platform Governance.
 
 They transform immutable Topic Candidates into deterministic governance outcomes while preserving complete lineage, replayability, and auditability.
+
+Governance Decisions contain both the governance outcome and the approved registry mutation authorization. This allows Platform Registry Evolution to execute approved registry changes deterministically without reopening Topic Candidates or reconstructing governance decisions.
 
 By separating governance outcomes from Platform Registry evolution, the platform ensures that every change to reusable Platform Knowledge is deliberate, explainable, versioned, and permanently traceable.

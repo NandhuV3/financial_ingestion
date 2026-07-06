@@ -192,19 +192,17 @@ No stage may be omitted.
 
 # Registry Mutation
 
-Platform Registry Evolution applies only approved governance actions.
+Platform Registry Evolution applies only the approved registry change carried by a Governance Decision.
 
-Examples include:
+The approved registry change is the deterministic mutation payload authorized by Platform Governance.
 
-- add Topic
-- merge Topics
-- deprecate Topic
-- supersede Topic
-- update registry metadata
+Platform Registry Evolution executes that approved registry change exactly as authorized.
 
-Platform Registry Evolution never invents mutations.
+It never derives registry mutations independently.
 
-Every mutation must be explicitly authorized by a Governance Decision.
+It never reopens Topic Candidates.
+
+It never invents registry content.
 
 ---
 

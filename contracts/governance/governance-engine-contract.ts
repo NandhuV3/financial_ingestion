@@ -17,6 +17,9 @@ export const GOVERNANCE_DECISION_PIPELINE_VERSION =
 export const GOVERNANCE_DECISION_OUTCOMES = [
   "approved",
   "rejected",
+  "deferred",
+  "merged",
+  "superseded",
 ] as const;
 
 export type GovernanceDecisionOutcome =
@@ -25,6 +28,8 @@ export type GovernanceDecisionOutcome =
 export const GOVERNANCE_REGISTRY_IMPACTS = [
   "no_registry_change",
   "create_new_registry_entry",
+  "merge_existing_registry_entries",
+  "supersede_registry_entry",
 ] as const;
 
 export type GovernanceRegistryImpact =
