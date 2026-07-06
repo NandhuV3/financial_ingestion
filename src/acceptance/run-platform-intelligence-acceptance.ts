@@ -9,8 +9,8 @@ import type {
   TopicRegistryArtifactContent,
 } from "../../contracts/artifacts/topic-registry-artifact-content.js";
 import type {
-  EmbeddingExecutionRecord,
-} from "../../contracts/execution/embedding-execution-record.js";
+  EmbeddingStoreSource,
+} from "../../contracts/execution/embedding-store-contract.js";
 import type {
   TopicSignalExecutionRecord,
 } from "../../contracts/execution/topic-signal-execution-record.js";
@@ -448,13 +448,13 @@ async function validateDeterministicFields(
     );
   }
 
-  const embeddingRecords = await readJson<EmbeddingExecutionRecord[]>(
+  const embeddingStore = await readJson<EmbeddingStoreSource>(
     `${DEMO_EXECUTION_DIRECTORY}/07-embedding-execution-records.json`,
   );
   const topicSignals = await readJson<TopicSignalExecutionRecord[]>(
     `${DEMO_REPLAY_REPLAY_DIRECTORY}/04-topic-signals.json`,
   );
-  const embeddingRecordIds = new Set(embeddingRecords.map((record) =>
+  const embeddingRecordIds = new Set(embeddingStore.records.map((record) =>
     record.record_id));
 
   for (const signal of topicSignals) {
@@ -661,7 +661,7 @@ async function executionRecordIndex(): Promise<ExecutionRecordIndexEntry[]> {
   const topicSignals = await readJson<TopicSignalExecutionRecord[]>(
     `${DEMO_REPLAY_REPLAY_DIRECTORY}/04-topic-signals.json`,
   );
-  const embeddingRecords = await readJson<EmbeddingExecutionRecord[]>(
+  const embeddingStore = await readJson<EmbeddingStoreSource>(
     `${DEMO_EXECUTION_DIRECTORY}/07-embedding-execution-records.json`,
   );
 
@@ -677,8 +677,9 @@ async function executionRecordIndex(): Promise<ExecutionRecordIndexEntry[]> {
     {
       label: "Embedding Execution Records",
       path: `${DEMO_EXECUTION_DIRECTORY}/07-embedding-execution-records.json`,
-      record_count: embeddingRecords.length,
-      record_hashes: embeddingRecords.map((record) => record.record_hash).sort(),
+      record_count: embeddingStore.records.length,
+      record_hashes: embeddingStore.records.map((record) =>
+        record.record_hash).sort(),
       execution_reference_count: 0,
     },
   ];
