@@ -7,7 +7,16 @@ import type {
 import type {
   TopicCandidateArtifactContent,
 } from "../../contracts/artifacts/topic-candidate-artifact-content.js";
+import type {
+  TopicRegistryArtifactContent,
+} from "../../contracts/artifacts/topic-registry-artifact-content.js";
+import {
+  PLATFORM_REGISTRY_PIPELINE_VERSION,
+  PLATFORM_REGISTRY_SCHEMA_VERSION,
+} from "../../contracts/governance/registry-evolution-contract.js";
 import { ArtifactService } from "../../packages/artifact-framework/src/artifact-service.js";
+import { calculateArtifactHash } from "../../packages/artifact-framework/src/artifact-service.js";
+import type { ReservedArtifactId } from "../../packages/artifact-framework/src/artifact-types.js";
 import {
   ConfigurationError,
   PlatformError,
@@ -19,17 +28,32 @@ import {
 import { createLogger } from "../shared/logger.js";
 import { DEMO_ARTIFACTS_DIRECTORY } from "../../builders/upstream-pipeline/demo-output-paths.js";
 import { MemoryArtifactRepository } from "../../builders/upstream-pipeline/memory-artifact-repository.js";
+import { stableHash } from "../shared/hashing/stable-hash.js";
 import { loadGovernancePolicyRegistry } from "../governance-policy-registry/index.js";
 import { GovernanceEngine } from "./executor.js";
 
 const logger = createLogger("governance-replay");
+const DEFAULT_BOOTSTRAP_REGISTRY_PATH = "data/registry/topics.json";
+const BOOTSTRAP_REGISTRY_GENERATED_AT = "2026-06-19T00:00:00.000Z";
 
 export type GovernanceReplayArguments = {
   topicCandidatesPath: string;
+  currentRegistryPath?: string;
+  bootstrapRegistryPath: string;
   outputPath: string;
   generatedAt?: string;
   generationDurationMs: number;
   debug: boolean;
+};
+
+type LegacyTopicRegistryFile = {
+  version: string;
+  topics: Array<{
+    topic_id: string;
+    topic_name: string;
+    description: string;
+    theme_variants: string[];
+  }>;
 };
 
 export async function runGovernanceReplay(
@@ -43,6 +67,12 @@ export async function runGovernanceReplay(
   const activePolicy = policyRegistry.getActivePolicy();
   const artifactService = new ArtifactService(new MemoryArtifactRepository());
   const governanceEngine = new GovernanceEngine();
+  const currentPlatformRegistry = args.currentRegistryPath === undefined
+    ? await createBootstrapRegistryArtifact(
+      args.bootstrapRegistryPath,
+      artifactService,
+    )
+    : await loadCurrentRegistryArtifact(args.currentRegistryPath);
   const generatedAt = args.generatedAt
     ?? generatedAtFromTopicCandidates(topicCandidates);
 
@@ -50,6 +80,8 @@ export async function runGovernanceReplay(
     topic_candidates_path: args.topicCandidatesPath,
     topic_candidate_count: topicCandidates.length,
     active_governance_policy_version: activePolicy.policy_version,
+    current_platform_registry_version:
+      currentPlatformRegistry.content.registry_version,
     output_path: args.outputPath,
   });
 
@@ -62,6 +94,7 @@ export async function runGovernanceReplay(
       {
         topic_candidate_artifact: topicCandidate,
         governance_policy: activePolicy,
+        current_platform_registry: currentPlatformRegistry,
         execution_id:
           `platform:governance-replay:${activePolicy.policy_version}:${candidate.candidate_id}`,
       },
@@ -87,6 +120,8 @@ export async function runGovernanceReplay(
 export function parseArguments(args: string[]): GovernanceReplayArguments {
   let topicCandidatesPath =
     `${DEMO_ARTIFACTS_DIRECTORY}/06-topic-candidates.json`;
+  let currentRegistryPath: string | undefined;
+  let bootstrapRegistryPath = DEFAULT_BOOTSTRAP_REGISTRY_PATH;
   let outputPath = `${DEMO_ARTIFACTS_DIRECTORY}/08-governance-decisions.json`;
   let generatedAt: string | undefined;
   let generationDurationMs = 0;
@@ -98,6 +133,18 @@ export function parseArguments(args: string[]): GovernanceReplayArguments {
 
     if (argument === "--topic-candidates" && value) {
       topicCandidatesPath = value;
+      index += 1;
+      continue;
+    }
+
+    if (argument === "--current-registry" && value) {
+      currentRegistryPath = value;
+      index += 1;
+      continue;
+    }
+
+    if (argument === "--bootstrap-registry" && value) {
+      bootstrapRegistryPath = value;
       index += 1;
       continue;
     }
@@ -129,18 +176,103 @@ export function parseArguments(args: string[]): GovernanceReplayArguments {
       `Unknown or incomplete argument: ${argument ?? ""}`,
       {
         suggestedAction:
-          "Use optional --topic-candidates <path>, --output <path>, --generated-at <timestamp>, --generation-duration-ms <milliseconds>, and --debug.",
+          "Use optional --topic-candidates <path>, --current-registry <path>, --bootstrap-registry <path>, --output <path>, --generated-at <timestamp>, --generation-duration-ms <milliseconds>, and --debug.",
       },
     );
   }
 
   return {
     topicCandidatesPath,
+    currentRegistryPath,
+    bootstrapRegistryPath,
     outputPath,
     generatedAt,
     generationDurationMs,
     debug,
   };
+}
+
+async function loadCurrentRegistryArtifact(
+  path: string,
+): Promise<Artifact<TopicRegistryArtifactContent>> {
+  const parsed = JSON.parse(
+    await readFile(resolve(path), "utf8"),
+  ) as Artifact<TopicRegistryArtifactContent>;
+
+  if (
+    parsed?.identity?.artifact_type !== "topic_registry"
+      || parsed.content === undefined
+  ) {
+    throw new ConfigurationError(
+      "Current registry input must be a Topic Registry Platform Artifact.",
+      {
+        suggestedAction:
+          "Provide a persisted Platform Registry artifact or omit --current-registry to use the bootstrap registry.",
+      },
+    );
+  }
+
+  return parsed;
+}
+
+async function createBootstrapRegistryArtifact(
+  path: string,
+  artifactService: ArtifactService,
+): Promise<Artifact<TopicRegistryArtifactContent>> {
+  const rawRegistry = await loadLegacyTopicRegistry(path);
+  const registryVersion = parseRegistryVersion(rawRegistry.version);
+  const content: TopicRegistryArtifactContent = {
+    registry_version: registryVersion,
+    topics: rawRegistry.topics
+      .map((topic) => ({
+        topic_id: topic.topic_id,
+        canonical_name: topic.topic_name,
+        definition: topic.description,
+        aliases: topic.theme_variants,
+        lifecycle_state: "active" as const,
+        created_registry_version: 1,
+        updated_registry_version: registryVersion,
+        child_topic_ids: [],
+        examples: topic.theme_variants,
+        created_at: BOOTSTRAP_REGISTRY_GENERATED_AT,
+        updated_at: BOOTSTRAP_REGISTRY_GENERATED_AT,
+      }))
+      .sort((left, right) => left.topic_id.localeCompare(right.topic_id)),
+  };
+
+  return artifactService.createArtifact<TopicRegistryArtifactContent>({
+    artifact_id: bootstrapRegistryArtifactId(content),
+    artifact_type: "topic_registry",
+    company_id: null,
+    period_id: null,
+    content,
+    lineage: {
+      upstream_dependencies: [],
+      generation_context: {
+        builder_type: "topic-registry-bootstrap-loader",
+        execution_id: `platform:registry-bootstrap:${registryVersion}`,
+      },
+    },
+    schema_version: PLATFORM_REGISTRY_SCHEMA_VERSION,
+    pipeline_version: PLATFORM_REGISTRY_PIPELINE_VERSION,
+    input_hash: calculateArtifactHash(rawRegistry),
+    generation_duration_ms: 0,
+    generated_at: BOOTSTRAP_REGISTRY_GENERATED_AT,
+  });
+}
+
+function bootstrapRegistryArtifactId(
+  content: TopicRegistryArtifactContent,
+): ReservedArtifactId {
+  return `platform-registry-artifact:bootstrap:${stableHash(content)}` as ReservedArtifactId;
+}
+
+async function loadLegacyTopicRegistry(
+  path: string,
+): Promise<LegacyTopicRegistryFile> {
+  return JSON.parse(
+    await readFile(resolve(path), "utf8"),
+  ) as LegacyTopicRegistryFile;
 }
 
 export function sortGovernanceDecisionArtifacts(
@@ -248,6 +380,22 @@ function parseGenerationDurationMs(value: string): number {
   }
 
   return parsed;
+}
+
+function parseRegistryVersion(version: string): number {
+  const majorVersion = Number.parseInt(version.split(".")[0] ?? "", 10);
+
+  if (!Number.isInteger(majorVersion) || majorVersion < 1) {
+    throw new ConfigurationError(
+      `Invalid Platform Registry version: ${version}`,
+      {
+        suggestedAction:
+          "Use a Platform Registry version with a positive major version.",
+      },
+    );
+  }
+
+  return majorVersion;
 }
 
 export async function runGovernanceReplayCli(

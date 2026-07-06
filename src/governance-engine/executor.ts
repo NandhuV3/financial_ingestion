@@ -12,6 +12,7 @@ import type {
   GovernanceApprovedRegistryChange,
 } from "../../contracts/artifacts/governance-decision-artifact-content.js";
 import type {
+  TopicRegistryArtifactContent,
   TopicRegistryEntry,
 } from "../../contracts/artifacts/topic-registry-artifact-content.js";
 import type {
@@ -60,6 +61,8 @@ export class GovernanceEngine {
       execution_id: input.execution_id,
       governance_engine_version: GOVERNANCE_ENGINE_VERSION,
       governance_policy_version: input.governance_policy.policy_version,
+      platform_registry_version:
+        input.current_platform_registry.content.registry_version,
     });
 
     const candidate = validateGovernanceEngineInput(input);
@@ -74,9 +77,15 @@ export class GovernanceEngine {
       evaluateRule(rule, candidate));
     const allRulesPassed = ruleEvaluations.every((evaluation) =>
       evaluation.result === "passed");
+    const candidateAlreadyExists = platformRegistryContainsCandidate(
+      candidate,
+      input.current_platform_registry.content,
+    );
     const candidateReference = buildCandidateReference(input, candidate);
-    const decisionOutcome = allRulesPassed ? "approved" : "rejected";
-    const registryImpact = allRulesPassed
+    const decisionOutcome = allRulesPassed && !candidateAlreadyExists
+      ? "approved"
+      : "rejected";
+    const registryImpact = decisionOutcome === "approved"
       ? "create_new_registry_entry"
       : "no_registry_change";
     const approvedRegistryChange = buildApprovedRegistryChange(
@@ -92,6 +101,10 @@ export class GovernanceEngine {
         decisionOutcome,
         registryImpact,
         approvedRegistryChange,
+        platformRegistryArtifactHash:
+          input.current_platform_registry.metadata.artifact_hash,
+        platformRegistryVersion:
+          input.current_platform_registry.content.registry_version,
       }),
       governance_policy_version: input.governance_policy.policy_version,
       decision_version: GOVERNANCE_DECISION_VERSION,
@@ -124,6 +137,9 @@ export class GovernanceEngine {
       candidate_id: candidate.candidate_id,
       governance_decision_id: decision.governance_decision_id,
       decision_outcome: decision.decision_outcome,
+      platform_registry_version:
+        input.current_platform_registry.content.registry_version,
+      candidate_already_exists: candidateAlreadyExists,
       duration_ms: Date.now() - startedAt,
     });
 
@@ -156,7 +172,18 @@ export class GovernanceEngine {
             artifact_hash:
               input.topic_candidate_artifact.metadata.artifact_hash,
             input_hash:
-              input.topic_candidate_artifact.metadata.input_hash,
+            input.topic_candidate_artifact.metadata.input_hash,
+          },
+          {
+            artifact_id:
+              input.current_platform_registry.identity.artifact_id,
+            artifact_type:
+              input.current_platform_registry.identity.artifact_type,
+            version: input.current_platform_registry.identity.version,
+            artifact_hash:
+              input.current_platform_registry.metadata.artifact_hash,
+            input_hash:
+              input.current_platform_registry.metadata.input_hash,
           },
         ],
         generation_context: {
@@ -214,6 +241,12 @@ function governanceDecisionInputHash(input: GovernanceEngineInput): string {
       artifact_id: input.topic_candidate_artifact.identity.artifact_id,
       artifact_type: input.topic_candidate_artifact.identity.artifact_type,
       version: input.topic_candidate_artifact.identity.version,
+    },
+    current_platform_registry: {
+      artifact_hash: input.current_platform_registry.metadata.artifact_hash,
+      artifact_id: input.current_platform_registry.identity.artifact_id,
+      registry_version: input.current_platform_registry.content.registry_version,
+      version: input.current_platform_registry.identity.version,
     },
   });
 }
@@ -371,6 +404,20 @@ function buildApprovedTopicRegistryEntry(
   };
 }
 
+function platformRegistryContainsCandidate(
+  candidate: TopicCandidate,
+  registry: TopicRegistryArtifactContent,
+): boolean {
+  const proposedTopicId = candidate.proposed_concept.proposed_topic_id;
+  const proposedCanonicalName = normalize(canonicalNameFromTopicId(
+    proposedTopicId,
+  ));
+
+  return registry.topics.some((topic) =>
+    topic.topic_id === proposedTopicId
+      || normalize(topic.canonical_name) === proposedCanonicalName);
+}
+
 function canonicalNameFromTopicId(topicId: string): string {
   return topicId
     .split("_")
@@ -386,6 +433,8 @@ function governanceDecisionId(input: {
   decisionOutcome: string;
   registryImpact: GovernanceDecision["registry_impact"];
   approvedRegistryChange: GovernanceApprovedRegistryChange;
+  platformRegistryArtifactHash: string;
+  platformRegistryVersion: number;
 }): string {
   return `governance-decision:${stableHash({
     approved_registry_change: input.approvedRegistryChange,
@@ -394,9 +443,15 @@ function governanceDecisionId(input: {
     decision_version: GOVERNANCE_DECISION_VERSION,
     governance_engine_version: GOVERNANCE_ENGINE_VERSION,
     governance_policy_version: input.governancePolicyVersion,
+    platform_registry_artifact_hash: input.platformRegistryArtifactHash,
+    platform_registry_version: input.platformRegistryVersion,
     registry_impact: input.registryImpact,
     rule_evaluations: input.ruleEvaluations,
   })}`;
+}
+
+function normalize(value: string): string {
+  return value.trim().toLowerCase();
 }
 
 function stringParameter(

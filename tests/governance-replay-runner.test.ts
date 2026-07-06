@@ -12,6 +12,9 @@ import type {
   TopicCandidate,
   TopicCandidateArtifactContent,
 } from "../contracts/artifacts/topic-candidate-artifact-content.js";
+import type {
+  TopicRegistryArtifactContent,
+} from "../contracts/artifacts/topic-registry-artifact-content.js";
 import { calculateArtifactHash } from "../packages/artifact-framework/src/artifact-service.js";
 import { GovernanceEngine } from "../src/governance-engine/index.js";
 import { runGovernanceReplay } from "../src/governance-engine/run-governance-replay.js";
@@ -112,6 +115,7 @@ describe("Governance replay runner", () => {
     const decision = new GovernanceEngine().execute({
       topic_candidate_artifact: candidateArtifact,
       governance_policy: policy,
+      current_platform_registry: platformRegistryArtifact(),
       execution_id:
         `platform:governance-replay:${policy.policy_version}:topic-candidate:alpha_topic`,
     });
@@ -147,6 +151,41 @@ async function readDecisions(
   return JSON.parse(await readFile(path, "utf8")) as Array<
     Artifact<GovernanceDecisionArtifactContent>
   >;
+}
+
+function platformRegistryArtifact(): Artifact<TopicRegistryArtifactContent> {
+  const content: TopicRegistryArtifactContent = {
+    registry_version: 1,
+    topics: [],
+  };
+
+  return {
+    identity: {
+      artifact_id: "platform-registry-artifact:bootstrap:test",
+      artifact_type: "topic_registry",
+      company_id: null,
+      period_id: null,
+      version: 1,
+    },
+    metadata: {
+      version: 1,
+      schema_version: "platform-registry-artifact-v1",
+      pipeline_version: "platform-registry-evolution-v1",
+      generated_at: "2026-07-01T00:00:00.000Z",
+      artifact_hash: calculateArtifactHash(content),
+      input_hash: "platform-registry-input:test",
+      generation_duration_ms: 0,
+      status: ArtifactStatus.ACTIVE,
+    },
+    lineage: {
+      upstream_dependencies: [],
+      generation_context: {
+        builder_type: "platform-registry-bootstrap-loader",
+        execution_id: "platform-registry-bootstrap:test",
+      },
+    },
+    content,
+  };
 }
 
 function topicCandidateArtifact(

@@ -9,6 +9,9 @@ import type {
   TopicCandidate,
   TopicCandidateArtifactContent,
 } from "../contracts/artifacts/topic-candidate-artifact-content.js";
+import type {
+  TopicRegistryArtifactContent,
+} from "../contracts/artifacts/topic-registry-artifact-content.js";
 import {
   GOVERNANCE_DECISION_ARTIFACT_TYPE,
   GOVERNANCE_DECISION_PIPELINE_VERSION,
@@ -49,7 +52,7 @@ describe("Governance Engine", () => {
       first.approved_registry_change.mutation_type === "create_registry_entry"
         ? first.approved_registry_change.registry_entry.canonical_name
         : "",
-      "Artificial Intelligence",
+      "Alpha Topic",
     );
     assert.equal(first.decision_version, GOVERNANCE_DECISION_VERSION);
     assert.equal(first.governance_metadata.governance_engine_version, GOVERNANCE_ENGINE_VERSION);
@@ -57,6 +60,36 @@ describe("Governance Engine", () => {
     assert.deepEqual(
       first.decision_basis.rule_evaluations.map((rule) => rule.result),
       ["passed", "passed", "passed"],
+    );
+  });
+
+  it("rejects duplicate Topic Candidates with no registry mutation", async () => {
+    const input = await governanceInput({
+      candidate: candidate("artificial_intelligence"),
+    });
+    const first = new GovernanceEngine().execute(input);
+    const second = new GovernanceEngine().execute(input);
+
+    assert.deepEqual(first, second);
+    assert.equal(first.decision_outcome, "rejected");
+    assert.equal(first.registry_impact, "no_registry_change");
+    assert.deepEqual(first.approved_registry_change, {
+      mutation_type: "no_registry_mutation",
+    });
+  });
+
+  it("includes Platform Registry version in deterministic Governance Decision identity", async () => {
+    const first = new GovernanceEngine().execute(await governanceInput());
+    const second = new GovernanceEngine().execute(await governanceInput({
+      currentRegistry: platformRegistryArtifact({
+        registry_version: 2,
+        topics: [],
+      }),
+    }));
+
+    assert.notEqual(
+      first.governance_decision_id,
+      second.governance_decision_id,
     );
   });
 
@@ -185,6 +218,13 @@ describe("Governance Engine", () => {
         artifact_hash: input.topic_candidate_artifact.metadata.artifact_hash,
         input_hash: input.topic_candidate_artifact.metadata.input_hash,
       },
+      {
+        artifact_id: input.current_platform_registry.identity.artifact_id,
+        artifact_type: input.current_platform_registry.identity.artifact_type,
+        version: input.current_platform_registry.identity.version,
+        artifact_hash: input.current_platform_registry.metadata.artifact_hash,
+        input_hash: input.current_platform_registry.metadata.input_hash,
+      },
     ]);
     assert.equal(
       artifact.lineage.generation_context.builder_type,
@@ -246,6 +286,7 @@ async function governanceInput(options: {
   candidate?: TopicCandidate;
   candidateContent?: TopicCandidateArtifactContent;
   policy?: GovernancePolicy;
+  currentRegistry?: Artifact<TopicRegistryArtifactContent>;
 } = {}): Promise<GovernanceEngineInput> {
   const content = options.candidateContent
     ?? topicCandidateContent(options.candidate ?? candidate());
@@ -253,6 +294,8 @@ async function governanceInput(options: {
   return {
     topic_candidate_artifact: topicCandidateArtifact(content),
     governance_policy: options.policy ?? await activePolicy(),
+    current_platform_registry:
+      options.currentRegistry ?? platformRegistryArtifact(),
     execution_id: "governance-execution-1",
   };
 }
@@ -308,13 +351,64 @@ function topicCandidateContent(
   };
 }
 
-function candidate(): TopicCandidate {
+function platformRegistryArtifact(
+  content: TopicRegistryArtifactContent = {
+    registry_version: 1,
+    topics: [
+      {
+        topic_id: "artificial_intelligence",
+        canonical_name: "Artificial Intelligence",
+        definition: "Existing AI platform topic.",
+        aliases: [],
+        lifecycle_state: "active",
+        created_registry_version: 1,
+        updated_registry_version: 1,
+        child_topic_ids: [],
+        examples: [],
+        created_at: "2026-07-01T00:00:00.000Z",
+        updated_at: "2026-07-01T00:00:00.000Z",
+      },
+    ],
+  },
+): Artifact<TopicRegistryArtifactContent> {
   return {
-    candidate_id: "topic-candidate:one",
+    identity: {
+      artifact_id: `platform-registry-artifact:${content.registry_version}`,
+      artifact_type: "topic_registry",
+      company_id: null,
+      period_id: null,
+      version: 1,
+    },
+    metadata: {
+      version: 1,
+      schema_version: "platform-registry-artifact-v1",
+      pipeline_version: "platform-registry-evolution-v1",
+      generated_at: "2026-07-01T00:00:00.000Z",
+      artifact_hash: calculateArtifactHash(content),
+      input_hash: `platform-registry-input:${content.registry_version}`,
+      generation_duration_ms: 0,
+      status: ArtifactStatus.ACTIVE,
+    },
+    lineage: {
+      upstream_dependencies: [],
+      generation_context: {
+        builder_type: "platform-registry-bootstrap-loader",
+        execution_id: "platform-registry-bootstrap",
+      },
+    },
+    content,
+  };
+}
+
+function candidate(
+  topicId = "alpha_topic",
+): TopicCandidate {
+  return {
+    candidate_id: `topic-candidate:${topicId}`,
     candidate_type: "topic_candidate",
     candidate_version: "topic-candidate-v1",
     proposed_concept: {
-      proposed_topic_id: "artificial_intelligence",
+      proposed_topic_id: topicId,
       registry_version: 1,
     },
     evidence_summary: {

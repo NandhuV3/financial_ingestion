@@ -3,6 +3,9 @@ import type {
   TopicCandidate,
   TopicCandidateArtifactContent,
 } from "../artifacts/topic-candidate-artifact-content.js";
+import type {
+  TopicRegistryArtifactContent,
+} from "../artifacts/topic-registry-artifact-content.js";
 import type { GovernancePolicy } from "./governance-policy-registry-types.js";
 import type {
   GovernanceDecisionOutcome,
@@ -17,6 +20,7 @@ import type {
 export type GovernanceEngineInput = {
   topic_candidate_artifact: Artifact<TopicCandidateArtifactContent>;
   governance_policy: GovernancePolicy;
+  current_platform_registry: Artifact<TopicRegistryArtifactContent>;
   execution_id: string;
 };
 

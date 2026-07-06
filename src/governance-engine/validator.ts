@@ -48,6 +48,7 @@ export function validateGovernanceEngineInput(
   requireNonEmptyString(input.execution_id, "execution_id");
   validateTopicCandidateArtifact(input);
   validateGovernancePolicy(input);
+  validateCurrentPlatformRegistry(input);
 
   return input.topic_candidate_artifact.content.candidates[0]!;
 }
@@ -340,6 +341,58 @@ function validateGovernancePolicy(input: GovernanceEngineInput): void {
     }
 
     ruleIds.add(rule.rule_id);
+  }
+}
+
+function validateCurrentPlatformRegistry(input: GovernanceEngineInput): void {
+  const artifact = input.current_platform_registry;
+  requireObject(artifact, "current_platform_registry");
+
+  if (artifact.identity.artifact_type !== "topic_registry") {
+    throw new GovernanceEngineValidationError(
+      "Governance Engine current Platform Registry input must be a Topic Registry Platform Artifact.",
+    );
+  }
+
+  if (artifact.metadata.status !== ArtifactStatus.ACTIVE) {
+    throw new GovernanceEngineValidationError(
+      "Current Platform Registry artifact must be active.",
+    );
+  }
+
+  if (artifact.metadata.artifact_hash !== calculateArtifactHash(artifact.content)) {
+    throw new GovernanceEngineValidationError(
+      "Current Platform Registry artifact hash does not reconcile with content.",
+    );
+  }
+
+  requirePositiveInteger(
+    artifact.content.registry_version,
+    "current_platform_registry.content.registry_version",
+  );
+
+  if (!Array.isArray(artifact.content.topics)) {
+    throw new GovernanceEngineValidationError(
+      "Current Platform Registry topics must be an array.",
+    );
+  }
+
+  const topicIds = new Set<string>();
+
+  for (const topic of artifact.content.topics) {
+    requireNonEmptyString(topic.topic_id, "current_platform_registry.topics[].topic_id");
+    requireNonEmptyString(
+      topic.canonical_name,
+      "current_platform_registry.topics[].canonical_name",
+    );
+
+    if (topicIds.has(topic.topic_id)) {
+      throw new GovernanceEngineValidationError(
+        "Current Platform Registry contains a duplicate topic_id.",
+      );
+    }
+
+    topicIds.add(topic.topic_id);
   }
 }
 
