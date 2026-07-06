@@ -291,7 +291,9 @@ function governanceDecisionArtifact(input: {
       ],
     },
     registry_impact: input.registryImpact,
-    approved_registry_change: input.approvedRegistryChange,
+    approved_registry_change: input.approvedRegistryChange ?? {
+      mutation_type: "no_registry_mutation",
+    },
     governance_metadata: {
       governance_engine_version: "governance-engine-v1",
       governance_policy_version: "topic-candidate-governance-v1",

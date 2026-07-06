@@ -10,6 +10,9 @@ import type {
   GovernanceRegistryImpact,
   GovernanceRuleResult,
 } from "./governance-engine-contract.js";
+import type {
+  GovernanceApprovedRegistryChange,
+} from "../artifacts/governance-decision-artifact-content.js";
 
 export type GovernanceEngineInput = {
   topic_candidate_artifact: Artifact<TopicCandidateArtifactContent>;
@@ -61,6 +64,7 @@ export type GovernanceDecision = {
   decision_outcome: GovernanceDecisionOutcome;
   decision_basis: GovernanceDecisionBasis;
   registry_impact: GovernanceRegistryImpact;
+  approved_registry_change: GovernanceApprovedRegistryChange;
   lineage: GovernanceDecisionLineage;
   governance_metadata: GovernanceDecisionMetadata;
 };

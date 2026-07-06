@@ -40,6 +40,6 @@ export type GovernanceDecisionArtifactContent = {
   decision_outcome: GovernanceDecisionOutcome;
   decision_basis: GovernanceDecisionBasis;
   registry_impact: GovernanceRegistryImpact;
-  approved_registry_change?: GovernanceApprovedRegistryChange;
+  approved_registry_change: GovernanceApprovedRegistryChange;
   governance_metadata: GovernanceDecisionMetadata;
 };

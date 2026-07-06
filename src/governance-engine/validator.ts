@@ -83,6 +83,7 @@ export function validateGovernanceDecision(
 
   validateCandidateReference(decision, input, candidate);
   validateRuleEvaluations(decision);
+  validateApprovedRegistryChange(decision, candidate);
 
   if (
     decision.lineage.governance_engine_version !== GOVERNANCE_ENGINE_VERSION
@@ -105,6 +106,94 @@ export function validateGovernanceDecision(
   ) {
     throw new GovernanceEngineValidationError(
       "governance_metadata does not reconcile with execution inputs.",
+    );
+  }
+}
+
+function validateApprovedRegistryChange(
+  decision: GovernanceDecision,
+  candidate: TopicCandidate,
+): void {
+  requireObject(
+    decision.approved_registry_change,
+    "approved_registry_change",
+  );
+
+  if (decision.registry_impact === "no_registry_change") {
+    if (
+      decision.approved_registry_change.mutation_type
+        !== "no_registry_mutation"
+    ) {
+      throw new GovernanceEngineValidationError(
+        "No-change Governance Decisions must carry a no_registry_mutation approved_registry_change.",
+      );
+    }
+
+    return;
+  }
+
+  if (decision.decision_outcome !== "approved") {
+    throw new GovernanceEngineValidationError(
+      "Only approved Governance Decisions may authorize registry mutations.",
+    );
+  }
+
+  if (
+    decision.approved_registry_change.mutation_type
+      !== "create_registry_entry"
+  ) {
+    throw new GovernanceEngineValidationError(
+      "Approved create_new_registry_entry decisions must carry a create_registry_entry approved_registry_change.",
+    );
+  }
+
+  const registryEntry = decision.approved_registry_change.registry_entry;
+  requireObject(registryEntry, "approved_registry_change.registry_entry");
+  requireNonEmptyString(
+    registryEntry.topic_id,
+    "approved_registry_change.registry_entry.topic_id",
+  );
+  if (registryEntry.topic_id !== candidate.proposed_concept.proposed_topic_id) {
+    throw new GovernanceEngineValidationError(
+      "approved_registry_change.registry_entry.topic_id must reconcile with the Topic Candidate proposed concept.",
+    );
+  }
+  requireNonEmptyString(
+    registryEntry.canonical_name,
+    "approved_registry_change.registry_entry.canonical_name",
+  );
+  requireNonEmptyString(
+    registryEntry.definition,
+    "approved_registry_change.registry_entry.definition",
+  );
+  requireNonEmptyString(
+    registryEntry.lifecycle_state,
+    "approved_registry_change.registry_entry.lifecycle_state",
+  );
+  requireNonEmptyString(
+    registryEntry.created_at,
+    "approved_registry_change.registry_entry.created_at",
+  );
+  requireNonEmptyString(
+    registryEntry.updated_at,
+    "approved_registry_change.registry_entry.updated_at",
+  );
+  requirePositiveInteger(
+    registryEntry.created_registry_version,
+    "approved_registry_change.registry_entry.created_registry_version",
+  );
+  requirePositiveInteger(
+    registryEntry.updated_registry_version,
+    "approved_registry_change.registry_entry.updated_registry_version",
+  );
+
+  if (
+    !Array.isArray(registryEntry.aliases)
+      || !Array.isArray(registryEntry.child_topic_ids)
+      || !Array.isArray(registryEntry.examples)
+  ) {
+    throw new GovernanceEngineValidationError(
+      "approved_registry_change registry entry list fields must be arrays.",
     );
   }
 }

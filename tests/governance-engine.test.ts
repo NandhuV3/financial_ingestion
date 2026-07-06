@@ -35,6 +35,22 @@ describe("Governance Engine", () => {
     assert.deepEqual(first, second);
     assert.equal(first.decision_outcome, "approved");
     assert.equal(first.registry_impact, "create_new_registry_entry");
+    assert.equal(
+      first.approved_registry_change.mutation_type,
+      "create_registry_entry",
+    );
+    assert.equal(
+      first.approved_registry_change.mutation_type === "create_registry_entry"
+        ? first.approved_registry_change.registry_entry.topic_id
+        : "",
+      candidate().proposed_concept.proposed_topic_id,
+    );
+    assert.equal(
+      first.approved_registry_change.mutation_type === "create_registry_entry"
+        ? first.approved_registry_change.registry_entry.canonical_name
+        : "",
+      "Artificial Intelligence",
+    );
     assert.equal(first.decision_version, GOVERNANCE_DECISION_VERSION);
     assert.equal(first.governance_metadata.governance_engine_version, GOVERNANCE_ENGINE_VERSION);
     assert.equal(first.candidate_reference.candidate_id, candidate().candidate_id);
@@ -58,6 +74,9 @@ describe("Governance Engine", () => {
 
     assert.equal(decision.decision_outcome, "rejected");
     assert.equal(decision.registry_impact, "no_registry_change");
+    assert.deepEqual(decision.approved_registry_change, {
+      mutation_type: "no_registry_mutation",
+    });
     assert.equal(
       decision.decision_basis.rule_evaluations.find((rule) =>
         rule.rule_type === "required_evidence_presence")?.result,
@@ -148,6 +167,10 @@ describe("Governance Engine", () => {
     assert.equal(artifact.metadata.artifact_hash, calculateArtifactHash(artifact.content));
     assert.equal(artifact.content.decision_outcome, "approved");
     assert.equal(artifact.content.candidate_reference.candidate_id, candidate().candidate_id);
+    assert.equal(
+      artifact.content.approved_registry_change.mutation_type,
+      "create_registry_entry",
+    );
 
     const contentRecord = artifact.content as unknown as Record<string, unknown>;
     const candidateReference = artifact.content.candidate_reference as unknown as Record<string, unknown>;
