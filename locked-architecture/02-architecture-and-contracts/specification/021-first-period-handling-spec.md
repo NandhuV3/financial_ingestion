@@ -26,12 +26,15 @@ Many platform layers compare information across time.
 
 Examples include:
 
+Examples include:
+
 - Topic Evolution
 - Quarter Change
-- Commitment Tracking
-- Narrative Consistency
-- Accounting Stability
-- Capital Allocation Tracking
+- Trust Pillars
+    - Commitment Tracking
+    - Narrative Consistency
+    - Accounting Stability
+    - Capital Allocation Tracking
 - Trust Signals
 - Quarter Understanding
 - Investor Intelligence
@@ -194,7 +197,7 @@ This represents dependency unavailability.
 
 # 5. Canonical Artifact Representation
 
-Every longitudinal artifact must expose historical availability explicitly.
+Every artifact that performs temporal comparison across historical periods must expose historical availability explicitly.
 
 Example
 
@@ -250,7 +253,13 @@ Reason vocabulary is platform-governed.
 
 Requires
 
-Previous Topic Assignment.
+Historical Topic Assignment Artifacts.
+
+Each consumed Topic Assignment must preserve the Topic Registry version recorded during Topic Assignment.
+
+Topic Evolution evaluates historical Topic Assignment artifacts only.
+
+It never regenerates Topic Assignment.
 
 If unavailable
 
@@ -262,11 +271,27 @@ history_state
 FIRST_FILING
 ```
 
+No longitudinal Topic behavior is inferred.
+
+No historical Topic Assignment is fabricated.
+
+Replay behavior remains deterministic.
+
 No evolution signals.
 
 No error.
 
 ---
+
+## Platform Intelligence Boundary
+
+First-period handling applies only after required upstream artifacts have been successfully produced.
+
+If Platform Intelligence has not produced the required Topic Assignment artifacts, this represents:
+
+DEPENDENCY_MISSING
+
+It must never be treated as FIRST_FILING.
 
 ## Quarter Change
 
@@ -502,6 +527,8 @@ Layers must never
 
 - convert dependency failures into first-period state
 
+- regenerate historical upstream artifacts during replay
+
 ---
 
 # 11. Relationship To Layer Ownership
@@ -535,6 +562,12 @@ comparison_performed
 
 requires_previous_period
 ```
+
+Historical availability metadata is artifact content.
+
+Execution provenance, replay metadata, and execution context remain owned by the Artifact Framework and Execution Framework.
+
+Layers must not duplicate those concerns inside business content.
 
 using the definitions in this document.
 

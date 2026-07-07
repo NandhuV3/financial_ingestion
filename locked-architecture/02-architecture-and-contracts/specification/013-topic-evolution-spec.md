@@ -26,19 +26,23 @@ Topic Evolution identifies longitudinal Topic behavior.
 
 ```text
 Themes
-↓
+        │
+        ▼
 Topic Assignment
-↓
+(Produced against the governed Platform Registry)
+        │
+        ▼
 Topic Evolution
-↓
+        │
+        ▼
 Business Signals (Enrichment)
 ```
 
 Themes identify filing observations.
 
-Topic Assignment maps observations to canonical Topics.
+Topic Assignment maps observations to canonical Topics using the governed Platform Registry.
 
-Topic Evolution tracks Topic behavior across periods.
+Topic Evolution consumes persisted Topic Assignment artifacts across filing periods.
 
 Business Signals may consume Topic Evolution as enrichment.
 
@@ -48,12 +52,26 @@ Business Signals may consume Topic Evolution as enrichment.
 
 ### Required Inputs
 
-* Topic Assignments (Current Period)
-* Topic Assignments (Historical Periods)
+• Current Topic Assignment Artifact
+• Historical Topic Assignment Artifacts
+
+Each consumed Topic Assignment must preserve:
+
+- Topic Registry version
+- Assignment version
+- Execution lineage
+
+Topic Evolution consumes Topic Assignment artifacts only.
+
+It never reconstructs Topic Assignment.
 
 Topic Evolution requires historical Topic history.
 
 A single filing is insufficient.
+
+Topic Evolution reads Topic Registry version metadata from Topic Assignment lineage.
+
+It does not consume the Platform Registry directly.
 
 ---
 
@@ -66,6 +84,16 @@ A single filing is insufficient.
 * Quarter Understanding
 * Investor Intelligence
 * Market Data
+* Topic Signals
+* Cross-Company Aggregation
+* Aggregation Result
+* Topic Candidates
+* Governance Decisions
+* Platform Registry Evolution
+
+Platform Registry is not a direct input.
+
+Topic Evolution relies on the registry version recorded within Topic Assignment artifacts.
 
 Topic Evolution operates only on Topic history.
 
@@ -99,7 +127,7 @@ Those responsibilities belong downstream.
 
 ## 6. Outputs
 
-Topic Evolution produces Topic behavior records.
+Topic Evolution produces a deterministic Company Intelligence Artifact describing longitudinal Topic behavior across filing periods.
 
 Example:
 
@@ -267,6 +295,7 @@ Topic Evolution may:
 * Compare Topic frequency across periods
 * Compare Topic emphasis across periods
 * Compare Topic framing using Theme summaries
+* Compare Topic behavior across Topic Assignment artifacts produced under different Topic Registry versions
 * Detect Topic emergence
 * Detect Topic disappearance
 * Detect Topic strengthening
@@ -334,7 +363,9 @@ Company Knowledge and Investor Intelligence own that reasoning.
 
 ## 10. Theme Summary Usage
 
-Topic Evolution may consume Theme summaries.
+Topic Evolution may consume Theme summaries only when referenced by Topic Assignment artifacts for deterministic narrative comparison.
+
+Topic Evolution must not reopen Themes independently unless explicitly permitted by its input contract.
 
 Purpose:
 
@@ -383,6 +414,10 @@ Topic Evolution may not determine whether the drift is beneficial.
 Topic Assignment classifies.
 
 Topic Evolution detects behavior.
+
+Topic Assignment is a governed boundary artifact shared between Platform Intelligence and Company Intelligence.
+
+Topic Evolution consumes the persisted Topic Assignment artifact rather than invoking Topic Assignment directly.
 
 ---
 
@@ -480,6 +515,25 @@ Does not produce ownership conclusions.
 
 ---
 
+## 13. Replay
+
+Topic Evolution is fully replayable.
+
+Replay consumes persisted Topic Assignment artifacts.
+
+Replay never regenerates Topic Assignments.
+
+Given identical:
+
+- Current Topic Assignment Artifact
+- Historical Topic Assignment Artifacts
+
+Topic Evolution must produce byte-identical outputs.
+
+Replay depends upon the Topic Registry versions preserved within consumed Topic Assignment artifacts.
+
+---
+
 ## 13. Execution Model
 
 Execution Type:
@@ -492,8 +546,11 @@ Topic Evolution should be reproducible.
 
 Given:
 
-* Topic Assignment history
-* Theme summary history
+* Current Topic Assignment Artifact
+* Historical Topic Assignment Artifacts
+* Referenced Theme summaries (when permitted)
+
+the same Topic Evolution outputs must always be produced.
 
 the same Topic Evolution outputs should be produced.
 
@@ -504,3 +561,18 @@ It is not an interpretation layer.
 It is not a business-understanding layer.
 
 It is not an investor-intelligence layer.
+
+---
+
+## First-Period Handling
+
+Topic Evolution requires historical Topic Assignment history.
+
+When no historical Topic Assignment exists:
+
+- no temporal comparison is possible
+- no longitudinal conclusions are produced
+
+First-period behavior follows the platform-wide First-Period Handling Contract.
+
+Topic Evolution must never fabricate historical observations.
