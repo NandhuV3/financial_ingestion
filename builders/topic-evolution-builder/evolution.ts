@@ -1,137 +1,242 @@
 import {
   averageConfidence,
   persistentConfidence,
+  roundConfidence,
 } from "./confidence.js";
 import type {
-  TopicEvolution,
+  TopicEvolutionTopicRecord,
   TopicPeriodObservation,
 } from "./types.js";
 
 export function buildTopicEvolutions(
-  priorPeriod: string,
+  historicalPeriods: string[],
   currentPeriod: string,
-  priorObservations: Map<string, TopicPeriodObservation>,
+  historicalObservations: Array<Map<string, TopicPeriodObservation>>,
   currentObservations: Map<string, TopicPeriodObservation>,
-): TopicEvolution[] {
-  const topicIds = new Set([
-    ...priorObservations.keys(),
-    ...currentObservations.keys(),
-  ]);
+): TopicEvolutionTopicRecord[] {
+  const topicIds = new Set<string>();
+
+  for (const observations of historicalObservations) {
+    for (const topicId of observations.keys()) {
+      topicIds.add(topicId);
+    }
+  }
+
+  for (const topicId of currentObservations.keys()) {
+    topicIds.add(topicId);
+  }
+
+  const previousObservations =
+    historicalObservations[historicalObservations.length - 1] ?? new Map();
 
   return [...topicIds]
     .sort((left, right) => left.localeCompare(right))
-    .map((topicId) => buildTopicEvolution(
+    .flatMap((topicId) => buildTopicEvolutionRecords({
       topicId,
-      priorPeriod,
+      historicalPeriods,
       currentPeriod,
-      priorObservations.get(topicId),
-      currentObservations.get(topicId),
-    ))
-    .filter((evolution): evolution is TopicEvolution => evolution !== null);
+      historicalObservations,
+      previous: previousObservations.get(topicId),
+      current: currentObservations.get(topicId),
+    }));
 }
 
-function buildTopicEvolution(
-  topicId: string,
-  priorPeriod: string,
-  currentPeriod: string,
-  prior: TopicPeriodObservation | undefined,
-  current: TopicPeriodObservation | undefined,
-): TopicEvolution | null {
-  if (prior === undefined && current === undefined) {
-    return null;
+function buildTopicEvolutionRecords(input: {
+  topicId: string;
+  historicalPeriods: string[];
+  currentPeriod: string;
+  historicalObservations: Array<Map<string, TopicPeriodObservation>>;
+  previous: TopicPeriodObservation | undefined;
+  current: TopicPeriodObservation | undefined;
+}): TopicEvolutionTopicRecord[] {
+  const historicalForTopic = input.historicalObservations
+    .map((observations) => observations.get(input.topicId))
+    .filter((observation): observation is TopicPeriodObservation =>
+      observation !== undefined);
+  const observedPeriods = [
+    ...historicalForTopic.map(({ period }) => period),
+    ...(input.current === undefined ? [] : [input.current.period]),
+  ].sort();
+
+  if (input.current === undefined) {
+    if (historicalForTopic.length === 0) {
+      return [];
+    }
+
+    return [record({
+      topicId: input.topicId,
+      evolutionType: "disappearing",
+      currentPeriod: input.currentPeriod,
+      historicalPeriods: input.historicalPeriods,
+      firstObservedPeriod: observedPeriods[0] ?? null,
+      lastObservedPeriod: observedPeriods[observedPeriods.length - 1] ?? null,
+      periodsObserved: observedPeriods.length,
+      current: undefined,
+      previous: input.previous,
+      observations: historicalForTopic,
+      confidence: averageConfidence(flattenConfidences(historicalForTopic)),
+    })];
   }
 
-  if (prior !== undefined && current !== undefined) {
-    return {
-      topic_id: topicId,
-      first_seen_period: priorPeriod,
-      last_seen_period: currentPeriod,
-      periods_present: 2,
-      evolution_state: "PERSISTENT",
-      strength_direction: "not_assessed",
-      narrative_drift: "not_assessed",
-      confidence: persistentConfidence(
-        prior.assignment_confidences,
-        current.assignment_confidences,
-      ),
-      evidence: buildEvidence(
-        priorPeriod,
-        currentPeriod,
-        prior,
-        current,
-      ),
-    };
+  if (historicalForTopic.length === 0) {
+    return [record({
+      topicId: input.topicId,
+      evolutionType: "emerging",
+      currentPeriod: input.currentPeriod,
+      historicalPeriods: input.historicalPeriods,
+      firstObservedPeriod: input.currentPeriod,
+      lastObservedPeriod: input.currentPeriod,
+      periodsObserved: 1,
+      current: input.current,
+      previous: undefined,
+      observations: [input.current],
+      confidence: averageConfidence(input.current.assignment_confidences),
+    })];
   }
 
-  if (current !== undefined) {
-    return {
-      topic_id: topicId,
-      first_seen_period: currentPeriod,
-      last_seen_period: currentPeriod,
-      periods_present: 1,
-      evolution_state: "EMERGING",
-      strength_direction: "not_assessed",
-      narrative_drift: "not_assessed",
-      confidence: averageConfidence(current.assignment_confidences),
-      evidence: buildEvidence(
-        priorPeriod,
-        currentPeriod,
-        undefined,
-        current,
-      ),
-    };
-  }
-
-  return {
-    topic_id: topicId,
-    first_seen_period: priorPeriod,
-    last_seen_period: priorPeriod,
-    periods_present: 1,
-    evolution_state: "DISAPPEARED",
-    strength_direction: "not_assessed",
-    narrative_drift: "not_assessed",
-    confidence: averageConfidence(prior!.assignment_confidences),
-    evidence: buildEvidence(
-      priorPeriod,
-      currentPeriod,
-      prior,
-      undefined,
+  const records = [record({
+    topicId: input.topicId,
+    evolutionType: "persistent",
+    currentPeriod: input.currentPeriod,
+    historicalPeriods: input.historicalPeriods,
+    firstObservedPeriod: observedPeriods[0] ?? null,
+    lastObservedPeriod: input.currentPeriod,
+    periodsObserved: observedPeriods.length,
+    current: input.current,
+    previous: input.previous,
+    observations: [...historicalForTopic, input.current],
+    confidence: persistentConfidence(
+      flattenConfidences(historicalForTopic),
+      input.current.assignment_confidences,
     ),
-  };
+  })];
+
+  if (input.previous !== undefined) {
+    const delta =
+      input.current.assignment_ids.length - input.previous.assignment_ids.length;
+
+    if (delta > 0) {
+      records.push(record({
+        topicId: input.topicId,
+        evolutionType: "strengthening",
+        currentPeriod: input.currentPeriod,
+        historicalPeriods: input.historicalPeriods,
+        firstObservedPeriod: observedPeriods[0] ?? null,
+        lastObservedPeriod: input.currentPeriod,
+        periodsObserved: observedPeriods.length,
+        current: input.current,
+        previous: input.previous,
+        observations: [input.previous, input.current],
+        confidence: persistentConfidence(
+          input.previous.assignment_confidences,
+          input.current.assignment_confidences,
+        ),
+      }));
+    }
+
+    if (delta < 0) {
+      records.push(record({
+        topicId: input.topicId,
+        evolutionType: "weakening",
+        currentPeriod: input.currentPeriod,
+        historicalPeriods: input.historicalPeriods,
+        firstObservedPeriod: observedPeriods[0] ?? null,
+        lastObservedPeriod: input.currentPeriod,
+        periodsObserved: observedPeriods.length,
+        current: input.current,
+        previous: input.previous,
+        observations: [input.previous, input.current],
+        confidence: persistentConfidence(
+          input.previous.assignment_confidences,
+          input.current.assignment_confidences,
+        ),
+      }));
+    }
+
+    if (summariesChanged(input.previous, input.current)) {
+      records.push(record({
+        topicId: input.topicId,
+        evolutionType: "narrative_drift",
+        currentPeriod: input.currentPeriod,
+        historicalPeriods: input.historicalPeriods,
+        firstObservedPeriod: observedPeriods[0] ?? null,
+        lastObservedPeriod: input.currentPeriod,
+        periodsObserved: observedPeriods.length,
+        current: input.current,
+        previous: input.previous,
+        observations: [input.previous, input.current],
+        confidence: persistentConfidence(
+          input.previous.assignment_confidences,
+          input.current.assignment_confidences,
+        ),
+      }));
+    }
+  }
+
+  return records.sort((left, right) =>
+    left.evolution_type.localeCompare(right.evolution_type));
 }
 
-function buildEvidence(
-  priorPeriod: string,
-  currentPeriod: string,
-  prior: TopicPeriodObservation | undefined,
-  current: TopicPeriodObservation | undefined,
-): TopicEvolution["evidence"] {
-  const observations = [prior, current].filter(
-    (observation): observation is TopicPeriodObservation =>
-      observation !== undefined,
-  );
+function record(input: {
+  topicId: string;
+  evolutionType: TopicEvolutionTopicRecord["evolution_type"];
+  currentPeriod: string;
+  historicalPeriods: string[];
+  firstObservedPeriod: string | null;
+  lastObservedPeriod: string | null;
+  periodsObserved: number;
+  current: TopicPeriodObservation | undefined;
+  previous: TopicPeriodObservation | undefined;
+  observations: TopicPeriodObservation[];
+  confidence: number;
+}): TopicEvolutionTopicRecord {
+  const currentCount = input.current?.assignment_ids.length ?? 0;
+  const previousCount = input.previous?.assignment_ids.length ?? 0;
 
   return {
-    periods_analyzed: [priorPeriod, currentPeriod],
-    supporting_assignment_refs: observations
+    topic_id: input.topicId,
+    evolution_type: input.evolutionType,
+    current_period: input.currentPeriod,
+    first_observed_period: input.firstObservedPeriod,
+    last_observed_period: input.lastObservedPeriod,
+    periods_observed: input.periodsObserved,
+    historical_periods_analyzed: [...input.historicalPeriods],
+    current_assignment_count: currentCount,
+    previous_assignment_count: previousCount,
+    assignment_count_delta: currentCount - previousCount,
+    confidence: roundConfidence(input.confidence),
+    evidence_refs: input.observations
       .flatMap(({ assignment_ids }) => assignment_ids)
       .sort((left, right) => left.localeCompare(right)),
-    theme_summaries_by_period: [
-      summariesForPeriod(priorPeriod, prior),
-      summariesForPeriod(currentPeriod, current),
-    ],
+    evidence_by_period: input.observations
+      .map((observation) => ({
+        period_id: observation.period,
+        assignment_ids: [...observation.assignment_ids]
+          .sort((left, right) => left.localeCompare(right)),
+        theme_summaries: [...observation.theme_summaries]
+          .sort((left, right) => left.localeCompare(right)),
+      }))
+      .sort((left, right) => left.period_id.localeCompare(right.period_id)),
   };
 }
 
-function summariesForPeriod(
-  period: string,
-  observation: TopicPeriodObservation | undefined,
-): TopicEvolution["evidence"]["theme_summaries_by_period"][number] {
-  return {
-    period,
-    theme_summaries: observation === undefined
-      ? []
-      : [...observation.theme_summaries]
-        .sort((left, right) => left.localeCompare(right)),
-  };
+function flattenConfidences(
+  observations: TopicPeriodObservation[],
+): number[] {
+  return observations.flatMap(({ assignment_confidences }) =>
+    assignment_confidences);
+}
+
+function summariesChanged(
+  previous: TopicPeriodObservation,
+  current: TopicPeriodObservation,
+): boolean {
+  return canonicalSummaries(previous).join("\n")
+    !== canonicalSummaries(current).join("\n");
+}
+
+function canonicalSummaries(observation: TopicPeriodObservation): string[] {
+  return observation.theme_summaries
+    .map((summary) => summary.trim().toLowerCase())
+    .sort((left, right) => left.localeCompare(right));
 }

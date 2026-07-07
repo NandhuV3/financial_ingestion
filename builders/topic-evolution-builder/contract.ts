@@ -19,33 +19,6 @@ export const TOPIC_EVOLUTION_CONFIDENCE_DECIMAL_PLACES = 4;
  */
 export const TOPIC_EVOLUTION_MINIMUM_PERIODS = 2;
 
-export const TOPIC_EVOLUTION_STATES = [
-  "PERSISTENT",
-  "EMERGING",
-  "DISAPPEARED",
-] as const;
-
-export type TopicEvolutionState = typeof TOPIC_EVOLUTION_STATES[number];
-
-export const TOPIC_EVOLUTION_STRENGTH_DIRECTIONS = [
-  "strengthening",
-  "weakening",
-  "stable",
-  "not_assessed",
-] as const;
-
-export type StrengthDirection =
-  typeof TOPIC_EVOLUTION_STRENGTH_DIRECTIONS[number];
-
-export const TOPIC_EVOLUTION_NARRATIVE_DRIFT_STATES = [
-  "changed",
-  "unchanged",
-  "not_assessed",
-] as const;
-
-export type NarrativeDrift =
-  typeof TOPIC_EVOLUTION_NARRATIVE_DRIFT_STATES[number];
-
 export function historicalTopicAssignmentDependencyKey(
   period: string,
 ): string {

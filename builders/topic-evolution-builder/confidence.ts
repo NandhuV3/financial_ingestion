@@ -1,7 +1,7 @@
 import { TOPIC_EVOLUTION_CONFIDENCE_DECIMAL_PLACES } from "./contract.js";
 import type {
-  TopicEvolution,
   TopicEvolutionConfidence,
+  TopicEvolutionTopicRecord,
 } from "./types.js";
 
 export function averageConfidence(values: number[]): number {
@@ -25,7 +25,7 @@ export function persistentConfidence(
 }
 
 export function calculateTopicEvolutionConfidence(
-  evolutions: TopicEvolution[],
+  evolutions: TopicEvolutionTopicRecord[],
 ): TopicEvolutionConfidence {
   return {
     overall: averageConfidence(

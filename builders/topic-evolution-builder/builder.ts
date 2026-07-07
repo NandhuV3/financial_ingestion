@@ -2,10 +2,7 @@ import type { Builder } from "../../packages/builder-framework/src/builder.js";
 import type { BuilderContext } from "../../packages/builder-framework/src/builder-context.js";
 import type { BuilderResult } from "../../packages/builder-framework/src/builder-result.js";
 import { calculateTopicEvolutionConfidence } from "./confidence.js";
-import {
-  TOPIC_EVOLUTION_BUILDER_TYPE,
-  TOPIC_EVOLUTION_MINIMUM_PERIODS,
-} from "./contract.js";
+import { TOPIC_EVOLUTION_BUILDER_TYPE } from "./contract.js";
 import { buildTopicEvolutions } from "./evolution.js";
 import type {
   TopicEvolutionArtifactContent,
@@ -37,15 +34,23 @@ export class TopicEvolutionBuilder implements Builder<
       context.dependencies,
       context.input,
     );
-    const periodCount = context.input.historical_periods.length + 1;
-
-    if (periodCount < TOPIC_EVOLUTION_MINIMUM_PERIODS) {
+    if (context.input.historical_periods.length === 0) {
       const content: TopicEvolutionArtifactContent = {
-        artifact_type: "topic_evolution",
-        company: context.input.company_id,
-        period: context.input.period_id,
-        status: "insufficient_history",
-        topic_evolutions: [],
+        company_id: context.input.company_id,
+        period_id: context.input.period_id,
+        filing_id: context.input.filing_id,
+        assignment_version:
+          dependencies.current_topic_assignments.metadata.schema_version,
+        registry_versions: [
+          dependencies.current_topic_assignments.content.registry_version,
+        ],
+        history: {
+          history_state: "FIRST_FILING",
+          reason: "FIRST_FILING",
+          requires_previous_period: true,
+          comparison_performed: false,
+        },
+        topics: [],
         confidence: {
           overall: 0,
         },
@@ -63,22 +68,28 @@ export class TopicEvolutionBuilder implements Builder<
       };
     }
 
-    const prior =
-      dependencies.historical_topic_assignments[
-        dependencies.historical_topic_assignments.length - 1
-      ]!;
     const topicEvolutions = buildTopicEvolutions(
-      prior.content.period,
-      dependencies.current_topic_assignments.content.period,
-      buildTopicObservations(prior),
+      dependencies.historical_topic_assignments.map(({ content }) =>
+        content.period_id),
+      dependencies.current_topic_assignments.content.period_id,
+      dependencies.historical_topic_assignments.map((artifact) =>
+        buildTopicObservations(artifact)),
       buildTopicObservations(dependencies.current_topic_assignments),
     );
     const content: TopicEvolutionArtifactContent = {
-      artifact_type: "topic_evolution",
-      company: context.input.company_id,
-      period: context.input.period_id,
-      status: "complete",
-      topic_evolutions: topicEvolutions,
+      company_id: context.input.company_id,
+      period_id: context.input.period_id,
+      filing_id: context.input.filing_id,
+      assignment_version:
+        dependencies.current_topic_assignments.metadata.schema_version,
+      registry_versions: registryVersions(dependencies),
+      history: {
+        history_state: "HISTORY_AVAILABLE",
+        reason: null,
+        requires_previous_period: true,
+        comparison_performed: true,
+      },
+      topics: topicEvolutions,
       confidence: calculateTopicEvolutionConfidence(topicEvolutions),
     };
 
@@ -93,4 +104,25 @@ export class TopicEvolutionBuilder implements Builder<
       confidence: content.confidence.overall,
     };
   }
+}
+
+function registryVersions(dependencies: {
+  current_topic_assignments: {
+    content: {
+      registry_version: number;
+    };
+  };
+  historical_topic_assignments: Array<{
+    content: {
+      registry_version: number;
+    };
+  }>;
+}): number[] {
+  return [
+    ...new Set([
+      dependencies.current_topic_assignments.content.registry_version,
+      ...dependencies.historical_topic_assignments.map(({ content }) =>
+        content.registry_version),
+    ]),
+  ].sort((left, right) => left - right);
 }
