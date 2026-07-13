@@ -41,6 +41,7 @@ tmp/
 *.notes
 notes
 notes-to-learn
+completed-notes
 
 *.backlog
 backlog
