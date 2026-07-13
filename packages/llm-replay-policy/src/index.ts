@@ -44,6 +44,17 @@ export {
   DeterministicReplayResultFactory,
 } from "./policy-engine.js";
 export {
+  LLMExecutionReplayDecisionAdapter,
+  ReplayResolutionCoordinator,
+} from "./platform-integration.js";
+export type {
+  ReplayArtifactLookup,
+  ReplayCoordinationResult,
+  ReplayExecutionRecordLookup,
+  ReplayPromptPackageLookup,
+  ReplayResolvedResources,
+} from "./platform-integration.js";
+export {
   assertValidReplayRequest,
   DeterministicReplayRequestValidator,
   validateReplayRequest,
