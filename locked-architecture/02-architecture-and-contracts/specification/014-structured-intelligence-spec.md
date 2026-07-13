@@ -14,6 +14,24 @@ Structured Intelligence is the bridge between Themes and Company Knowledge. It c
 
 Structured Intelligence is filing-scoped. Everything it produces is anchored to this filing and this period. It does not produce durable truth, investor conclusions, ownership reasoning, or cross-period interpretation.
 
+# Processing Model
+
+Structured Intelligence is an LLM-based Company Intelligence layer.
+
+Unlike deterministic builders, Structured Intelligence performs governed semantic synthesis using filing evidence.
+
+Structured Intelligence is deterministic at the platform level through:
+
+- Prompt Framework
+- Execution Context
+- Prompt Registry
+- Execution Records
+- Artifact Framework
+
+Structured Intelligence does not rely on deterministic algorithms.
+
+It relies on governed LLM execution.
+
 ## Golden Rule
 
 Structured Intelligence does not determine whether management is correct.
@@ -80,8 +98,12 @@ Structured Intelligence is not a Company Knowledge layer. It is not an Investor 
 
 ### Required Inputs
 
-* Filing Artifact
-* Themes
+- Filing Artifact
+- Themes
+
+Enrichment Inputs
+
+None
 
 The Filing Artifact provides filing-scoped source content. Themes provide filing-scoped observation clusters. Structured Intelligence uses these inputs to describe how the business works according to this filing.
 
@@ -95,6 +117,12 @@ The Filing Artifact provides filing-scoped source content. Themes provide filing
 * Quarter Understanding
 * Investor Intelligence
 * Market Data
+
+* Platform Registry
+* Topic Signals
+* Aggregation Result
+* Topic Candidate
+* Governance Decision
 
 Company Knowledge is forbidden because it represents durable canonical understanding. Consuming it would allow Structured Intelligence to import durable truth into a filing-scoped layer.
 
@@ -115,6 +143,60 @@ Market Data is forbidden because Structured Intelligence does not perform valuat
 ## 4. Outputs
 
 All Structured Intelligence outputs remain filing-scoped.
+
+# Output Classification
+
+Structured Intelligence is a Company Intelligence Artifact.
+
+Properties
+
+- filing-scoped
+- immutable
+- replayable
+- LLM-generated
+- governance-input
+
+Structured Intelligence is NOT:
+
+- a Platform Artifact
+- a Governance Artifact
+- an Execution Record
+
+# Relationship with Themes
+
+Themes identify what management discussed.
+
+Structured Intelligence explains how the business operates according to those observations.
+
+Themes remain evidence-oriented.
+
+Structured Intelligence transforms evidence into structured business understanding.
+
+Structured Intelligence never modifies Themes.
+
+# Relationship with Company Knowledge
+
+Structured Intelligence describes one filing.
+
+Company Knowledge represents governed durable business understanding accumulated across filings.
+
+Structured Intelligence never creates Company Knowledge directly.
+
+Promotion always occurs through:
+
+Structured Intelligence
+
+↓
+
+Company Knowledge Candidate
+
+↓
+
+Governance Promotion
+
+↓
+
+Company Knowledge
 
 ### business_model
 
@@ -503,3 +585,38 @@ Structured Intelligence contributes nothing. Ownership belongs downstream and re
 Why would I hold it and what would change that?
 
 Structured Intelligence contributes business understanding only. Investor Intelligence owns the answer.
+
+
+# Relationship to First Period Handling
+
+Structured Intelligence has no temporal dependency.
+
+Every filing is processed independently.
+
+The First Period Handling Contract does not alter Structured Intelligence execution.
+
+Historical availability is handled by downstream layers such as:
+
+- Company Knowledge
+- Quarter Change
+- Topic Evolution
+
+# Artifact Ownership
+
+Structured Intelligence owns only filing-scoped business understanding.
+
+It must never own:
+
+- execution metadata
+- prompt metadata
+- model metadata
+- provider metadata
+- artifact identity
+- artifact lineage
+- execution timing
+
+These are owned by:
+
+- Prompt Framework
+- Execution Framework
+- Artifact Framework

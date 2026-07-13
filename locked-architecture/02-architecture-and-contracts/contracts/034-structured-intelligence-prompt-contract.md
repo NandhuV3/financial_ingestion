@@ -32,15 +32,27 @@ This document complements
 Relationship
 
 ```
-014 Structured Intelligence Specification
+Structured Intelligence Specification
 
 ↓
 
-031 Prompt Contract
+Structured Intelligence Prompt Contract
 
 ↓
 
-structured-intelligence-prompt.ts
+Structured Intelligence Prompt
+
+↓
+
+Prompt Framework
+
+↓
+
+Artifact Framework
+
+↓
+
+Structured Intelligence Artifact
 ```
 
 The specification defines the layer.
@@ -48,6 +60,25 @@ The specification defines the layer.
 This contract defines LLM reasoning.
 
 The prompt implements both.
+
+---
+
+## Prompt Execution Model
+
+Structured Intelligence is executed through the Prompt Framework.
+
+The Prompt Framework is responsible for:
+
+- prompt version selection
+- model selection
+- execution context
+- provider invocation
+- execution recording
+- replay support
+
+This contract governs only the reasoning performed by the prompt.
+
+It does not govern execution infrastructure.
 
 ---
 
@@ -67,7 +98,7 @@ Nothing else.
 
 Structured Intelligence does not determine whether management is correct.
 
-Structured Intelligence organizes how management describes the business.
+Structured Intelligence synthesizes filing-supported business understanding from the Filing Artifact and Themes.
 
 It structures filing-supported business understanding.
 
@@ -142,6 +173,12 @@ Structured Intelligence must never consume
 - Investor Intelligence
 - Market Data
 
+- Platform Registry
+- Topic Signals
+- Aggregation Result
+- Topic Candidate
+- Governance Decision
+
 Structured Intelligence is filing-scoped.
 
 It has no historical awareness.
@@ -169,6 +206,26 @@ Examples include
 Outputs describe the business according to this filing.
 
 Nothing more.
+
+---
+
+## Structured Output Contract
+
+The prompt produces Structured Intelligence content only.
+
+The prompt must never produce:
+
+- artifact identity
+- artifact metadata
+- lineage
+- execution metadata
+- prompt version metadata
+- model metadata
+- provider metadata
+
+Those are owned by the Artifact Framework and Prompt Framework.
+
+The prompt returns only layer-owned business content.
 
 ---
 
@@ -490,6 +547,58 @@ This contract governs
 - boundaries
 - permitted outputs
 - forbidden outputs
+
+---
+
+## Replay
+
+Replay never regenerates Structured Intelligence through fresh LLM inference.
+
+Replay reproduces the persisted Structured Intelligence artifact using:
+
+- original prompt version
+- original execution context
+- original model version
+- original execution record
+- original artifact
+
+Replay guarantees deterministic platform outputs.
+
+It does not require deterministic language generation.
+
+---
+
+## Execution Context Boundary
+
+The prompt may consume only the execution context provided by the Prompt Framework.
+
+It must never:
+
+- inspect previous executions
+- access external memory
+- retrieve historical prompts
+- perform hidden retrieval
+- modify execution metadata
+
+Execution Context is framework-owned.
+
+---
+
+## Determinism
+
+Structured Intelligence prompt execution is not algorithmically deterministic.
+
+Deterministic replay is achieved through governed execution recording.
+
+The prompt must therefore remain:
+
+- evidence-grounded
+- schema-constrained
+- contract-driven
+
+Prompt wording may evolve.
+
+Layer responsibilities may not.
 
 ---
 
