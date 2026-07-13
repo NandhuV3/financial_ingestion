@@ -32,3 +32,32 @@ export type {
   SuccessfulPromptAssemblyResult,
   SuccessfulPromptUnitResult,
 } from "../../../contracts/execution/prompt-framework-models.js";
+export {
+  PromptFrameworkError,
+  PromptFrameworkOrchestrationError,
+  PromptFrameworkValidationError,
+  PROMPT_FRAMEWORK_ERROR_CODES,
+} from "./errors.js";
+export type {
+  PromptFrameworkErrorCode,
+  PromptFrameworkErrorOptions,
+} from "./errors.js";
+export {
+  buildPromptExecutionPlan,
+} from "./execution-planner.js";
+export {
+  PromptPlanOrchestrator,
+} from "./orchestrator.js";
+export type {
+  PromptUnitExecutorRegistry,
+} from "./orchestrator.js";
+export type {
+  PromptExecutionPlan,
+  PromptExecutionPlanStep,
+  PromptPlanExecutionResult,
+} from "./types.js";
+export {
+  assertValidPromptPlan,
+  FrameworkPromptValidator,
+  validatePromptPlan,
+} from "./validation.js";
