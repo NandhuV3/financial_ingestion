@@ -294,6 +294,17 @@ Wait for architectural review.
 
 ---
 
+## Review Proportionality
+
+Reviews should be proportional to the findings.
+
+- If no architectural or implementation issues exist, keep the review concise.
+- Do not create observations merely to make the review longer.
+- Focus on meaningful deviations, ownership conflicts, scope creep, or opportunities that materially improve the subsystem.
+- A short review with no issues is a sign of a mature implementation, not an incomplete review.
+
+---
+
 # 16. Final Principle
 
 Implementation realizes architecture.
