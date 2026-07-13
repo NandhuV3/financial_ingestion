@@ -1,6 +1,20 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type {
+  ExecutionContextReference,
+  ExecutionRequest,
+  ExecutionResult,
+} from "../../../contracts/execution/llm-execution-models.js";
+import type {
+  LLMPromptPackage,
+} from "../../../contracts/execution/llm-prompt-package.js";
+import type {
+  ExecutionService,
+} from "../../../contracts/execution/llm-execution-framework-contract.js";
+import type {
+  LLMExecutionRecord,
+} from "../../../contracts/execution/llm-execution-record.js";
+import type {
   PromptPlan,
   PromptUnitId,
   PromptUnitResult,
@@ -10,10 +24,20 @@ import type {
 } from "../../../contracts/execution/prompt-framework-contract.js";
 import {
   buildPromptExecutionPlan,
+  DeterministicPromptAssembly,
   FrameworkPromptValidator,
+  GovernedPromptFramework,
+  LLMExecutionPromptUnitExecutor,
   PromptFrameworkOrchestrationError,
+  type PromptPackageResolver,
+  type PromptUnitExecutionInputs,
   PromptPlanOrchestrator,
 } from "../src/index.js";
+import {
+  createLLMExecutionRecord,
+  IntegratedLLMExecutionService,
+  type LLMExecutionReplayDecision,
+} from "../../llm-execution-framework/src/index.js";
 
 test("buildPromptExecutionPlan preserves deterministic declared order", () => {
   const executionPlan = buildPromptExecutionPlan(validPlan());
@@ -131,6 +155,128 @@ test("PromptPlanOrchestrator rejects missing Prompt Unit executors", async () =>
   );
 });
 
+test("DeterministicPromptAssembly combines unit output fields in execution order", async () => {
+  const assembly = new DeterministicPromptAssembly();
+  const result = await assembly.assemble(validPlan(), [
+    succeededUnitResult("business-model", {
+      business_model: "Subscription software.",
+    }),
+    succeededUnitResult("revenue-model", {
+      revenue_model: "Cloud services revenue.",
+    }),
+    succeededUnitResult("risks", {
+      risks: ["Competition"],
+    }),
+  ]);
+
+  assert.equal(result.status, "succeeded");
+  if (result.status === "succeeded") {
+    assert.deepEqual(Object.keys(result.output), [
+      "business_model",
+      "revenue_model",
+      "risks",
+    ]);
+  }
+});
+
+test("DeterministicPromptAssembly rejects duplicate output fields", async () => {
+  const assembly = new DeterministicPromptAssembly();
+  const result = await assembly.assemble(validPlan(), [
+    succeededUnitResult("business-model", {
+      shared: "business model",
+    }),
+    succeededUnitResult("revenue-model", {
+      shared: "revenue model",
+    }),
+  ]);
+
+  assert.equal(result.status, "failed");
+  assert.ok(result.validation.issues.some((issue) =>
+    issue.code === "duplicate_output_field"
+  ));
+});
+
+test("GovernedPromptFramework coordinates orchestration and assembly", async () => {
+  const orchestrator = new PromptPlanOrchestrator(
+    executorRegistry((unitId) => succeededUnitResult(unitId, {
+      [fieldName(unitId)]: unitId,
+    })),
+  );
+  const framework = new GovernedPromptFramework(
+    orchestrator,
+    new DeterministicPromptAssembly(),
+  );
+
+  const result = await framework.execute(validPlan());
+
+  assert.equal(result.status, "succeeded");
+  if (result.status === "succeeded") {
+    assert.equal(result.output.business_model, "business-model");
+    assert.equal(result.output.revenue_model, "revenue-model");
+  }
+});
+
+test("LLMExecutionPromptUnitExecutor resolves active prompt packages and delegates execution", async () => {
+  const resolver = new RecordingPromptPackageResolver();
+  const executionService = new RecordingExecutionService();
+  const executor = new LLMExecutionPromptUnitExecutor(
+    resolver,
+    integratedExecutionService(executionService),
+    promptUnitExecutionInputs({
+      executionMode: "ORIGINAL_EXECUTION",
+      replayDecision: {
+        execution_mode: "ORIGINAL_EXECUTION",
+      },
+    }),
+  );
+
+  const result = await executor.executeUnit(validPlan(), "business-model");
+
+  assert.equal(result.status, "succeeded");
+  assert.equal(resolver.calls[0]?.promptId, "structured-intelligence.business-model");
+  assert.equal(resolver.calls[0]?.version, undefined);
+  assert.equal(executionService.callCount, 1);
+});
+
+test("LLMExecutionPromptUnitExecutor replays original prompt version without invoking execution", async () => {
+  const promptPackage = promptPackageFor("structured-intelligence.business-model", "v3");
+  const originalResult: ExecutionResult<Record<string, unknown>> = {
+    status: "succeeded",
+    output: {
+      business_model: "Subscription software.",
+    },
+    metadata: executionMetadata({
+      executionMode: "ORIGINAL_EXECUTION",
+      promptId: promptPackage.prompt_id,
+      promptVersion: promptPackage.prompt_version,
+    }),
+  };
+  const originalRecord = createLLMExecutionRecord({
+    prompt_package: promptPackage,
+    result: originalResult,
+  });
+  const resolver = new RecordingPromptPackageResolver();
+  const executionService = new FailingExecutionService();
+  const executor = new LLMExecutionPromptUnitExecutor(
+    resolver,
+    integratedExecutionService(executionService),
+    promptUnitExecutionInputs({
+      executionMode: "REPLAY",
+      replayDecision: {
+        execution_mode: "REPLAY",
+        original_result: originalResult,
+        original_execution_record: originalRecord,
+      },
+    }),
+  );
+
+  const result = await executor.executeUnit(validPlan(), "business-model");
+
+  assert.equal(result.status, "succeeded");
+  assert.equal(executionService.callCount, 0);
+  assert.equal(resolver.calls[0]?.version, "v3");
+});
+
 type PlanOverrides = {
   units?: PromptPlan["execution_graph"]["units"];
   dependencies?: PromptPlan["execution_graph"]["dependencies"];
@@ -204,17 +350,188 @@ function executorRegistry(
   return registry;
 }
 
-function succeededUnitResult(unitId: PromptUnitId): PromptUnitResult<unknown> {
+function succeededUnitResult(
+  unitId: PromptUnitId,
+  output: Record<string, unknown> = {
+    unit_id: unitId,
+  },
+): PromptUnitResult<unknown> {
   return {
     unit_id: unitId,
     status: "succeeded",
-    output: {
-      unit_id: unitId,
-    },
+    output,
     validation: {
       valid: true,
       issues: [],
     },
+  };
+}
+
+function fieldName(unitId: PromptUnitId): string {
+  return unitId.replace(/-/g, "_");
+}
+
+class RecordingPromptPackageResolver implements PromptPackageResolver {
+  readonly calls: Array<{
+    promptId: string;
+    context: unknown;
+    version?: string;
+  }> = [];
+
+  render<TContext>(
+    promptId: string,
+    context: TContext,
+    version?: string,
+  ): LLMPromptPackage {
+    this.calls.push({
+      promptId,
+      context,
+      version,
+    });
+
+    return promptPackageFor(promptId, version ?? "active-v1");
+  }
+}
+
+class RecordingExecutionService implements ExecutionService<
+  ExecutionRequest<
+    LLMPromptPackage,
+    ExecutionContextReference,
+    TestProviderConfiguration
+  >,
+  ExecutionResult<Record<string, unknown>>
+> {
+  callCount = 0;
+
+  async execute(
+    request: ExecutionRequest<
+      LLMPromptPackage,
+      ExecutionContextReference,
+      TestProviderConfiguration
+    >,
+  ): Promise<ExecutionResult<Record<string, unknown>>> {
+    this.callCount += 1;
+
+    return {
+      status: "succeeded",
+      output: {
+        business_model: request.prompt_package.prompt_id,
+      },
+      metadata: executionMetadata({
+        executionMode: request.execution_context.execution_mode,
+        promptId: request.prompt_package.prompt_id,
+        promptVersion: request.prompt_package.prompt_version,
+      }),
+    };
+  }
+}
+
+class FailingExecutionService implements ExecutionService<
+  ExecutionRequest<
+    LLMPromptPackage,
+    ExecutionContextReference,
+    TestProviderConfiguration
+  >,
+  ExecutionResult<Record<string, unknown>>
+> {
+  callCount = 0;
+
+  async execute(): Promise<ExecutionResult<Record<string, unknown>>> {
+    this.callCount += 1;
+    throw new Error("Execution service must not be invoked during replay.");
+  }
+}
+
+type TestProviderConfiguration = {
+  model_id: string;
+  model_version: string;
+  provider_id: string;
+};
+
+function integratedExecutionService(
+  executionService: ExecutionService<
+    ExecutionRequest<
+      LLMPromptPackage,
+      ExecutionContextReference,
+      TestProviderConfiguration
+    >,
+    ExecutionResult<Record<string, unknown>>
+  >,
+): IntegratedLLMExecutionService<
+  ExecutionContextReference,
+  TestProviderConfiguration,
+  Record<string, unknown>
+> {
+  return new IntegratedLLMExecutionService(executionService, {
+    record: async (record: LLMExecutionRecord) => record,
+  });
+}
+
+function promptUnitExecutionInputs(input: {
+  executionMode: ExecutionContextReference["execution_mode"];
+  replayDecision: LLMExecutionReplayDecision<Record<string, unknown>>;
+}): PromptUnitExecutionInputs<
+  ExecutionContextReference,
+  TestProviderConfiguration,
+  Record<string, unknown>
+> {
+  return {
+    unit_contexts: new Map<PromptUnitId, unknown>([
+      ["business-model", {
+        filing_id: "filing-1",
+      }],
+    ]),
+    execution_contexts: new Map<PromptUnitId, ExecutionContextReference>([
+      ["business-model", {
+        execution_id: "execution-1",
+        execution_mode: input.executionMode,
+        producer: "prompt-framework-test",
+        generated_at: "2026-07-13T00:00:00.000Z",
+      }],
+    ]),
+    provider_configurations: new Map<PromptUnitId, TestProviderConfiguration>([
+      ["business-model", {
+        model_id: "test-model",
+        model_version: "test-model-v1",
+        provider_id: "test-provider",
+      }],
+    ]),
+    replay_decisions: new Map([
+      ["business-model", input.replayDecision],
+    ]),
+  };
+}
+
+function promptPackageFor(
+  promptId: string,
+  promptVersion: string,
+): LLMPromptPackage {
+  return {
+    prompt_id: promptId,
+    prompt_version: promptVersion,
+    activation_id: "activation-1",
+    system_prompt: "System prompt.",
+    user_prompt: "User prompt.",
+    render_hash: `render-hash:${promptId}:${promptVersion}`,
+    source: "filesystem",
+  };
+}
+
+function executionMetadata(input: {
+  executionMode: ExecutionContextReference["execution_mode"];
+  promptId: string;
+  promptVersion: string;
+}) {
+  return {
+    execution_id: "execution-1",
+    execution_mode: input.executionMode,
+    producer: "prompt-framework-test",
+    generated_at: "2026-07-13T00:00:00.000Z",
+    prompt_id: input.promptId,
+    prompt_version: input.promptVersion,
+    model_id: "test-model",
+    model_version: "test-model-v1",
+    provider_id: "test-provider",
   };
 }
 

@@ -33,6 +33,12 @@ export type {
   SuccessfulPromptUnitResult,
 } from "../../../contracts/execution/prompt-framework-models.js";
 export {
+  DeterministicPromptAssembly,
+} from "./assembly.js";
+export type {
+  PromptStructuredAssemblyOutput,
+} from "./assembly.js";
+export {
   PromptFrameworkError,
   PromptFrameworkOrchestrationError,
   PromptFrameworkValidationError,
@@ -51,6 +57,16 @@ export {
 export type {
   PromptUnitExecutorRegistry,
 } from "./orchestrator.js";
+export {
+  LLMExecutionPromptUnitExecutor,
+} from "./platform-integration.js";
+export type {
+  PromptPackageResolver,
+  PromptUnitExecutionInputs,
+} from "./platform-integration.js";
+export {
+  GovernedPromptFramework,
+} from "./prompt-framework.js";
 export type {
   PromptExecutionPlan,
   PromptExecutionPlanStep,
