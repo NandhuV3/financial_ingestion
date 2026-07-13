@@ -28,6 +28,7 @@ export {
   PromptRegistryActivationError,
   PromptRegistryError,
   PromptRegistryLifecycleError,
+  PromptRegistryResolutionError,
   PromptRegistryValidationError,
   PromptRegistryVersionError,
   PROMPT_REGISTRY_ERROR_CODES,
@@ -42,6 +43,16 @@ export {
 export {
   PromptPackageLifecycleManager,
 } from "./lifecycle.js";
+export {
+  PromptRegistryPromptFrameworkAdapter,
+} from "./prompt-framework-adapter.js";
+export type {
+  PromptPackageRenderer,
+  PromptPackageRenderInput,
+} from "./prompt-framework-adapter.js";
+export {
+  PromptResolutionService,
+} from "./resolution-service.js";
 export type {
   PromptPackageDefinition,
   PromptRegistrySnapshot,

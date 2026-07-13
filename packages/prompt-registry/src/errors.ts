@@ -3,6 +3,7 @@ export const PROMPT_REGISTRY_ERROR_CODES = [
   "PROMPT_REGISTRY_LIFECYCLE_ERROR",
   "PROMPT_REGISTRY_VERSION_ERROR",
   "PROMPT_REGISTRY_ACTIVATION_ERROR",
+  "PROMPT_REGISTRY_RESOLUTION_ERROR",
 ] as const;
 
 export type PromptRegistryErrorCode =
@@ -51,5 +52,12 @@ export class PromptRegistryActivationError extends PromptRegistryError {
   constructor(message: string, options: PromptRegistryErrorOptions = {}) {
     super(message, "PROMPT_REGISTRY_ACTIVATION_ERROR", options);
     this.name = "PromptRegistryActivationError";
+  }
+}
+
+export class PromptRegistryResolutionError extends PromptRegistryError {
+  constructor(message: string, options: PromptRegistryErrorOptions = {}) {
+    super(message, "PROMPT_REGISTRY_RESOLUTION_ERROR", options);
+    this.name = "PromptRegistryResolutionError";
   }
 }
