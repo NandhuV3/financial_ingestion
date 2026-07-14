@@ -9,6 +9,27 @@ export {
   type StructuredIntelligenceResolvedInputs,
 } from "../../../contracts/company-intelligence/structured-intelligence-contract.js";
 export {
+  GovernedStructuredIntelligenceBuilder,
+} from "./builder.js";
+export {
+  buildStructuredIntelligenceContent,
+  buildStructuredIntelligenceMetadata,
+} from "./payload-construction.js";
+export type {
+  StructuredIntelligenceBuilderOptions,
+  StructuredIntelligenceBuildOutput,
+  StructuredIntelligenceDependencyKey,
+  StructuredIntelligenceDependencyMap,
+  StructuredIntelligencePromptPlanResolver,
+} from "./types.js";
+export {
+  resolveStructuredIntelligenceDependencies,
+  validateStructuredIntelligenceInput,
+  validateStructuredIntelligenceOutput,
+  validateStructuredIntelligencePayload,
+  validateStructuredIntelligencePromptPlan,
+} from "./validation.js";
+export {
   STRUCTURED_INTELLIGENCE_BUSINESS_SCOPE,
   STRUCTURED_INTELLIGENCE_MODELS_CONTRACT_VERSION,
   STRUCTURED_INTELLIGENCE_PRODUCT_IMPORTANCE_VALUES,
