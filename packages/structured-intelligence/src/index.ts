@@ -12,6 +12,14 @@ export {
   GovernedStructuredIntelligenceBuilder,
 } from "./builder.js";
 export {
+  assembleStructuredIntelligenceArtifact,
+  STRUCTURED_INTELLIGENCE_PIPELINE_VERSION,
+  structuredIntelligenceInputHash,
+  structuredIntelligenceLineage,
+  type StructuredIntelligenceArtifactAssemblyRequest,
+  type StructuredIntelligenceArtifactAssemblyResult,
+} from "./artifact-assembly.js";
+export {
   buildStructuredIntelligenceContent,
   buildStructuredIntelligenceMetadata,
 } from "./payload-construction.js";
