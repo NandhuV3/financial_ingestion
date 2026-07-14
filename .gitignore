@@ -38,30 +38,8 @@ tmp/
 
 /output/
 
-*.notes
-notes
-notes-to-learn
-completed-notes
-release-notes
 
-*.backlog
-backlog
-
-*.reviews
-reviews
-
-*.pending
-pending
-
-*.completed
-completed
-
-docs/reviews
-docs/updates_required
 /bug-reviews
-locked-architecture/backlog
-
-locked-architecture/implementation-roadmap
 
 drafts
 

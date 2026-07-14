@@ -1,0 +1,51 @@
+## Release Notes
+
+# LLM Replay Policy v1.0
+
+**Subsystem:** LLM Replay Policy
+**Layer:** Platform Foundation
+**Status:** Production Ready
+
+### Added
+
+#### Replay Policy
+
+* Platform-wide replay policy
+* Replay and regeneration decision model
+* Replay request validation
+* Deterministic replay policy evaluation
+* Deterministic regeneration policy evaluation
+
+#### Replay Foundation
+
+* Replay policy contracts
+* Replay domain models
+* Replay references
+* Replay policy metadata
+* Immutable replay context
+
+#### Replay Coordination
+
+* Replay Resolution Coordinator
+* LLM Execution Framework integration
+* Prompt Registry integration
+* Replay resource coordination
+* Deterministic replay coordination
+
+### Capabilities
+
+The LLM Replay Policy now provides:
+
+* Platform-wide replay governance
+* Deterministic replay decision making
+* Deterministic regeneration decision making
+* Replay request validation
+* Replay resource coordination
+* Replay-safe historical execution support
+* Platform-wide replay consistency
+
+### Status
+
+**Production Ready** ✅
+
+---

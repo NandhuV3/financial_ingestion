@@ -1,0 +1,68 @@
+# Release Notes
+
+## Prompt Registry v1.0
+
+**Subsystem:** Prompt Registry
+**Layer:** Platform Foundation
+**Status:** Production Ready
+
+### Added
+
+#### Prompt Package Governance
+
+* Governed Prompt Package registry
+* Prompt Package lifecycle management
+* Immutable Prompt Package versioning
+* Active Prompt Package management
+* Historical Prompt Package preservation
+* Prompt version lineage tracking
+
+#### Prompt Resolution
+
+* Active Prompt Package resolution
+* Historical Prompt Package resolution
+* Prompt Package identity resolution
+* Prompt version lineage resolution
+* Deterministic resolution validation
+* Deterministic resolution errors
+
+#### Replay Support
+
+* Replay-safe Prompt Package resolution
+* Historical version resolution
+* Content-hash validation for replay
+* Guaranteed original Prompt Package resolution
+
+#### Platform Integration
+
+* Prompt Framework integration
+* Governed Prompt Package delivery
+* Prompt rendering delegation
+* Provider-independent integration interfaces
+
+### Capabilities
+
+The Prompt Registry now provides:
+
+* Versioned Prompt Package governance
+* Deterministic Prompt Package resolution
+* Replay-safe historical resolution
+* Immutable Prompt Package history
+* Active version management
+* Platform-wide governed prompt lookup
+
+### Status
+
+**Production Ready** ✅
+
+---
+
+## Consumers
+
+This subsystem is now consumed by:
+
+- Prompt Framework
+- Structured Intelligence
+- Quarter Understanding
+- Investor Intelligence
+- Future LLM-native intelligence layers

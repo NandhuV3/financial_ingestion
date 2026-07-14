@@ -1,116 +1,152 @@
-# Structured Intelligence Specification
+# 014 — Structured Intelligence Specification
 
-Status: LOCKED
+**Layer:** Company Intelligence
 
-## 1. Purpose
+**Type:** Intelligence Subsystem Specification
 
-Structured Intelligence exists to answer:
+**Pattern:** 020 – Intelligence Builder Pattern
 
-> Based on what this filing states, how does this business work?
+**Status:** LOCKED
 
-Themes describe what management discussed in a filing. Structured Intelligence organizes those filing-scoped observations into structured business understanding. Company Knowledge describes what has become durable and canonical across filings.
+---
 
-Structured Intelligence is the bridge between Themes and Company Knowledge. It converts filing-supported observations into business fields that can later be evaluated for durability by the Company Knowledge Candidate and Governance Promotion layers.
+# 1. Purpose
 
-Structured Intelligence is filing-scoped. Everything it produces is anchored to this filing and this period. It does not produce durable truth, investor conclusions, ownership reasoning, or cross-period interpretation.
+Structured Intelligence is the first LLM-native intelligence artifact within Company Intelligence.
 
-# Processing Model
+It exists to answer:
 
-Structured Intelligence is an LLM-based Company Intelligence layer.
+> **Based on what this filing states, how does this business work?**
 
-Unlike deterministic builders, Structured Intelligence performs governed semantic synthesis using filing evidence.
+Themes identify the business narratives discussed within a filing.
 
-Structured Intelligence is deterministic at the platform level through:
+Structured Intelligence transforms those filing-scoped observations into structured business understanding while preserving evidence, explainability, and replay compatibility.
 
-- Prompt Framework
-- Execution Context
-- Prompt Registry
-- Execution Records
-- Artifact Framework
+Structured Intelligence represents the business as described in a single filing.
 
-Structured Intelligence does not rely on deterministic algorithms.
+It is **not** durable Company Knowledge.
 
-It relies on governed LLM execution.
+It is **not** Quarter Understanding.
 
-## Golden Rule
+It is **not** Investor Intelligence.
 
-Structured Intelligence does not determine whether management is correct.
+It is the bridge between Themes and Company Knowledge Candidate.
+
+---
+
+# Golden Rule
+
+Structured Intelligence does **not** determine whether management is correct.
 
 Structured Intelligence captures how management describes the business in this filing.
 
 Structured Intelligence may organize, normalize, and structure filing-supported claims.
 
-Structured Intelligence does not validate those claims.
+Structured Intelligence does **not** validate those claims.
 
-Structured Intelligence does not determine whether management's descriptions are accurate.
+Structured Intelligence does **not** determine whether management's descriptions are accurate.
 
-Structured Intelligence does not determine whether management's strategy is effective.
+Structured Intelligence does **not** determine whether management's strategy is effective.
 
-Structured Intelligence does not determine whether management is credible.
+Structured Intelligence does **not** determine whether management is credible.
 
 Those responsibilities belong to downstream layers.
 
-Examples:
+### Valid
 
-Valid:
+- This filing describes Azure consumption as a revenue driver.
+- Management states that AI infrastructure investment supports future capacity.
 
-* This filing describes Azure consumption as a revenue driver.
+### Invalid
 
-Valid:
+- Azure is Microsoft's most important revenue driver.
+- Management's AI strategy is likely to succeed.
+- Management appears credible.
+- The company has a strong competitive advantage.
 
-* Management states that AI infrastructure investment supports future capacity.
+---
 
-Invalid:
-
-* Azure is the company's most important revenue driver.
-
-Invalid:
-
-* Management's AI strategy is likely to succeed.
-
-Invalid:
-
-* Management appears credible.
-
-Invalid:
-
-* The company has a strong competitive advantage.
-
-## 2. Position In Architecture
+# 2. Position in Architecture
 
 ```text
-Themes
-↓
-Structured Intelligence
-↓
-Company Knowledge Candidate
+                Themes
+             ┌──────────────┐
+             │              │
+             ▼              ▼
+Topic Assignment   Structured Intelligence
+                          │
+                          ▼
+          Company Knowledge Candidate
 ```
 
-Themes own filing-specific observation clusters.
+Themes own filing-scoped observations.
 
-Structured Intelligence owns structured business understanding derived from the filing and Themes.
+Topic Assignment owns deterministic topic classification.
 
-Company Knowledge owns durable governed business understanding after candidate generation and governance promotion.
+Structured Intelligence owns filing-scoped business understanding.
 
-Structured Intelligence is not a Company Knowledge layer. It is not an Investor Intelligence layer. It is not a Quarter Understanding layer.
+Company Knowledge Candidate evaluates Structured Intelligence for governance.
 
-## 3. Inputs
+Structured Intelligence never consumes Topic Assignment.
 
-### Required Inputs
+---
 
-- Filing Artifact
-- Themes
+# 3. Responsibilities
 
-Enrichment Inputs
+Structured Intelligence is responsible for:
 
-None
+* Understanding one reporting period.
+* Organizing business understanding.
+* Producing structured business intelligence.
+* Preserving evidence references.
+* Producing an immutable Structured Intelligence artifact.
 
-The Filing Artifact provides filing-scoped source content. Themes provide filing-scoped observation clusters. Structured Intelligence uses these inputs to describe how the business works according to this filing.
+---
 
-### Forbidden Inputs
+# 4. Non-Responsibilities
 
-* Company Knowledge
+Structured Intelligence must never:
+
+* Compare reporting periods.
+* Detect business changes.
+* Produce Company Knowledge.
+* Produce Business Signals.
+* Produce Trust Signals.
+* Produce Quarter Understanding.
+* Produce Investor Intelligence.
+* Perform governance.
+* Perform topic classification.
+* Consume Platform Intelligence artifacts.
+* Execute prompts directly.
+* Manage Prompt Packages.
+* Make replay decisions.
+
+These responsibilities belong to downstream Company Intelligence layers or Platform Foundation.
+
+---
+
+# 5. Inputs
+
+## Required Inputs
+
+* Filing Artifact
+* Themes
+
+The Filing Artifact provides the canonical filing evidence.
+
+Themes provide filing-scoped observation clusters.
+
+Structured Intelligence derives business understanding directly from these inputs.
+
+---
+
+## Forbidden Inputs
+
+Structured Intelligence must never consume:
+
+* Topic Assignment
 * Topic Evolution
+* Company Knowledge
 * Quarter Change
 * Business Signals
 * Trust Signals
@@ -118,505 +154,404 @@ The Filing Artifact provides filing-scoped source content. Themes provide filing
 * Investor Intelligence
 * Market Data
 
-* Platform Registry
-* Topic Signals
-* Aggregation Result
-* Topic Candidate
-* Governance Decision
+This preserves the separation between:
 
-Company Knowledge is forbidden because it represents durable canonical understanding. Consuming it would allow Structured Intelligence to import durable truth into a filing-scoped layer.
+* Observation
+* Business Understanding
+* Business Interpretation
+* Ownership Understanding
 
-Topic Evolution is forbidden because it owns topic-level temporal behavior. Structured Intelligence does not perform longitudinal topic analysis.
+---
 
-Quarter Change is forbidden because it owns business-level delta across periods. Structured Intelligence describes this filing only.
+## Enrichment Inputs
 
-Business Signals are forbidden because they are deterministic observations derived after Company Knowledge and enrichment inputs. Structured Intelligence must not depend on downstream signal generation.
+None (Version 1).
 
-Trust Signals are forbidden because they belong to Trust Architecture. Structured Intelligence may describe management claims, but it does not evaluate trust.
+Future enrichments require architectural review.
 
-Quarter Understanding is forbidden because it owns period interpretation. Structured Intelligence provides filing-scoped business structure, not quarter-level interpretation.
+---
 
-Investor Intelligence is forbidden because it owns investor-facing synthesis and Q1-Q5 reasoning. Structured Intelligence must not consume investor conclusions.
+## Operational Inputs
 
-Market Data is forbidden because Structured Intelligence does not perform valuation or market-aware reasoning.
+Provided through Platform Foundation:
 
-## 4. Outputs
+* Prompt Framework
+* Prompt Registry
+* LLM Execution Framework
+* LLM Replay Policy
+* Execution Context
+* Artifact Framework
 
-All Structured Intelligence outputs remain filing-scoped.
+Structured Intelligence consumes these capabilities.
 
-# Output Classification
+It never owns them.
 
-Structured Intelligence is a Company Intelligence Artifact.
+---
 
-Properties
+# 6. Business Output Schema
 
-- filing-scoped
-- immutable
-- replayable
-- LLM-generated
-- governance-input
+Structured Intelligence produces one immutable artifact containing structured business understanding.
 
-Structured Intelligence is NOT:
+The governed business fields include:
 
-- a Platform Artifact
-- a Governance Artifact
-- an Execution Record
+## business_model
 
-# Relationship with Themes
+Describes how the business operates according to this filing.
 
-Themes identify what management discussed.
+---
 
-Structured Intelligence explains how the business operates according to those observations.
+## products
 
-Themes remain evidence-oriented.
+Products or services discussed in the filing.
 
-Structured Intelligence transforms evidence into structured business understanding.
+---
 
-Structured Intelligence never modifies Themes.
+## customers
 
-# Relationship with Company Knowledge
+Customer groups discussed in the filing.
 
-Structured Intelligence describes one filing.
+---
 
-Company Knowledge represents governed durable business understanding accumulated across filings.
+## revenue_model
 
-Structured Intelligence never creates Company Knowledge directly.
+How revenue is generated according to the filing.
 
-Promotion always occurs through:
+---
 
-Structured Intelligence
+## revenue_drivers
 
-↓
+Business drivers explicitly supported by filing evidence.
 
-Company Knowledge Candidate
+---
 
-↓
+## competitive_positioning
 
-Governance Promotion
+Management's stated competitive positioning.
 
-↓
+Structured Intelligence records the claim.
 
-Company Knowledge
+It never validates the claim.
 
-### business_model
+---
 
-Purpose: Describe how the business works according to this filing.
+## strategic_priorities
 
-Scope: Filing-scoped description of the business model, value creation, and operating structure.
+Management's stated strategic priorities.
 
-Examples:
+---
 
-* This filing describes a subscription and cloud-consumption business model.
-* Management states that cloud services and productivity software are key parts of the operating model.
+## management_focus
 
-### products
+Operational areas repeatedly emphasized during the filing.
 
-Purpose: Identify products, services, or offerings discussed in the filing.
+---
 
-Scope: Products or services stated or clearly described in this filing.
+## risks
 
-Examples:
+Business risks discussed in the filing.
 
-* Microsoft 365
-* Azure
-* Xbox hardware
+---
 
-### customers
+## dependencies
 
-Purpose: Describe customer groups or end markets discussed in the filing.
+Operational or business dependencies supported by filing evidence.
 
-Scope: Filing-supported customer segments only.
+The schema is versioned and governed independently from implementation.
 
-Examples:
+---
 
-* Enterprise customers
-* Public sector customers
-* Consumers
+# 7. Reasoning Scope
 
-### revenue_model
+Structured Intelligence performs:
 
-Purpose: Describe how revenue is generated according to this filing.
+* Evidence synthesis.
+* Business organization.
+* Business explanation.
+* Cross-section consolidation.
+* Semantic normalization of filing evidence into the governed Structured Intelligence schema.
 
-Scope: Filing-scoped revenue structure, including recurring and transactional components when supported.
+Structured Intelligence may:
 
-Examples:
+* Organize business understanding into structured fields.
+* Convert narrative observations into business fields.
+* Describe management claims as filing-supported claims.
+* Describe relationships between products, customers, operations, and revenue when supported by filing evidence.
 
-* Subscription revenue
-* Cloud consumption revenue
-* Hardware sales
+Structured Intelligence must never:
 
-### revenue_drivers
+* Predict future outcomes.
+* Compare reporting periods.
+* Produce Company Knowledge.
+* Produce Business Signals.
+* Produce Quarter Understanding.
+* Produce Investor Intelligence.
+* Produce Trust assessments.
+* Perform topic classification.
+* Produce investment conclusions.
 
-Purpose: Identify filing-supported drivers of revenue performance.
+---
 
-Scope: Drivers discussed in this filing for this period.
+# 8. Evidence Rules
 
-Examples:
+Every business statement produced by Structured Intelligence must be supported by filing evidence.
 
-* Azure consumption growth
-* Microsoft 365 seat expansion
-* Gaming hardware decline
+Evidence must remain attributable to:
 
-### competitive_positioning
+- Filing section
+- Source excerpt
+- Evidence Identity
+- Theme(s)
 
-Purpose: Capture how the filing describes the company's market or competitive position.
+Structured Intelligence never produces unsupported conclusions.
 
-Scope: Filing-stated positioning only. Structured Intelligence may record management's stated competitive positioning or competitive claims.
+Every field in the Structured Intelligence artifact must be explainable back to filing evidence.
 
-Structured Intelligence does not validate those claims.
+---
 
-Structured Intelligence does not compare the company against competitors.
+# 9. Prompt Contract
 
-Structured Intelligence does not determine whether the claimed position is accurate, differentiated, defensible, superior, weaker, or stronger.
+Structured Intelligence defines a governed Prompt Contract.
 
-Those assessments belong to downstream layers.
+## Required Inputs
 
-Examples:
+- Filing Artifact
+- Themes
 
-* Management describes competition in cloud infrastructure.
-* This filing identifies productivity software as a competitive market.
-* Management states that integrated cloud and productivity offerings differentiate the company.
+## Forbidden Inputs
 
-Invalid examples:
+- Topic Assignment
+- Topic Evolution
+- Company Knowledge
+- Quarter Change
+- Business Signals
+- Trust Signals
+- Quarter Understanding
+- Investor Intelligence
+- Market Data
 
-* The company has a superior competitive position.
-* The company has a stronger competitive moat than competitors.
+## Expected Output
 
-### strategic_priorities
+A Structured Intelligence payload conforming to the governed Structured Intelligence schema.
 
-Purpose: Capture what management identifies as strategic priorities for the business.
+## Reasoning Constraints
 
-Scope: Filing-stated strategic focus areas for this period.
+- Use filing evidence only.
+- Organize business understanding.
+- Preserve evidence references.
+- Do not compare reporting periods.
+- Do not infer future changes.
+- Do not perform investment reasoning.
+- Do not generate Company Knowledge.
+- Do not generate Business Signals.
+- Do not validate management claims.
+- Do not classify Topics.
 
-These describe where management states the business is being directed.
+---
 
-Examples:
+# 10. Artifact Characteristics
 
-* AI infrastructure expansion
-* Security platform investment
-* Datacenter capacity expansion
+Structured Intelligence artifacts are:
 
-### management_focus
+- Immutable
+- Filing-scoped
+- Replay-compatible
+- Versioned
+- Explainable
+- Evidence-backed
+- Schema-governed
 
-Purpose: Capture what management emphasized, monitored, discussed, or repeatedly highlighted during the period.
+Common artifact metadata is inherited from:
 
-Scope: Filing-scoped management emphasis and stated focus areas.
+**020 – Intelligence Builder Pattern**
 
-Management focus may include operational attention areas that are not themselves strategic priorities.
+Structured Intelligence defines only its business payload.
 
-A strategic priority is not automatically a management focus.
+---
 
-A management focus is not automatically a strategic priority.
+# 11. Builder Lifecycle
 
-The two fields may overlap when explicitly supported by filing evidence, but they are not interchangeable.
-
-Examples:
-
-* Operating expense discipline
-* Capacity constraints
-* Supply availability
-* Commercial execution
-
-### risks
-
-Purpose: Identify business risks discussed in the filing.
-
-Scope: Risks stated in this filing. Structured Intelligence does not judge probability, credibility, or trustworthiness.
-
-Examples:
-
-* Supply chain constraints
-* Cybersecurity incidents
-* Foreign exchange exposure
-
-### dependencies
-
-Purpose: Identify operational or business dependencies described in the filing.
-
-Scope: Filing-supported dependencies only.
-
-Examples:
-
-* Datacenter availability
-* Semiconductor supply
-* Partner ecosystem participation
-
-## 5. Allowed Reasoning
-
-Structured Intelligence may synthesize filing content when the synthesis remains anchored to this filing.
-
-Structured Intelligence may organize business understanding into structured fields.
-
-Structured Intelligence may convert narrative observations into structured business fields.
-
-Structured Intelligence may describe business mechanics, including how products, customers, and revenue sources relate when supported by the filing.
-
-Structured Intelligence may describe management claims as claims made in the filing.
-
-Structured Intelligence may describe revenue generation mechanisms stated or supported by the filing.
-
-Structured Intelligence may describe customer and product structure discussed in the filing.
-
-## 6. Forbidden Reasoning
-
-Structured Intelligence must not produce durable business facts.
-
-Invalid: Microsoft is primarily a cloud company.
-
-Reason: This asserts durable canonical truth. Company Knowledge owns durable business truth.
-
-Structured Intelligence must not produce canonical truth.
-
-Invalid: Cloud is Microsoft's core business.
-
-Reason: This converts filing-scoped evidence into canonical company identity.
-
-Structured Intelligence must not perform cross-period analysis.
-
-Invalid: Azure growth is accelerating compared with prior quarters.
-
-Reason: Quarter Change and Topic Evolution own temporal comparison.
-
-Structured Intelligence must not produce investor conclusions.
-
-Invalid: This strengthens the investment case.
-
-Reason: Investor Intelligence owns investor-facing synthesis.
-
-Structured Intelligence must not produce valuation reasoning.
-
-Invalid: The company is attractively valued relative to growth.
-
-Reason: Valuation requires downstream market data and Q4 ownership.
-
-Structured Intelligence must not produce trust assessments.
-
-Invalid: Management appears credible.
-
-Reason: Trust Architecture owns trust evidence and Investor Intelligence owns final trust synthesis.
-
-Structured Intelligence must not produce management credibility assessments.
-
-Invalid: Management's AI strategy appears reliable.
-
-Reason: Credibility is a trust interpretation, not filing-scoped business structure.
-
-Structured Intelligence must not produce ownership conclusions.
-
-Invalid: This is a business worth holding long term.
-
-Reason: Investor Intelligence owns ownership reasoning.
-
-Structured Intelligence must not produce buy or sell reasoning.
-
-Invalid: Investors should buy because cloud growth remains strong.
-
-Reason: Investor Intelligence owns investment reasoning.
-
-Structured Intelligence must not produce competitive strength judgments.
-
-Invalid: Microsoft has a strong competitive advantage.
-
-Reason: Structured Intelligence may describe competitive claims in the filing but cannot judge competitive strength.
-
-Structured Intelligence must not produce business quality judgments.
-
-Invalid: This is a high-quality recurring revenue business.
-
-Reason: Business quality is downstream synthesis, not filing-scoped structure.
-
-## 7. Ownership Boundaries
-
-### Themes vs Structured Intelligence
-
-| Dimension | Themes | Structured Intelligence |
-|---|---|---|
-| Unit of output | Observation cluster | Structured business field |
-| Purpose | Identify what management discussed | Describe how the business works according to the filing |
-| Time horizon | Filing-scoped | Filing-scoped |
-| Reasoning type | Observation extraction | Filing-supported business organization |
-| Example outputs | AI infrastructure investment, Azure growth | Revenue drivers, products, management focus |
-
-### Structured Intelligence vs Company Knowledge
-
-| Dimension | Structured Intelligence | Company Knowledge |
-|---|---|---|
-| Scope | Filing-scoped understanding | Durable canonical understanding |
-| Truth status | What this filing states | What governance accepts as durable |
-| Time horizon | This filing and this period | Cross-filing company knowledge |
-| Promotion authority | None | Governance-controlled |
-| Example | This filing describes Azure as a revenue driver | Azure is a durable part of the company's revenue structure |
-
-### Structured Intelligence vs Quarter Understanding
-
-| Dimension | Structured Intelligence | Quarter Understanding |
-|---|---|---|
-| Primary role | Business description | Business interpretation |
-| Question answered | How does this business work according to this filing? | What happened this period and why does it matter? |
-| Inputs | Filing Artifact and Themes | Company Knowledge and Business Signals, with approved enrichments |
-| Output type | Filing-scoped structured understanding | Period-scoped interpretation |
-| Example | This filing identifies cloud consumption as a revenue driver | Cloud demand mattered this quarter because it changed business momentum |
-
-## 8. Examples Of Correct Outputs
-
-1. This filing describes Azure consumption as a driver of cloud revenue.
-2. Management states that Microsoft 365 subscriptions contribute recurring revenue.
-3. This filing identifies datacenter capacity as an operational dependency.
-4. This filing describes AI infrastructure investment as a management priority.
-5. Management states that gaming hardware revenue declined during the period.
-6. This filing identifies commercial remaining performance obligation as a backlog-related measure.
-7. This filing describes cybersecurity incidents as a business risk.
-8. Management states that operating expense growth remains an area of focus.
-9. This filing identifies enterprise customers as an important customer group.
-10. This filing describes cloud and productivity offerings as major product areas.
-11. Management states that supply chain availability can affect infrastructure expansion.
-12. This filing identifies foreign exchange as a factor affecting reported results.
-
-## 9. Examples Of Invalid Outputs
-
-### Microsoft is primarily a cloud company.
-
-Why it violates ownership: It asserts durable company identity.
-
-Owning layer: Company Knowledge.
-
-### Management appears credible.
-
-Why it violates ownership: It evaluates trust and credibility.
-
-Owning layer: Trust Architecture and Investor Intelligence Q3.
-
-### This strengthens the investment case.
-
-Why it violates ownership: It produces investor-facing reasoning.
-
-Owning layer: Investor Intelligence.
-
-### Cloud is Microsoft's core business.
-
-Why it violates ownership: It converts filing evidence into canonical truth.
-
-Owning layer: Company Knowledge.
-
-### Microsoft has a strong competitive advantage.
-
-Why it violates ownership: It judges competitive strength.
-
-Owning layer: Investor Intelligence, using upstream evidence.
-
-### Azure growth is accelerating versus prior quarters.
-
-Why it violates ownership: It performs cross-period comparison.
-
-Owning layer: Quarter Change and Topic Evolution, depending on comparison type.
-
-### Management's AI strategy is trustworthy.
-
-Why it violates ownership: It evaluates management credibility.
-
-Owning layer: Trust Architecture and Investor Intelligence Q3.
-
-### The stock is too expensive.
-
-Why it violates ownership: It requires valuation and market data.
-
-Owning layer: Investor Intelligence Q4.
-
-### Investors should hold the company for cloud growth.
-
-Why it violates ownership: It answers ownership and holding rationale.
-
-Owning layer: Investor Intelligence Q5.
-
-### The company has a superior business model.
-
-Why it violates ownership: It judges business quality.
-
-Owning layer: Investor Intelligence.
-
-## 10. Relationship To Company Knowledge
-
-Structured Intelligence does not create Company Knowledge. It proposes filing-scoped understanding.
-
-Company Knowledge Candidate evaluates whether Structured Intelligence outputs should become proposed updates. Governance Promotion decides whether those proposed updates are accepted. Company Knowledge becomes canonical only after governance promotion.
+Structured Intelligence follows the shared Intelligence Builder Pattern.
 
 ```text
+Required Inputs
+        │
+        ▼
+Input Validation
+        │
+        ▼
+Prompt Plan Selection
+        │
+        ▼
+Prompt Framework
+        │
+        ▼
+LLM Execution Framework
+        │
+        ▼
+Structured Result
+        │
+        ▼
+Business Payload Construction
+        │
+        ▼
+Artifact Assembly
+        │
+        ▼
+Structured Intelligence Artifact
+```
+
+The builder lifecycle is inherited.
+
+Structured Intelligence owns only the business-specific payload construction.
+
+---
+
+# 12. Downstream Consumers
+
+Structured Intelligence is consumed by:
+
+- Company Knowledge Candidate
+- Quarter Change
+
+Future Company Intelligence layers consume the outputs of these downstream artifacts rather than reconstructing filing understanding.
+
+No downstream layer should re-read raw filings to reproduce business understanding.
+
+---
+
+# 13. Dependency Direction
+
+```text
+Filing Artifact
+        │
+        ▼
 Themes
-↓
+        │
+        ▼
 Structured Intelligence
-↓
+        │
+        ▼
 Company Knowledge Candidate
-↓
-Governance Promotion
-↓
+        │
+        ▼
 Company Knowledge
 ```
 
-Structured Intelligence may supply evidence for future durable knowledge, but it does not determine durability.
+Dependency direction is strictly one-way.
 
-## 11. Relationship To Ownership Questions
+Structured Intelligence never depends on downstream Company Intelligence or Platform Intelligence artifacts.
 
-### Q1 Ownership
+---
 
-What does this company actually sell?
+# 14. Design Principles
 
-Structured Intelligence contributes filing-scoped evidence about products, customers, revenue model, and business mechanics. Company Knowledge owns the canonical answer.
+Structured Intelligence must:
 
-### Q2 Ownership
+- Represent one reporting period only.
+- Preserve filing evidence.
+- Produce structured business understanding.
+- Organize observations into governed business fields.
+- Remain independent of business interpretation.
+- Remain independent of ownership reasoning.
+- Delegate reusable infrastructure to Platform Foundation.
+- Follow the Intelligence Builder Pattern.
 
-Where does the next rupee come from?
+Structured Intelligence must never become a durable knowledge layer.
 
-Structured Intelligence contributes filing-scoped revenue understanding. Investor Intelligence owns the final answer.
+---
 
-### Q3 Ownership
+# 15. Relationship to Shared Pattern
 
-Can the story be trusted?
+This specification defines only the business-specific behavior of Structured Intelligence.
 
-Structured Intelligence provides management claims only. Trust Architecture owns trust evidence. Investor Intelligence owns the final trust conclusion.
+The following architectural concerns are inherited from:
 
-### Q4 Ownership
+**020 – Intelligence Builder Pattern**
 
-Is the story already too expensive?
+- Builder lifecycle
+- Input validation pattern
+- Prompt Plan selection
+- Platform Foundation delegation
+- Replay model
+- Artifact construction
+- Metadata model
+- Lineage model
+- Dependency principles
+- Ownership rules
 
-Structured Intelligence contributes nothing. Ownership belongs downstream and requires market data.
+These concerns must not be redefined here.
 
-### Q5 Ownership
+---
 
-Why would I hold it and what would change that?
+# 16. Relationship to Company Knowledge
 
-Structured Intelligence contributes business understanding only. Investor Intelligence owns the answer.
+Structured Intelligence describes the business according to one filing.
 
+Company Knowledge determines what becomes canonically true across filings.
 
-# Relationship to First Period Handling
+```text
+Filing
+    │
+    ▼
+Themes
+    │
+    ▼
+Structured Intelligence
+    │
+    ▼
+Company Knowledge Candidate
+    │
+    ▼
+Governance Promotion
+    │
+    ▼
+Company Knowledge
+```
 
-Structured Intelligence has no temporal dependency.
+Structured Intelligence proposes understanding.
 
-Every filing is processed independently.
+Governance determines durability.
 
-The First Period Handling Contract does not alter Structured Intelligence execution.
+---
 
-Historical availability is handled by downstream layers such as:
+# 17. Ownership Question
 
-- Company Knowledge
-- Quarter Change
-- Topic Evolution
+Structured Intelligence answers exactly one question:
 
-# Artifact Ownership
+> **Based on what this filing states, how does this business work?**
 
-Structured Intelligence owns only filing-scoped business understanding.
+It does not answer:
 
-It must never own:
+- What changed?
+- What is canonically true?
+- What should investors believe?
+- Can management be trusted?
+- Should the stock be purchased?
 
-- execution metadata
-- prompt metadata
-- model metadata
-- provider metadata
-- artifact identity
-- artifact lineage
-- execution timing
+Those questions belong to downstream architectural layers.
 
-These are owned by:
+---
 
-- Prompt Framework
-- Execution Framework
-- Artifact Framework
+# 18. Version 1 Scope
+
+Version 1 includes:
+
+- Single filing business understanding.
+- Evidence-backed reasoning.
+- Structured business representation.
+- Immutable artifact creation.
+- Replay compatibility.
+- Platform Foundation integration.
+
+Version 1 excludes:
+
+- Multi-period comparison.
+- Durable knowledge creation.
+- Topic classification.
+- Business change detection.
+- Trust analysis.
+- Business interpretation.
+- Investor reasoning.
+- Ownership conclusions.
+
+These responsibilities belong to downstream Company Intelligence subsystems.

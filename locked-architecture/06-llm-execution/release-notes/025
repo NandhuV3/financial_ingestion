@@ -1,0 +1,158 @@
+# Release Notes
+
+
+# 025-prompt-framework.md
+
+## Prompt Framework v1.0
+
+**Release Date:** 2026-07-13
+**Subsystem:** Prompt Framework
+**Layer:** Platform Foundation
+**Status:** Production Ready
+
+---
+
+## Added
+
+### Framework Foundation
+
+* Prompt Framework contracts
+* Canonical prompt domain models
+* Public framework interfaces
+* Package export structure
+* Contract validation tests
+
+### Prompt Planning
+
+* Deterministic Prompt Plan orchestration
+* Prompt execution planning
+* Prompt dependency resolution
+* Prompt execution ordering
+* Prompt-level validation
+* Required Prompt Unit validation
+* Duplicate Prompt Unit detection
+* Execution graph validation
+
+### Platform Integration
+
+* Deterministic output assembly
+* Output completeness validation
+* Duplicate output field detection
+* Prompt Registry integration
+* LLM Execution Framework integration
+* Replay integration
+* Governed Prompt Package consumption
+
+---
+
+## Architecture
+
+### Ownership
+
+* Prompt Framework owns prompt organization.
+* LLM Execution Framework owns execution.
+* Prompt Registry owns prompt governance.
+* LLM Replay Policy owns replay decisions.
+* Artifact Framework owns artifact lifecycle.
+
+### Contract Freeze
+
+* Framework contracts frozen.
+* Prompt domain models frozen.
+
+### Architectural Guarantees
+
+* Ownership boundaries preserved.
+* Framework responsibilities preserved.
+* Provider-independent architecture.
+* Business-domain-independent architecture.
+* Deterministic orchestration.
+* Deterministic output assembly.
+* No business reasoning within Platform Foundation.
+* No provider invocation by the Prompt Framework.
+* No business artifact ownership.
+* Replay-compatible by design.
+
+---
+
+## Provided Services
+
+The Prompt Framework now provides:
+
+- Prompt planning
+- Prompt orchestration
+- Prompt validation
+- Output assembly
+- Prompt Registry integration
+- LLM Execution Framework integration
+- Replay-aware execution coordination
+
+---
+
+## Non-Responsibilities
+
+The Prompt Framework does not own:
+
+- Provider execution
+- Prompt governance
+- Replay policy
+- Artifact lifecycle
+- Business reasoning
+- Business validation
+
+---
+
+## Validation
+
+* Architecture approved
+* Roadmap approved
+* All Implementation Packages completed
+* Contract Freeze maintained
+* Type checking passed
+* Framework tests passed
+* Implementation Review approved
+* Acceptance Certification completed
+
+---
+
+## Implementation Packages
+
+### IP-PF-001 — Prompt Foundation
+
+* Framework Contracts
+* Prompt Domain Models
+* Contract Freeze
+
+### IP-PF-002 — Prompt Orchestration
+
+* Prompt Plan Orchestration
+* Prompt-Level Validation
+
+### IP-PF-003 — Prompt Platform Integration
+
+* Output Assembly
+* Prompt Registry Integration
+* LLM Execution Framework Integration
+* Replay Integration
+
+---
+
+## Consumers
+
+The Prompt Framework is now available for all future LLM-native intelligence layers, including:
+
+* Structured Intelligence
+* Company Knowledge Candidate
+* Quarter Understanding
+* Investor Intelligence
+* Future Platform Foundation consumers
+
+---
+
+## Status
+
+**Production Ready** ✅
+
+The Prompt Framework is acceptance certified and ready for use by downstream LLM-native subsystems.
+
+--------------------
